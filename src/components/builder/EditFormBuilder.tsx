@@ -31,18 +31,17 @@ function generateId() { return Math.random().toString(36).slice(2, 10) }
 interface EditFormBuilderProps {
   project: Project & { id: string }
   initialFields: FormField[]
+  initialDeadline: string
 }
 
-export default function EditFormBuilder({ project, initialFields }: EditFormBuilderProps) {
+export default function EditFormBuilder({ project, initialFields, initialDeadline }: EditFormBuilderProps) {
   const router = useRouter()
   const sensors = useSensors(useSensor(PointerSensor))
 
   const [title, setTitle] = useState(project.title)
   const [notificationEmail, setNotificationEmail] = useState(project.notification_email ?? '')
   const [isPublished, setIsPublished] = useState(project.is_published ?? true)
-  const [deadline, setDeadline] = useState(
-    project.deadline ? new Date(project.deadline).toISOString().slice(0, 16) : ''
-  )
+  const [deadline, setDeadline] = useState(initialDeadline)
   const [maxSubmissions, setMaxSubmissions] = useState(
     project.max_submissions != null ? String(project.max_submissions) : ''
   )

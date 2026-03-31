@@ -23,6 +23,12 @@ export default async function DashboardPage() {
     slug: p.slug,
     banner_url: p.banner_url ?? null,
     created_at: p.created_at,
+    created_at_label: new Intl.DateTimeFormat('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      timeZone: 'Asia/Seoul',
+    }).format(new Date(p.created_at)),
     is_published: p.is_published ?? true,
     fieldCount:
       Array.isArray(p.form_fields) && p.form_fields.length > 0

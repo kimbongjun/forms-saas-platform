@@ -13,6 +13,17 @@ interface ResponsesPageProps {
 const INPUT_TYPES = ['text', 'email', 'textarea', 'checkbox', 'select', 'radio', 'checkbox_group']
 const PAGE_SIZE = 20
 
+function formatSubmissionDate(iso: string) {
+  return new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Seoul',
+  }).format(new Date(iso))
+}
+
 export default async function ResponsesPage({ params, searchParams }: ResponsesPageProps) {
   const [{ id }, { page: pageParam }] = await Promise.all([params, searchParams])
   const supabase = await createServerClient()
@@ -136,7 +147,10 @@ export default async function ResponsesPage({ params, searchParams }: ResponsesP
           <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-400">입력 필드가 없는 폼입니다.</div>
         ) : (
           <ResponsesTable
-            submissions={submissions ?? []}
+            submissions={(submissions ?? []).map((sub) => ({
+              ...sub,
+              created_at_label: formatSubmissionDate(sub.created_at),
+            }))}
             inputFields={inputFields}
             page={page}
             totalPages={totalPages}

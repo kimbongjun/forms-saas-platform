@@ -16,6 +16,7 @@ interface Project {
   slug: string
   banner_url: string | null
   created_at: string
+  created_at_label: string
   is_published: boolean
   fieldCount: number
 }
@@ -156,9 +157,6 @@ export default function ProjectList({ projects }: ProjectListProps) {
         const isDeleting = deletingIds.has(project.id)
         const isDuplicating = duplicatingId === project.id
         const isChecked = selected.has(project.id)
-        const createdAt = new Date(project.created_at).toLocaleDateString('ko-KR', {
-          year: 'numeric', month: 'long', day: 'numeric',
-        })
 
         return (
           <div
@@ -207,7 +205,7 @@ export default function ProjectList({ projects }: ProjectListProps) {
                 </span>
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3.5 w-3.5" />
-                  {createdAt}
+                  {project.created_at_label}
                 </span>
               </div>
             </Link>

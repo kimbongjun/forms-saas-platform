@@ -59,45 +59,30 @@ export default function SaveButton({
     const supabase = createClient()
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-
       let bannerUrl: string | null = null
       if (bannerFile) bannerUrl = await uploadBanner(supabase, bannerFile)
 
       const slug = generateSlug(title, customSlug)
-      const { data: project, error: projectErr } = await supabase
-        .from('projects')
-        .insert({
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           title: title.trim(),
           slug,
-          banner_url: bannerUrl,
-          notification_email: notificationEmail.trim() || null,
-          theme_color: themeColor || '#111827',
-          is_published: isPublished,
+          bannerUrl,
+          notificationEmail: notificationEmail.trim() || null,
+          themeColor: themeColor || '#111827',
+          isPublished,
           deadline: deadline || null,
-          max_submissions: maxSubmissions ? parseInt(maxSubmissions, 10) : null,
-          webhook_url: webhookUrl.trim() || null,
-          user_id: user?.id,
+          maxSubmissions: maxSubmissions ? parseInt(maxSubmissions, 10) : null,
+          webhookUrl: webhookUrl.trim() || null,
+          fields,
         })
-        .select('id')
-        .single()
+      })
 
-      if (projectErr || !project) {
-        throw new Error(`프로젝트 저장 실패: ${projectErr?.message ?? '데이터 반환 없음'}`)
-      }
-
-      if (fields.length > 0) {
-        const rows = fields.map((f) => ({
-          project_id: project.id,
-          label: f.label.trim() || '(제목 없음)',
-          type: f.type,
-          required: f.required,
-          order_index: f.order_index,
-          options: f.options ?? null,
-          content: f.content ?? null,
-        }))
-        const { error: fieldsErr } = await supabase.from('form_fields').insert(rows)
-        if (fieldsErr) throw new Error(`필드 저장 실패: ${fieldsErr.message}`)
+      if (!res.ok) {
+        const json = await res.json().catch(() => null)
+        throw new Error(json?.error ?? '프로젝트 저장 실패')
       }
 
       router.push('/dashboard')

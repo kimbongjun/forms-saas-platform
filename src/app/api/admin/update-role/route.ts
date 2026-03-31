@@ -25,8 +25,7 @@ export async function POST(req: NextRequest) {
     const admin = createAdminClient()
     const { error } = await admin
       .from('profiles')
-      .update({ role: newRole })
-      .eq('id', userId)
+      .upsert({ id: userId, role: newRole }, { onConflict: 'id' })
 
     if (error) throw error
 

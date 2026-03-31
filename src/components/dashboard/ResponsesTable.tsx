@@ -7,6 +7,7 @@ import type { FormField } from '@/types/database'
 interface Submission {
   id: string
   created_at: string
+  created_at_label: string
   answers: Record<string, string | boolean | string[]>
 }
 
@@ -19,13 +20,6 @@ interface ResponsesTableProps {
 
 export default function ResponsesTable({ submissions, inputFields, page, totalPages }: ResponsesTableProps) {
   const [detailSub, setDetailSub] = useState<Submission | null>(null)
-
-  function formatDate(iso: string) {
-    return new Date(iso).toLocaleString('ko-KR', {
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit',
-    })
-  }
 
   function formatValue(val: string | boolean | string[] | undefined): string {
     if (val === undefined || val === null || val === '') return '—'
@@ -43,7 +37,7 @@ export default function ResponsesTable({ submissions, inputFields, page, totalPa
             <div className="sticky top-0 flex items-center justify-between border-b border-gray-100 bg-white px-5 py-4">
               <div>
                 <p className="text-sm font-semibold text-gray-900">응답 상세</p>
-                <p className="text-xs text-gray-400">{formatDate(detailSub.created_at)}</p>
+                <p className="text-xs text-gray-400">{detailSub.created_at_label}</p>
               </div>
               <button type="button" onClick={() => setDetailSub(null)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100">
                 <X className="h-4 w-4" />
@@ -87,7 +81,7 @@ export default function ResponsesTable({ submissions, inputFields, page, totalPa
                     idx % 2 !== 0 ? 'bg-gray-50/40' : '',
                   ].join(' ')}
                 >
-                  <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{formatDate(sub.created_at)}</td>
+                  <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{sub.created_at_label}</td>
                   {inputFields.map((f) => (
                     <td key={f.id} className="px-4 py-3 text-gray-700">
                       <span className="block max-w-[200px] truncate">{formatValue(sub.answers?.[f.id])}</span>
