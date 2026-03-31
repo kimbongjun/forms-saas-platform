@@ -25,7 +25,10 @@ import type { FieldType, FormField } from '@/types/database'
 const SIDEBAR_TYPES: FieldType[] = [
   'text', 'email', 'textarea', 'checkbox',
   'select', 'radio', 'checkbox_group', 'html',
+  'map', 'youtube', 'text_block', 'image', 'divider',
 ]
+
+const PRESET_COLORS = ['#111827', '#2563EB', '#16A34A', '#DC2626', '#9333EA', '#F59E0B', '#0891B2', '#EC4899']
 
 function generateId() {
   return Math.random().toString(36).slice(2, 10)
@@ -37,15 +40,20 @@ export default function FormBuilder() {
 
   const [title, setTitle] = useState('')
   const [notificationEmail, setNotificationEmail] = useState('')
+  const [isPublished, setIsPublished] = useState(true)
+  const [deadline, setDeadline] = useState('')
+  const [maxSubmissions, setMaxSubmissions] = useState('')
   const [fields, setFields] = useState<FormField[]>([])
   const [bannerFile, setBannerFile] = useState<File | null>(null)
   const [bannerPreview, setBannerPreview] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [themeColor, setThemeColor] = useState('#111827')
 
   // ── Field operations ────────────────────────────────────────────────────────
 
   function addField(type: FieldType) {
     const needsOptions = ['select', 'radio', 'checkbox_group'].includes(type)
+    const needsContent = ['html', 'map', 'youtube', 'text_block', 'image', 'divider'].includes(type)
     setFields((prev) => [
       ...prev,
       {
@@ -55,7 +63,7 @@ export default function FormBuilder() {
         required: false,
         order_index: prev.length,
         options: needsOptions ? [''] : undefined,
-        content: type === 'html' ? '' : undefined,
+        content: needsContent ? '' : undefined,
       },
     ])
   }
@@ -115,7 +123,17 @@ export default function FormBuilder() {
         </div>
         <div className="flex items-center gap-3">
           {error && <span className="max-w-xs truncate text-xs text-red-600">{error}</span>}
-          <SaveButton title={title} notificationEmail={notificationEmail} fields={fields} bannerFile={bannerFile} onError={setError} />
+          <SaveButton
+            title={title}
+            notificationEmail={notificationEmail}
+            isPublished={isPublished}
+            deadline={deadline}
+            maxSubmissions={maxSubmissions}
+            fields={fields}
+            bannerFile={bannerFile}
+            onError={setError}
+            themeColor={themeColor}
+          />
         </div>
       </header>
 
@@ -142,6 +160,33 @@ export default function FormBuilder() {
               </button>
             )
           })}
+
+          {/* Theme color picker */}
+          <div className="mt-4 border-t border-gray-100 pt-4">
+            <p className="mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-gray-400">테마 컬러</p>
+            <div className="grid grid-cols-4 gap-1.5 px-2 mb-2">
+              {PRESET_COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setThemeColor(color)}
+                  style={{ backgroundColor: color }}
+                  className={`h-7 w-full rounded-md transition-all ${themeColor === color ? 'ring-2 ring-offset-1 ring-gray-400' : ''}`}
+                  title={color}
+                />
+              ))}
+            </div>
+            <div className="px-2">
+              <label className="text-xs text-gray-400 mb-1 block">직접 선택</label>
+              <input
+                type="color"
+                value={themeColor}
+                onChange={(e) => setThemeColor(e.target.value)}
+                className="h-8 w-full cursor-pointer rounded-lg border border-gray-200"
+              />
+            </div>
+          </div>
+
           <div className="mt-auto rounded-xl border border-dashed border-gray-200 p-3 text-center text-xs leading-relaxed text-gray-400">
             클릭하면 캔버스에<br />필드가 추가됩니다
           </div>
@@ -182,6 +227,43 @@ export default function FormBuilder() {
                   className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-gray-900"
                 />
                 <p className="mt-1.5 text-xs text-gray-400">입력 시 폼 제출마다 해당 이메일로 응답 내용이 발송됩니다.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">제출 마감일</p>
+                  <input
+                    type="datetime-local"
+                    value={deadline}
+                    onChange={(e) => setDeadline(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  />
+                </div>
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">최대 응답 수</p>
+                  <input
+                    type="number"
+                    min="1"
+                    value={maxSubmissions}
+                    onChange={(e) => setMaxSubmissions(e.target.value)}
+                    placeholder="제한 없음"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="flex cursor-pointer items-center gap-3">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={isPublished}
+                      onChange={(e) => setIsPublished(e.target.checked)}
+                      className="sr-only"
+                    />
+                    <div className={`h-5 w-9 rounded-full transition-colors ${isPublished ? 'bg-gray-900' : 'bg-gray-300'}`} />
+                    <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${isPublished ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">{isPublished ? '공개' : '비공개'}</span>
+                </label>
               </div>
             </section>
 

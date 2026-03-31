@@ -13,23 +13,28 @@ import type { FormField } from '@/types/database'
 interface SaveButtonProps {
   title: string
   notificationEmail: string
+  isPublished: boolean
+  deadline: string
+  maxSubmissions: string
   fields: FormField[]
   bannerFile: File | null
   onError: (message: string) => void
+  themeColor: string
 }
 
 function generateSlug(title: string): string {
   const rand = Math.random().toString(36).slice(2, 8)
   const base = title
     .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // 한글·특수문자 제거, ASCII만 남김
+    .trim()
     .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9가-힣-]/g, '')
     .replace(/-+/g, '-')
     .slice(0, 40)
-  return `${base}-${rand}`
+  return base ? `${base}-${rand}` : `form-${rand}`
 }
 
-export default function SaveButton({ title, notificationEmail, fields, bannerFile, onError }: SaveButtonProps) {
+export default function SaveButton({ title, notificationEmail, isPublished, deadline, maxSubmissions, fields, bannerFile, onError, themeColor }: SaveButtonProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
@@ -55,7 +60,16 @@ export default function SaveButton({ title, notificationEmail, fields, bannerFil
       const slug = generateSlug(title)
       const { data: project, error: projectErr } = await supabase
         .from('projects')
-        .insert({ title: title.trim(), slug, banner_url: bannerUrl, notification_email: notificationEmail.trim() || null })
+        .insert({
+          title: title.trim(),
+          slug,
+          banner_url: bannerUrl,
+          notification_email: notificationEmail.trim() || null,
+          theme_color: themeColor || '#111827',
+          is_published: isPublished,
+          deadline: deadline || null,
+          max_submissions: maxSubmissions ? parseInt(maxSubmissions, 10) : null,
+        })
         .select('id')
         .single()
 

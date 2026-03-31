@@ -57,6 +57,7 @@ body {
   font-size: 0.8rem;
   font-family: monospace;
 }
+
 .tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   color: #9ca3af;

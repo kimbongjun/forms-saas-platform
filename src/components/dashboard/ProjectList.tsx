@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   FileText, Calendar, ChevronRight,
-  Trash2, Plus, Loader2, Eye,
+  Trash2, Plus, Loader2, Eye, BarChart2,
 } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 
@@ -210,6 +210,16 @@ export default function ProjectList({ projects }: ProjectListProps) {
 
             {/* 편집 화살표 */}
             <ChevronRight className="h-5 w-5 shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-gray-500" />
+
+            {/* 응답 보기 */}
+            <Link
+              href={`/dashboard/${project.id}/responses`}
+              onClick={(e) => e.stopPropagation()}
+              className="shrink-0 rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-green-50 hover:text-green-600"
+              title="응답 보기"
+            >
+              <BarChart2 className="h-4 w-4" />
+            </Link>
 
             {/* 폼 보기 */}
             <Link

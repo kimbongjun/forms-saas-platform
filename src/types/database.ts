@@ -7,6 +7,11 @@ export type FieldType =
   | 'radio'
   | 'checkbox_group'
   | 'html'
+  | 'map'
+  | 'youtube'
+  | 'text_block'
+  | 'image'
+  | 'divider'
 
 export interface FormField {
   id: string
@@ -16,7 +21,7 @@ export interface FormField {
   required: boolean
   order_index: number
   options?: string[]   // select / radio / checkbox_group 의 선택지
-  content?: string     // html 타입의 WYSIWYG HTML 내용
+  content?: string     // html 타입의 WYSIWYG HTML 내용, map/youtube URL, text_block 텍스트, image URL
 }
 
 export interface Project {
@@ -26,6 +31,10 @@ export interface Project {
   slug: string
   banner_url?: string | null
   notification_email?: string | null
+  theme_color?: string | null
+  is_published?: boolean
+  deadline?: string | null
+  max_submissions?: number | null
   created_at?: string
 }
 

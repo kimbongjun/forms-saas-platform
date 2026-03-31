@@ -7,9 +7,10 @@ import type { FormField } from '@/types/database'
 interface PublicFormProps {
   projectId: string
   fields: FormField[]
+  themeColor?: string
 }
 
-export default function PublicForm({ projectId, fields }: PublicFormProps) {
+export default function PublicForm({ projectId, fields, themeColor = '#111827' }: PublicFormProps) {
   const [answers, setAnswers] = useState<Record<string, string | boolean | string[]>>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -33,7 +34,7 @@ export default function PublicForm({ projectId, fields }: PublicFormProps) {
 
     // 필수 필드 검증
     for (const field of fields) {
-      if (field.type === 'html') continue
+      if (field.type === 'html' || field.type === 'map' || field.type === 'youtube' || field.type === 'text_block' || field.type === 'image' || field.type === 'divider') continue
       if (!field.required) continue
       const val = answers[field.id]
       const isEmpty =
@@ -90,6 +91,7 @@ export default function PublicForm({ projectId, fields }: PublicFormProps) {
           value={answers[field.id]}
           onChange={(v) => setAnswer(field.id, v)}
           onToggleCheckbox={(opt) => toggleCheckboxGroup(field.id, opt)}
+          themeColor={themeColor}
         />
       ))}
 
@@ -100,7 +102,8 @@ export default function PublicForm({ projectId, fields }: PublicFormProps) {
       <button
         type="submit"
         disabled={loading}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-700 disabled:opacity-50"
+        style={{ backgroundColor: themeColor }}
+        className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
       >
         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
         {loading ? '제출 중...' : '제출하기'}
@@ -116,11 +119,43 @@ interface FieldRendererProps {
   value: string | boolean | string[] | undefined
   onChange: (v: string | boolean | string[]) => void
   onToggleCheckbox: (option: string) => void
+  themeColor: string
 }
 
-function FieldRenderer({ field, value, onChange, onToggleCheckbox }: FieldRendererProps) {
+function FieldRenderer({ field, value, onChange, onToggleCheckbox, themeColor }: FieldRendererProps) {
   const inputClass =
     'w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-gray-900'
+
+  if (field.type === 'text_block') {
+    return (
+      <h3 className="text-gray-700 whitespace-pre-wrap leading-relaxed font-bold">
+        {field.content ?? ''}
+      </h3>
+    )
+  }
+
+  if (field.type === 'image') {
+    if (!field.content) return null
+    return (
+      <figure>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={field.content}
+          alt={field.label}
+          className="w-full rounded-xl object-cover"
+        />
+        {field.label && (
+          <figcaption className="mt-2 text-center text-xs text-gray-400">
+            {field.label}
+          </figcaption>
+        )}
+      </figure>
+    )
+  }
+
+  if (field.type === 'divider') {
+    return <hr className="border-gray-200" />
+  }
 
   if (field.type === 'html') {
     return (
@@ -128,6 +163,61 @@ function FieldRenderer({ field, value, onChange, onToggleCheckbox }: FieldRender
         className="prose prose-sm max-w-none"
         dangerouslySetInnerHTML={{ __html: field.content ?? '' }}
       />
+    )
+  }
+
+  if (field.type === 'map') {
+    const rawSrc = field.content ?? ''
+    // embed/v1/place 포맷(구 방식)이면 q 파라미터에서 주소 추출 후 신규 포맷으로 변환
+    let src = rawSrc
+    if (rawSrc.includes('embed/v1/place')) {
+      try {
+        const url = new URL(rawSrc)
+        const q = url.searchParams.get('q') ?? ''
+        const addr = q.startsWith('place_id:') ? q : decodeURIComponent(q)
+        src = `https://maps.google.com/maps?q=${encodeURIComponent(addr)}&output=embed`
+      } catch {
+        src = rawSrc
+      }
+    }
+    if (!src) return null
+    return (
+      <div className="relative w-full overflow-hidden rounded-xl" style={{ paddingBottom: '56.25%' }}>
+        <iframe
+          src={src}
+          className="absolute inset-0 h-full w-full border-0"
+          allowFullScreen
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+      </div>
+    )
+  }
+
+  if (field.type === 'youtube') {
+    const match = (field.content ?? '').match(
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/
+    )
+    const videoId = match?.[1]
+
+    if (!videoId) {
+      return (
+        <div className="flex items-center justify-center rounded-xl bg-gray-100 text-sm text-gray-400" style={{ height: '200px' }}>
+          영상 URL을 입력해주세요
+        </div>
+      )
+    }
+
+    return (
+      <div className="relative w-full overflow-hidden rounded-xl" style={{ paddingBottom: '56.25%' }}>
+        <iframe
+          src={`https://www.youtube.com/embed/${videoId}`}
+          className="absolute inset-0 h-full w-full border-0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          loading="lazy"
+        />
+      </div>
     )
   }
 
@@ -174,7 +264,8 @@ function FieldRenderer({ field, value, onChange, onToggleCheckbox }: FieldRender
             type="checkbox"
             checked={(value as boolean) ?? false}
             onChange={(e) => onChange(e.target.checked)}
-            className="h-4 w-4 rounded accent-gray-900"
+            style={{ accentColor: themeColor }}
+            className="h-4 w-4 rounded"
           />
           동의합니다
         </label>
@@ -205,7 +296,8 @@ function FieldRenderer({ field, value, onChange, onToggleCheckbox }: FieldRender
                 checked={(value as string) === opt}
                 onChange={() => onChange(opt)}
                 required={field.required}
-                className="h-4 w-4 accent-gray-900"
+                style={{ accentColor: themeColor }}
+                className="h-4 w-4"
               />
               {opt}
             </label>
@@ -221,7 +313,8 @@ function FieldRenderer({ field, value, onChange, onToggleCheckbox }: FieldRender
                 type="checkbox"
                 checked={((value as string[]) ?? []).includes(opt)}
                 onChange={() => onToggleCheckbox(opt)}
-                className="h-4 w-4 rounded accent-gray-900"
+                style={{ accentColor: themeColor }}
+                className="h-4 w-4 rounded"
               />
               {opt}
             </label>

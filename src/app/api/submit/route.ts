@@ -22,6 +22,35 @@ export async function POST(req: NextRequest) {
 
     const supabase = createServerClient()
 
+    // ── 0. 제출 제한 검사 ────────────────────────────────────────────────────
+    const { data: project } = await supabase
+      .from('projects')
+      .select('title, notification_email, slug, is_published, deadline, max_submissions')
+      .eq('id', projectId)
+      .single()
+
+    if (!project) {
+      return NextResponse.json({ error: '존재하지 않는 폼입니다.' }, { status: 404 })
+    }
+
+    if (project.is_published === false) {
+      return NextResponse.json({ error: '비공개 폼입니다.' }, { status: 403 })
+    }
+
+    if (project.deadline && new Date(project.deadline) < new Date()) {
+      return NextResponse.json({ error: '제출 마감된 폼입니다.' }, { status: 403 })
+    }
+
+    if (project.max_submissions) {
+      const { count } = await supabase
+        .from('submissions')
+        .select('*', { count: 'exact', head: true })
+        .eq('project_id', projectId)
+      if ((count ?? 0) >= project.max_submissions) {
+        return NextResponse.json({ error: '최대 응답 수에 도달했습니다.' }, { status: 403 })
+      }
+    }
+
     // ── 1. submissions 저장 ──────────────────────────────────────────────────
     const { error: insertErr } = await supabase
       .from('submissions')
@@ -32,15 +61,11 @@ export async function POST(req: NextRequest) {
     }
 
     // ── 2. 이메일 발송 ───────────────────────────────────────────────────────
-    const { data: project } = await supabase
-      .from('projects')
-      .select('title, notification_email, slug')
-      .eq('id', projectId)
-      .single()
+    const INPUT_TYPES = ['text', 'email', 'textarea', 'checkbox', 'select', 'radio', 'checkbox_group']
 
     if (project?.notification_email && process.env.RESEND_API_KEY) {
       const rows = fields
-        .filter((f) => f.type !== 'html')
+        .filter((f) => INPUT_TYPES.includes(f.type))
         .map((f) => {
           const val = answers[f.id]
           let display = ''
