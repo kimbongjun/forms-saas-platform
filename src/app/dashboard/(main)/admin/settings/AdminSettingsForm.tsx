@@ -81,8 +81,8 @@ export default function AdminSettingsForm({ initialSettings }: Props) {
     'w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-gray-900'
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
+    <div>
+      <div className="border-b border-gray-200 bg-white px-6 py-4">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/dashboard/admin/users" className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
@@ -103,7 +103,7 @@ export default function AdminSettingsForm({ initialSettings }: Props) {
             {loading ? '저장 중...' : '저장'}
           </button>
         </div>
-      </header>
+      </div>
 
       {/* Tab bar */}
       <div className="border-b border-gray-200 bg-white">
@@ -126,7 +126,7 @@ export default function AdminSettingsForm({ initialSettings }: Props) {
         </div>
       </div>
 
-      <main className="mx-auto max-w-3xl px-6 py-8 space-y-6">
+      <div className="mx-auto max-w-3xl px-6 py-8 space-y-6">
         {error && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
         )}
@@ -202,7 +202,7 @@ export default function AdminSettingsForm({ initialSettings }: Props) {
             ))}
           </div>
         )}
-      </main>
+      </div>
     </div>
   )
 }

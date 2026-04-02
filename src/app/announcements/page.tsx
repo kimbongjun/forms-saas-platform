@@ -1,6 +1,7 @@
 import { createServerClient } from '@/utils/supabase/server'
 import Link from 'next/link'
 import { Megaphone, ChevronRight } from 'lucide-react'
+import SiteHeader from '@/components/common/SiteHeader'
 import SiteFooter from '@/components/common/SiteFooter'
 
 function formatDate(iso: string) {
@@ -18,16 +19,13 @@ export default async function AnnouncementsPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
-      <header className="border-b border-gray-200 bg-white px-6 py-5">
-        <div className="mx-auto max-w-3xl">
-          <div className="flex items-center gap-2">
-            <Megaphone className="h-5 w-5 text-gray-500" />
-            <h1 className="text-xl font-bold text-gray-900">공지사항</h1>
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="flex-1 mx-auto w-full max-w-3xl px-6 py-8">
+        <div className="mb-6 flex items-center gap-2">
+          <Megaphone className="h-5 w-5 text-gray-500" />
+          <h1 className="text-xl font-bold text-gray-900">공지사항</h1>
+        </div>
         {(!announcements || announcements.length === 0) ? (
           <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-white py-20 text-center">
             <p className="text-sm text-gray-400">등록된 공지사항이 없습니다.</p>

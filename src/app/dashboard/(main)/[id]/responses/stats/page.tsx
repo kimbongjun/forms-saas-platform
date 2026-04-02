@@ -29,8 +29,8 @@ export default async function StatsPage({ params }: StatsPageProps) {
   const total = submissions.length
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b border-gray-200 bg-white px-4 py-4 shadow-sm sm:px-6">
+    <div>
+      <div className="border-b border-gray-200 bg-white px-4 py-4 sm:px-6">
         <div className="mx-auto flex max-w-4xl items-center gap-3">
           <Link href={`/dashboard/${id}/responses`} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
             <ArrowLeft className="h-4 w-4" />
@@ -40,9 +40,9 @@ export default async function StatsPage({ params }: StatsPageProps) {
             <p className="text-xs text-gray-400">상세 통계 — 총 {total}건</p>
           </div>
         </div>
-      </header>
+      </div>
 
-      <main className="mx-auto max-w-4xl px-4 py-8 space-y-6 sm:px-6">
+      <div className="mx-auto max-w-4xl px-4 py-8 space-y-6 sm:px-6">
         {total === 0 && (
           <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-white py-24 text-center">
             <p className="text-sm text-gray-400">아직 응답이 없습니다.</p>
@@ -55,7 +55,7 @@ export default async function StatsPage({ params }: StatsPageProps) {
             <FieldStats key={field.id} field={field} answers={answers} total={total} />
           )
         })}
-      </main>
+      </div>
     </div>
   )
 }

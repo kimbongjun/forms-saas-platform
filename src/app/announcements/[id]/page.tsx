@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { createServerClient } from '@/utils/supabase/server'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
+import SiteHeader from '@/components/common/SiteHeader'
 import SiteFooter from '@/components/common/SiteFooter'
 
 interface Props {
@@ -26,14 +27,15 @@ export default async function AnnouncementDetailPage({ params }: Props) {
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
-      <header className="border-b border-gray-200 bg-white px-6 py-4">
-        <div className="mx-auto flex max-w-3xl items-center gap-3">
+      <SiteHeader />
+      <div className="border-b border-gray-200 bg-white px-6 py-3">
+        <div className="mx-auto flex max-w-3xl items-center gap-2">
           <Link href="/announcements" className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <span className="text-sm text-gray-400">공지사항</span>
+          <span className="text-sm text-gray-500">공지사항</span>
         </div>
-      </header>
+      </div>
 
       <main className="flex-1 mx-auto w-full max-w-3xl px-6 py-10">
         <article className="rounded-2xl border border-gray-200 bg-white p-8">

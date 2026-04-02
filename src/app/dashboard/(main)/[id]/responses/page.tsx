@@ -73,9 +73,9 @@ export default async function ResponsesPage({ params, searchParams }: ResponsesP
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
+    <div>
+      {/* Sub-header inside main content area */}
+      <div className="border-b border-gray-200 bg-white px-6 py-4">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
@@ -101,7 +101,7 @@ export default async function ResponsesPage({ params, searchParams }: ResponsesP
             </div>
           )}
         </div>
-      </header>
+      </div>
 
       <div className="mx-auto max-w-6xl px-6 py-8 space-y-6">
 
