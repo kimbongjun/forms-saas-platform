@@ -18,6 +18,8 @@ export type FieldType =
   | 'select'
   | 'radio'
   | 'checkbox_group'
+  | 'rating'
+  | 'section'
   | 'html'
   | 'map'
   | 'youtube'
@@ -35,7 +37,8 @@ export interface FormField {
   required: boolean
   order_index: number
   options?: string[]   // select / radio / checkbox_group
-  content?: string     // html, map/youtube URL, text_block text, image URL, table JSON
+  content?: string     // html, map/youtube URL, text_block text, image URL, table JSON, rating max
+  logic?: Record<string, string>  // radio: { "optionValue": "sectionFieldId" }
 }
 
 export interface Project {
@@ -55,6 +58,9 @@ export interface Project {
   user_email_template?: string | null
   thumbnail_url?: string | null
   locale_settings?: LocaleSettings | null
+  seo_title?: string | null
+  seo_description?: string | null
+  seo_og_image?: string | null
   created_at?: string
 }
 

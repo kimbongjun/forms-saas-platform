@@ -1,11 +1,11 @@
 import type { FieldType } from '@/types/database'
 
 export const INPUT_TYPES: FieldType[] = [
-  'text', 'email', 'textarea', 'checkbox', 'select', 'radio', 'checkbox_group',
+  'text', 'email', 'textarea', 'checkbox', 'select', 'radio', 'checkbox_group', 'rating',
 ]
 
 export const CONTENT_TYPES: FieldType[] = [
-  'text_block', 'image', 'divider', 'map', 'youtube', 'table',
+  'text_block', 'image', 'divider', 'map', 'youtube', 'table', 'section',
 ]
 
 export const PRESET_COLORS = [
@@ -22,5 +22,5 @@ export const INPUT_CLASS =
   'w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-gray-900'
 
 export function generateId() {
-  return Math.random().toString(36).slice(2, 10)
+  return crypto.randomUUID()
 }

@@ -3,16 +3,17 @@
 ## ✅ 완료된 기능
 
 ### 인프라
-- [x] `types/database.ts` — FieldType(13종), FormField, Project, Submission
+- [x] `types/database.ts` — FieldType(15종), FormField, Project, Submission
 - [x] `utils/supabase/client.ts` — createClient (브라우저)
 - [x] `utils/supabase/server.ts` — createServerClient (서버)
-- [x] `utils/supabase/storage.ts` — uploadBanner
+- [x] `utils/supabase/storage.ts` — uploadBanner, uploadThumbnail
 
 ### 빌더
-- [x] `FormBuilder.tsx` — 신규 프로젝트 생성 (사이드바 + 캔버스 2컬럼)
-- [x] `EditFormBuilder.tsx` — 기존 프로젝트 편집
-- [x] `FieldCard.tsx` — 13가지 필드 타입 카드 (DnD, 라벨, 옵션, 컨텐츠, 미리보기)
-- [x] `MapFieldEditor.tsx` — Google Maps iframe 붙여넣기 (API 불필요, 비용 없음, 실시간 미리보기)
+- [x] `FormBuilder.tsx` — 신규 프로젝트 생성 (사이드바 + 캔버스 2컬럼, 모바일 드로어)
+- [x] `EditFormBuilder.tsx` — 기존 프로젝트 편집 (모바일 드로어)
+- [x] `FieldCard.tsx` — 15가지 필드 타입 카드 (DnD, 리치텍스트 레이블, 옵션, 컨텐츠, 미리보기)
+- [x] `LabelEditor.tsx` — Tiptap 미니 에디터 (Bold/Italic/Underline/Color/Link, SSR 제외)
+- [x] `MapFieldEditor.tsx` — Google Maps iframe 붙여넣기
 - [x] `BannerUpload.tsx` — 배너 이미지 선택·미리보기·제거
 - [x] `SaveButton.tsx` — 트랜잭션 저장 (projects → form_fields)
 - [x] `RichTextEditor.tsx` — Tiptap WYSIWYG (SSR 제외)
@@ -21,147 +22,67 @@
 
 ### 대시보드
 - [x] `dashboard/page.tsx` — 프로젝트 목록 (Server)
-- [x] `ProjectList.tsx` — 목록 카드, 개별 삭제, 일괄 삭제, 공개 폼 뷰 버튼, 응답 보기 버튼
-- [x] `dashboard/[id]/responses/page.tsx` — 응답 확인 테이블 (Server), 입력 필드만 컬럼 표시
+- [x] `ProjectList.tsx` — 목록 카드 (thumbnail_url ?? banner_url 프리뷰), 삭제, 복제, 공개 폼 뷰, 응답 보기
+- [x] `dashboard/[id]/responses/page.tsx` — 응답 확인 테이블 + 통계 바 + 상세 통계 버튼 + CSV 버튼
+- [x] `dashboard/[id]/responses/stats/page.tsx` — 필드별 상세 통계 (SVG 파이차트, 바차트, 평점분포, 텍스트목록)
 - [x] `dashboard/[id]/responses/export/route.ts` — CSV 내보내기 (BOM UTF-8, Excel 호환)
 
 ### 공개 폼
 - [x] `[slug]/page.tsx` — slug로 project+fields 조회 (Server), 비공개/마감일/최대응답 수 검사
-- [x] `PublicForm.tsx` — 13가지 필드 렌더 + 제출 + 테마 컬러 적용
-- [x] `api/submit/route.ts` — 제한 검사 → submissions INSERT → Resend 이메일 발송 (입력 필드만)
+- [x] `PublicForm.tsx` — 15가지 필드 렌더 + 다단계(섹션) + 평점 + 조건분기 + 테마 컬러 + 다국어
+- [x] `api/submit/route.ts` — 제한 검사 → submissions INSERT → Resend 이메일 발송
+
+### 필드 타입
+- [x] rating — 별점 입력 (3/5/10점 설정, 공개폼 클릭 별점)
+- [x] section — 섹션 구분자, 다단계 폼 페이지 분할
+- [x] table — 행/열 편집 UI, content에 JSON 저장
+
+### 섹션 & Conditional Logic
+- [x] `PublicForm.tsx` — splitSections() 다단계 분할, 진행바, 다음/이전 버튼
+- [x] `FieldCard.tsx` — radio 옵션별 섹션 분기 `<select>` UI
+- [x] `EditFormBuilder.tsx` — logic 필드 저장
+- [x] DB: `form_fields.logic jsonb` — radio: { "optionValue": "sectionFieldId" }
+
+### 관리자 글로벌 옵션
+- [x] `app/api/admin/settings/route.ts` — GET/PUT (site_settings 단일 행)
+- [x] `app/dashboard/admin/settings/page.tsx` — 관리자 전용 설정 페이지
+- [x] `app/dashboard/admin/settings/AdminSettingsForm.tsx` — 설정 폼 (site_title, description, og_image, favicon, footer_text, max_file_size)
+- [x] `app/layout.tsx` — 동적 generateMetadata() (DB 연동)
+- [x] `UserMenu.tsx` — 관리자 메뉴에 "사이트 설정" 링크
 
 ### 폼 공개 설정
-- [x] `is_published` 공개/비공개 토글 (FormBuilder + EditFormBuilder)
-- [x] `deadline` 제출 마감일 datetime-local 입력
-- [x] `max_submissions` 최대 응답 수 number 입력
-
-### 이미지 업로드
-- [x] `uploadFieldImage()` — `storage.ts` 추가 (banners 버킷 `field-images/` 경로)
-- [x] `FieldCard` 이미지 섹션 — URL 입력 + 파일 업로드 병행
+- [x] `is_published` 공개/비공개 토글
+- [x] `deadline` 제출 마감일
+- [x] `max_submissions` 최대 응답 수
 
 ### 사용자 인증 (Supabase Auth)
-- [x] `middleware.ts` — `/dashboard` 보호, 미로그인 시 `/login` 리다이렉트
-- [x] `utils/supabase/server.ts` — `@supabase/ssr` createServerClient (쿠키 기반 세션)
+- [x] `middleware.ts` — `/dashboard` 보호
 - [x] `app/login/page.tsx` — 로그인/회원가입 탭 UI
 - [x] `app/auth/callback/route.ts` — OAuth 코드 교환 핸들러
-- [x] `components/auth/AuthForm.tsx` — 이메일+비밀번호 로그인/가입, 비밀번호 표시 토글
-- [x] `app/dashboard/account/page.tsx` — 계정 정보(이메일), 비밀번호 변경
-- [x] `components/dashboard/UserMenu.tsx` — 이메일 표시 + 계정 설정 + 로그아웃 드롭다운
-- [x] `app/page.tsx` — 로그인 사용자 → `/dashboard` 자동 리다이렉트
+- [x] `components/auth/AuthForm.tsx` — 이메일+비밀번호 로그인/가입
+- [x] `app/dashboard/account/page.tsx` — 계정 정보, 비밀번호 변경
+- [x] `components/dashboard/UserMenu.tsx` — 이메일 표시 + 계정 설정 + 로그아웃
 
 ### 폼 복제
-- [x] `app/api/duplicate/route.ts` — 원본 project+fields 복사, 비공개 상태로 생성
-- [x] `ProjectList.tsx` — Copy 아이콘 버튼 + 복제 중 스피너
+- [x] `app/api/duplicate/route.ts` — project+fields 복사, 비공개 상태로 생성
 
-### 응답 관리 고도화
-- [x] `ResponsesTable.tsx` — 행 클릭 → 응답 상세 모달
-- [x] `responses/page.tsx` — 20건 페이지네이션 + select/radio/checkbox_group 통계 바 차트
+### 응답 관리
+- [x] `ResponsesTable.tsx` — 행 클릭 → 응답 상세 모달, 20건 페이지네이션
+- [x] `PreviewModal.tsx` — 빌더 내 모달 미리보기
 
-### 폼 미리보기
-- [x] `PreviewModal.tsx` — 빌더 내 모달로 공개 폼 렌더링 (previewMode: 실제 제출 안됨)
-- [x] FormBuilder / EditFormBuilder 헤더에 "미리보기" 버튼 추가
-
-### 커스텀 슬러그
-- [x] FormBuilder — 슬러그 입력 필드 (영문/숫자/하이픈만 허용, 비워두면 자동 생성)
-- [x] EditFormBuilder — 기존 슬러그 표시 + 클립보드 복사 (변경 불가)
-
-### 웹훅
-- [x] `api/submit/route.ts` — webhook_url 있으면 JSON POST 발송 (실패해도 제출 차단 안함)
-- [x] FormBuilder / EditFormBuilder — 웹훅 URL 입력 필드
-
-### 공개 상태 표시
-- [x] `ProjectList.tsx` — 공개/비공개 뱃지 (Globe / EyeOff 아이콘)
-
-## 필드 타입 목록 (FieldType 13종)
-
-| 타입 | 분류 | 설명 | content | options | 빌더 미리보기 |
-|---|---|---|---|---|---|
-| text | 입력 | 단문 텍스트 | - | - | - |
-| email | 입력 | 이메일 입력 | - | - | - |
-| textarea | 입력 | 장문 텍스트 | - | - | - |
-| checkbox | 입력 | 단일 체크 (동의) | - | - | - |
-| select | 입력 | 드롭다운 선택 | - | ✅ | - |
-| radio | 입력 | 라디오 단일 선택 | - | ✅ | - |
-| checkbox_group | 입력 | 복수 체크 선택 | - | ✅ | - |
-| html | 꾸밈 | WYSIWYG HTML 블록 | ✅ HTML | - | - |
-| text_block | 꾸밈 | 평문 텍스트 단락 | ✅ 텍스트 | - | - |
-| image | 꾸밈 | 이미지 + 캡션 | ✅ URL | - | ✅ img |
-| divider | 꾸밈 | 수평선 구분선 | - | - | ✅ hr |
-| map | 꾸밈 | Google Maps embed | ✅ embed URL | - | ✅ iframe |
-| youtube | 꾸밈 | YouTube 영상 | ✅ 영상 URL | - | ✅ iframe |
-
-## API 라우트
-
-### POST /api/submit
-```typescript
-// Body
-{ projectId: string, answers: Record<string, string|boolean|string[]>, fields: {id,label,type}[] }
-// 동작
-// 1. submissions INSERT
-// 2. project.notification_email 있으면 + RESEND_API_KEY 있으면 → Resend 이메일 발송
-// 이메일 스킵 타입: html, map, youtube, text_block, image, divider
-```
-
-## 주요 설계 결정 사항
-
-| 항목 | 결정 | 이유 |
-|---|---|---|
-| Google Maps | Places API 미사용, iframe 직접 붙여넣기 | API 비용 발생 방지 |
-| map embed URL | `maps.google.com/maps?q=...&output=embed` | Maps Embed API 별도 활성화 불필요 |
-| YouTube embed | videoId 파싱 → `youtube.com/embed/{id}` | 표준 embed 방식 |
-| 슬러그 | ASCII-only (`form-{rand6}`) | 한글 URL 인코딩 이슈 방지 |
-| 이미지 | URL 입력 방식 | Storage 업로드 복잡도 제거 |
-| Tiptap SSR | `dynamic(ssr:false)` + `immediatelyRender:false` | hydration mismatch 방지 |
-
-### 제출 완료 메시지
-- [x] `projects.submission_message` 컬럼 (마이그레이션 8)
-- [x] FormBuilder / EditFormBuilder — "폼 설정" 섹션 내 완료 메시지 텍스트 입력
-- [x] `PublicForm.tsx` — `submissionMessage` prop 수신, 커스텀/기본 메시지 표시
-
-### 메뉴 개선
-- [x] FormBuilder / EditFormBuilder — 글로벌 옵션(알림 이메일, 마감일, 최대 응답 수, 웹훅, 완료 메시지)을 접이식 "폼 설정" 카드로 분리
-
-### 필드 유형 UX 개선
-- [x] 사이드바 2열 그리드 레이아웃 (입력 / 콘텐츠 섹션 분리)
-- [x] HTML 타입 신규 추가 불가 (기존 데이터 렌더링은 유지)
-- [x] TABLE 타입 추가 — 행/열 편집 UI, `content`에 JSON 저장
-- [x] `PublicForm.tsx` — TABLE 타입 렌더링 (헤더 + 행 테이블)
-
-### 메뉴 탭 구조 개편
-- [x] FormBuilder / EditFormBuilder — **폼 편집** 탭 (사이드바 + 캔버스) / **폼 설정** 탭 (단일 컬럼) 분리
-- [x] 폼 설정 탭: 테마 컬러, 운영 설정 (알림 이메일·마감일·응답수·웹훅·완료메시지), 이메일 템플릿
+### 커스텀 슬러그 / 웹훅
+- [x] 슬러그 입력 필드 (FormBuilder), 표시 + 복사 (EditFormBuilder)
+- [x] `api/submit/route.ts` — webhook_url JSON POST 발송
 
 ### 이메일 템플릿
-- [x] `projects.admin_email_template` — 관리자 수신 HTML 템플릿 (NULL = 기본 템플릿)
-- [x] `projects.user_email_template` — 응답자 수신 HTML 템플릿 (NULL = 미발송)
+- [x] `projects.admin_email_template` / `projects.user_email_template`
 - [x] 템플릿 변수: `{{form_title}}`, `{{submitted_at}}`, `{{answers_table}}`
-- [x] `api/submit/route.ts` — 관리자 이메일: 커스텀/기본 템플릿 선택 발송
-- [x] `api/submit/route.ts` — 응답자 이메일: email 필드 값 추출 → user_email_template 있을 때만 발송
-- [x] `api/duplicate/route.ts` — 복제 시 템플릿 필드 복사
-- [x] Tiptap WYSIWYG 에디터로 폼 설정 탭 내에서 편집
-
-### 응답 탭 (EditFormBuilder 인라인)
-- [x] `BuilderTabBar.tsx` — edit / settings / responses 탭 네비게이션 (`showResponses` prop)
-- [x] `ResponsesTab.tsx` — 인라인 응답 현황 (최근 10건 + 통계 바 + 전체보기 링크 + CSV 내보내기 링크)
-- [x] `EditFormBuilder.tsx` — 응답 탭 연결
-
-### 이미지 필드 레이블 제거
-- [x] `FieldCard.tsx` — 이미지 타입에서 레이블 편집 영역 숨김 (`showLabel = isInputType` only)
+- [x] 응답자 이메일: email 필드 값 추출 → user_email_template 있을 때만 발송
 
 ### 다국어 지원
-- [x] `constants/locale.ts` — Locale 타입(ko/en/ja/zh), LocaleStrings 인터페이스, DEFAULT_LOCALE_STRINGS, resolveLocaleStrings()
-- [x] `types/database.ts` — LocaleSettings 인터페이스, Project.locale_settings 필드 추가
-- [x] `SettingsPanel.tsx` — 다국어 섹션 (활성화 토글, 언어 선택, 기본 언어, 언어별 텍스트 오버라이드)
-- [x] `PublicForm.tsx` — 언어 전환 버튼, resolveLocaleStrings() 적용
-- [x] `api/projects/route.ts` — locale_settings INSERT
-- [x] `api/duplicate/route.ts` — locale_settings 복제
-
-### 폼 썸네일
-- [x] `utils/supabase/storage.ts` — uploadThumbnail() 함수 추가
-- [x] `types/database.ts` — Project.thumbnail_url 필드 추가
-- [x] `SettingsPanel.tsx` — 썸네일 업로드 UI (파일 선택 + 미리보기 + 제거)
-- [x] `api/projects/route.ts` — thumbnail_url INSERT
-- [x] `api/duplicate/route.ts` — thumbnail_url 복제
+- [x] `constants/locale.ts` — Locale 타입(ko/en/ja/zh), resolveLocaleStrings()
+- [x] `SettingsPanel.tsx` — 다국어 섹션 (활성화 토글, 언어 선택, 텍스트 오버라이드)
+- [x] `PublicForm.tsx` — 언어 전환 버튼 적용
 
 ### 코드 구조 개편 (훅 기반 리팩토링)
 - [x] `hooks/useFormFields.ts` — 필드 상태 훅 (add/remove/update/drag)
@@ -169,7 +90,51 @@
 - [x] `constants/builder.ts` — 공유 상수 추출 (INPUT_TYPES, CONTENT_TYPES, PRESET_COLORS 등)
 - [x] `BuilderTabBar.tsx` / `BuilderSidebar.tsx` / `BuilderCanvas.tsx` — 분리된 빌더 서브컴포넌트
 - [x] `SettingsPanel.tsx` — 설정 탭 전용 컴포넌트
-- [x] `FormBuilder.tsx` / `EditFormBuilder.tsx` — 훅 기반으로 ~70라인으로 축소
 
-## 향후 작업 (미구현)
-- 없음 (모든 계획된 기능 구현 완료)
+---
+
+## 필드 타입 목록 (FieldType 15종)
+
+| 타입 | 분류 | 설명 | content | options |
+|---|---|---|---|---|
+| text | 입력 | 단문 텍스트 | - | - |
+| email | 입력 | 이메일 입력 | - | - |
+| textarea | 입력 | 장문 텍스트 | - | - |
+| checkbox | 입력 | 단일 체크 (동의) | - | - |
+| select | 입력 | 드롭다운 선택 | - | ✅ |
+| radio | 입력 | 라디오 단일 선택 + conditional logic | - | ✅ |
+| checkbox_group | 입력 | 복수 체크 선택 | - | ✅ |
+| rating | 입력 | 별점 (3/5/10점) | ✅ 최대점수 | - |
+| text_block | 꾸밈 | 평문 텍스트 단락 | ✅ 텍스트 | - |
+| image | 꾸밈 | 이미지 + 캡션 | ✅ URL | - |
+| divider | 꾸밈 | 수평선 구분선 | - | - |
+| map | 꾸밈 | Google Maps embed | ✅ embed URL | - |
+| youtube | 꾸밈 | YouTube 영상 | ✅ 영상 URL | - |
+| table | 꾸밈 | 행/열 테이블 | ✅ JSON | - |
+| section | 구조 | 섹션 구분 (다단계 페이지 분할) | - | - |
+
+---
+
+## API 라우트
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| POST | `/api/projects` | 신규 프로젝트 생성 |
+| POST | `/api/duplicate` | 프로젝트 복제 |
+| POST | `/api/submit` | 폼 제출 |
+| GET/PUT | `/api/admin/settings` | 사이트 설정 |
+| GET | `/api/admin/users` | 회원 목록 |
+| PUT | `/api/admin/update-role` | 역할 변경 |
+| POST | `/api/admin/reset-password` | 비밀번호 초기화 |
+| DELETE | `/api/admin/delete-user` | 회원 삭제 |
+| GET | `/dashboard/[id]/responses/export` | CSV 내보내기 |
+
+---
+
+## 향후 작업
+- [] **글로벌 메뉴 추가** : 공지사항 게시판, 릴리즈노트를 만들어줘 공지사항 게시판은 누구나 볼 수 있으나 글쓰기 권한은 관리자만 갖고 있어야돼. 릴리즈노트는 업데이트될 때마다 버전 생성과 어떤 작업 내역이 있는 지 정리해주면돼.
+- [] **회원가입 약관** : 글로벌 옵션으로 개인정보처리방침,서비스이용동의,이용약관을 편집하고 이 중 회원가입 시 필수 동의 조건으로 넣고 싶어. 물론 footer에도 별도 메뉴로 추가해야돼. 해당 글로벌 옵션의 편집은 관리자만 가능하도록 진행해.
+- [] **프로젝트 SEO** : 프로젝트별로 SEO 관리 옵션을 만들어줘.
+- [] **git push** : 이후의 작업들은 자동으로 git push 진행해줘.
+- [] **위지윅 에디터** : 사이트에서 공통으로 쓰이는 위지윅 에디터를 개선해줘 현재의 tiptap 에디터는 너무 제한적이야. Toast UI Editor로 교체해줘.
+- [] **폼 입력 편집** : "섹션 기능"은 단순히 섹션으로 이동뿐만 아니라 섹션이 group역할을 해서 그 안에 입력폼들을 넣을 수도 있어야돼. 개선해줘

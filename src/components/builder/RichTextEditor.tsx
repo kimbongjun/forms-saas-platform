@@ -1,154 +1,89 @@
 'use client'
 
-import { useEditor, EditorContent } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import {
-  Bold, Italic, Underline as UnderlineIcon,
-  Heading1, Heading2,
-  List, ListOrdered,
-  Minus, Quote,
-} from 'lucide-react'
+import { useEffect, useRef } from 'react'
 
 interface RichTextEditorProps {
   content: string
   onChange: (html: string) => void
   placeholder?: string
+  height?: string
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ToastEditorInstance = any
 
 export default function RichTextEditor({
   content,
   onChange,
   placeholder = '내용을 입력하세요...',
+  height = '300px',
 }: RichTextEditorProps) {
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-    ],
-    content,
-    immediatelyRender: false,
-    onUpdate: ({ editor }) => onChange(editor.getHTML()),
-    editorProps: {
-      attributes: {
-        'data-placeholder': placeholder,
-      },
-    },
-  })
+  const containerRef = useRef<HTMLDivElement>(null)
+  const editorRef = useRef<ToastEditorInstance>(null)
+  const initedRef = useRef(false)
 
-  if (!editor) return null
+  useEffect(() => {
+    if (initedRef.current || !containerRef.current) return
+    initedRef.current = true
 
-  return (
-    <div className="tiptap-editor overflow-hidden rounded-xl border border-gray-200 bg-white">
+    async function init() {
+      if (!containerRef.current) return
 
-      {/* ── Toolbar ── */}
-      <div className="flex flex-wrap items-center gap-0.5 border-b border-gray-200 bg-gray-50 px-2 py-1.5">
-        <ToolBtn
-          active={editor.isActive('bold')}
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          title="굵게"
-        >
-          <Bold className="h-3.5 w-3.5" />
-        </ToolBtn>
-        <ToolBtn
-          active={editor.isActive('italic')}
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          title="기울임"
-        >
-          <Italic className="h-3.5 w-3.5" />
-        </ToolBtn>
-        <ToolBtn
-          active={editor.isActive('underline')}
-          onClick={() => editor.chain().focus().toggleUnderline().run()}
-          title="밑줄"
-        >
-          <UnderlineIcon className="h-3.5 w-3.5" />
-        </ToolBtn>
+      // Dynamic import to avoid SSR issues
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const EditorModule = await import('@toast-ui/editor' as any)
+      await import('@toast-ui/editor/dist/toastui-editor.css' as any)
 
-        <Divider />
+      const EditorClass = EditorModule.default ?? EditorModule.Editor
 
-        <ToolBtn
-          active={editor.isActive('heading', { level: 1 })}
-          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-          title="제목 1"
-        >
-          <Heading1 className="h-3.5 w-3.5" />
-        </ToolBtn>
-        <ToolBtn
-          active={editor.isActive('heading', { level: 2 })}
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          title="제목 2"
-        >
-          <Heading2 className="h-3.5 w-3.5" />
-        </ToolBtn>
+      editorRef.current = new EditorClass({
+        el: containerRef.current,
+        initialValue: content || '',
+        initialEditType: 'wysiwyg',
+        previewStyle: 'vertical',
+        height,
+        placeholder,
+        hideModeSwitch: false,
+        toolbarItems: [
+          ['heading', 'bold', 'italic', 'strike'],
+          ['hr', 'quote'],
+          ['ul', 'ol'],
+          ['table', 'link'],
+          ['code', 'codeblock'],
+        ],
+        events: {
+          change: () => {
+            const html: string = editorRef.current.getHTML()
+            onChange(html === '<p><br></p>' ? '' : html)
+          },
+        },
+      })
+    }
 
-        <Divider />
+    init()
 
-        <ToolBtn
-          active={editor.isActive('bulletList')}
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          title="글머리 기호"
-        >
-          <List className="h-3.5 w-3.5" />
-        </ToolBtn>
-        <ToolBtn
-          active={editor.isActive('orderedList')}
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          title="번호 목록"
-        >
-          <ListOrdered className="h-3.5 w-3.5" />
-        </ToolBtn>
+    return () => {
+      if (editorRef.current) {
+        try { editorRef.current.destroy() } catch { /* ignore */ }
+        editorRef.current = null
+        initedRef.current = false
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-        <Divider />
+  // Sync external content changes (e.g. initial data load)
+  const prevContentRef = useRef(content)
+  useEffect(() => {
+    if (!editorRef.current || prevContentRef.current === content) return
+    prevContentRef.current = content
+    try {
+      const current: string = editorRef.current.getHTML()
+      if (current !== content) {
+        editorRef.current.setHTML(content || '')
+      }
+    } catch { /* ignore */ }
+  }, [content])
 
-        <ToolBtn
-          active={editor.isActive('blockquote')}
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          title="인용"
-        >
-          <Quote className="h-3.5 w-3.5" />
-        </ToolBtn>
-        <ToolBtn
-          active={false}
-          onClick={() => editor.chain().focus().setHorizontalRule().run()}
-          title="구분선"
-        >
-          <Minus className="h-3.5 w-3.5" />
-        </ToolBtn>
-      </div>
-
-      {/* ── Editor area ── */}
-      <EditorContent editor={editor} />
-    </div>
-  )
-}
-
-function ToolBtn({
-  children,
-  active,
-  onClick,
-  title,
-}: {
-  children: React.ReactNode
-  active: boolean
-  onClick: () => void
-  title: string
-}) {
-  return (
-    <button
-      type="button"
-      title={title}
-      onClick={onClick}
-      className={[
-        'rounded p-1.5 transition-colors',
-        active
-          ? 'bg-gray-900 text-white'
-          : 'text-gray-500 hover:bg-gray-200 hover:text-gray-900',
-      ].join(' ')}
-    >
-      {children}
-    </button>
-  )
-}
-
-function Divider() {
-  return <div className="mx-1 h-4 w-px bg-gray-300" />
+  return <div ref={containerRef} />
 }

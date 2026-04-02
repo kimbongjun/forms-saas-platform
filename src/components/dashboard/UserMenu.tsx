@@ -52,14 +52,24 @@ export default function UserMenu({ email, role = 'editor' }: UserMenuProps) {
             </div>
 
             {role === 'administrator' && (
-              <Link
-                href="/dashboard/admin/users"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-600 transition-colors hover:bg-amber-50"
-              >
-                <Shield className="h-3.5 w-3.5" />
-                회원 관리
-              </Link>
+              <>
+                <Link href="/dashboard/admin/users" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-600 transition-colors hover:bg-amber-50">
+                  <Shield className="h-3.5 w-3.5" />
+                  회원 관리
+                </Link>
+                <Link href="/dashboard/admin/settings" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-600 transition-colors hover:bg-amber-50">
+                  <Shield className="h-3.5 w-3.5" />
+                  사이트 설정
+                </Link>
+                <Link href="/dashboard/admin/announcements" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-600 transition-colors hover:bg-amber-50">
+                  <Shield className="h-3.5 w-3.5" />
+                  공지사항 관리
+                </Link>
+                <Link href="/dashboard/admin/release-notes" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-600 transition-colors hover:bg-amber-50">
+                  <Shield className="h-3.5 w-3.5" />
+                  릴리즈노트 관리
+                </Link>
+              </>
             )}
 
             <Link

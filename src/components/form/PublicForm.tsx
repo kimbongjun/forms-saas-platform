@@ -1,10 +1,41 @@
 'use client'
 
-import { useState } from 'react'
-import { CheckCircle2, Loader2, Globe } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { CheckCircle2, Loader2, Globe, Star, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { FormField, LocaleSettings, Locale } from '@/types/database'
 import { resolveLocaleStrings, LOCALE_LABELS } from '@/constants/locale'
 
+// ── 섹션 분리 헬퍼 ──────────────────────────────────────────────────────────
+interface Page {
+  title: string
+  sectionId: string | null  // 해당 섹션 field.id (conditional logic용)
+  fields: FormField[]
+}
+
+function splitSections(fields: FormField[]): Page[] {
+  const pages: Page[] = []
+  let current: Page = { title: '', sectionId: null, fields: [] }
+  for (const f of fields) {
+    if (f.type === 'section') {
+      pages.push(current)
+      current = { title: f.label, sectionId: f.id, fields: [] }
+    } else {
+      current.fields.push(f)
+    }
+  }
+  pages.push(current)
+  // 맨 앞 페이지 필드 없으면 제거
+  if (pages[0]?.fields.length === 0 && pages.length > 1) pages.shift()
+  return pages
+}
+
+function stripHtml(html: string) {
+  return html.replace(/<[^>]*>/g, '').trim()
+}
+
+const NON_INPUT_TYPES = ['html', 'map', 'youtube', 'text_block', 'image', 'divider', 'table', 'section']
+
+// ── Props ────────────────────────────────────────────────────────────────────
 interface PublicFormProps {
   projectId: string
   fields: FormField[]
@@ -30,8 +61,14 @@ export default function PublicForm({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [currentStep, setCurrentStep] = useState(0)
 
   const t = resolveLocaleStrings(locale, localeSettings?.overrides)
+
+  // 섹션 유무에 따라 단일/다단계 모드 결정
+  const pages = useMemo(() => splitSections(fields), [fields])
+  const isMultiStep = pages.length > 1
+  const currentPage = pages[currentStep] ?? { title: '', sectionId: null, fields: [] }
 
   function setAnswer(fieldId: string, value: string | boolean | string[]) {
     setAnswers((prev) => ({ ...prev, [fieldId]: value }))
@@ -40,6 +77,47 @@ export default function PublicForm({
   function toggleCheckboxGroup(fieldId: string, option: string) {
     const current = (answers[fieldId] as string[] | undefined) ?? []
     setAnswer(fieldId, current.includes(option) ? current.filter((v) => v !== option) : [...current, option])
+  }
+
+  // 현재 페이지 필수 필드 검증
+  function validateCurrentPage(): string | null {
+    for (const field of currentPage.fields) {
+      if (NON_INPUT_TYPES.includes(field.type) || !field.required) continue
+      const val = answers[field.id]
+      if (val === undefined || val === '' || val === false || (Array.isArray(val) && val.length === 0)) {
+        return t.required_error.replace('{{label}}', stripHtml(field.label) || '(제목 없음)')
+      }
+    }
+    return null
+  }
+
+  // 다음 페이지로 이동 (conditional logic 적용)
+  function handleNext() {
+    const err = validateCurrentPage()
+    if (err) { setError(err); return }
+    setError('')
+
+    // 현재 페이지의 radio logic 확인
+    const radioWithLogic = currentPage.fields.find(
+      (f) => f.type === 'radio' && f.logic && answers[f.id]
+    )
+    if (radioWithLogic) {
+      const selectedValue = answers[radioWithLogic.id] as string
+      const targetSectionId = radioWithLogic.logic?.[selectedValue]
+      if (targetSectionId) {
+        const targetStep = pages.findIndex((p) => p.sectionId === targetSectionId)
+        if (targetStep !== -1) {
+          setCurrentStep(targetStep)
+          return
+        }
+      }
+    }
+    setCurrentStep((s) => Math.min(s + 1, pages.length - 1))
+  }
+
+  function handleBack() {
+    setError('')
+    setCurrentStep((s) => Math.max(s - 1, 0))
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -51,15 +129,9 @@ export default function PublicForm({
       return
     }
 
-    for (const field of fields) {
-      if (['html', 'map', 'youtube', 'text_block', 'image', 'divider', 'table'].includes(field.type)) continue
-      if (!field.required) continue
-      const val = answers[field.id]
-      if (val === undefined || val === '' || val === false || (Array.isArray(val) && val.length === 0)) {
-        setError(t.required_error.replace('{{label}}', field.label || '(제목 없음)'))
-        return
-      }
-    }
+    // 마지막 페이지 검증
+    const err = validateCurrentPage()
+    if (err) { setError(err); return }
 
     setLoading(true)
     try {
@@ -69,7 +141,7 @@ export default function PublicForm({
         body: JSON.stringify({
           projectId,
           answers,
-          fields: fields.map((f) => ({ id: f.id, label: f.label, type: f.type })),
+          fields: fields.map((f) => ({ id: f.id, label: stripHtml(f.label), type: f.type })),
         }),
       })
       const json = await res.json()
@@ -82,6 +154,7 @@ export default function PublicForm({
     }
   }
 
+  // ── 제출 완료 ──────────────────────────────────────────────────────────────
   if (submitted) {
     const customMsg = submissionMessage?.trim()
     const [headline, ...rest] = (customMsg || `${t.submitted_title}\n${t.submitted_subtitle}`).split('\n')
@@ -96,7 +169,7 @@ export default function PublicForm({
 
   return (
     <div className="space-y-6">
-      {/* Language switcher */}
+      {/* 언어 전환 */}
       {multiLocale && (
         <div className="flex items-center justify-end gap-1">
           <Globe className="h-3.5 w-3.5 text-gray-400" />
@@ -106,9 +179,7 @@ export default function PublicForm({
               type="button"
               onClick={() => setLocale(loc)}
               className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                locale === loc
-                  ? 'bg-gray-900 text-white'
-                  : 'text-gray-500 hover:bg-gray-100'
+                locale === loc ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'
               }`}
             >
               {LOCALE_LABELS[loc]}
@@ -117,8 +188,25 @@ export default function PublicForm({
         </div>
       )}
 
+      {/* 섹션 진행 표시 */}
+      {isMultiStep && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-gray-400">
+            <span>{currentPage.title || `섹션 ${currentStep + 1}`}</span>
+            <span>{currentStep + 1} / {pages.length}</span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{ width: `${((currentStep + 1) / pages.length) * 100}%`, backgroundColor: themeColor }}
+            />
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
-        {fields.map((field) => (
+        {/* 현재 페이지 필드 렌더 */}
+        {currentPage.fields.map((field) => (
           <FieldRenderer
             key={field.id}
             field={field}
@@ -134,19 +222,52 @@ export default function PublicForm({
           <p className="rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">{error}</p>
         )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          style={{ backgroundColor: themeColor }}
-          className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-        >
-          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-          {previewMode
-            ? `${t.submit} (미리보기)`
-            : loading
-              ? t.submitting
-              : t.submit}
-        </button>
+        {/* 버튼 영역 */}
+        {isMultiStep ? (
+          <div className="flex gap-3">
+            {currentStep > 0 && (
+              <button
+                type="button"
+                onClick={handleBack}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-200 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                이전
+              </button>
+            )}
+            {currentStep < pages.length - 1 ? (
+              <button
+                type="button"
+                onClick={handleNext}
+                style={{ backgroundColor: themeColor }}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              >
+                다음
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={loading}
+                style={{ backgroundColor: themeColor }}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                {previewMode ? `${t.submit} (미리보기)` : loading ? t.submitting : t.submit}
+              </button>
+            )}
+          </div>
+        ) : (
+          <button
+            type="submit"
+            disabled={loading}
+            style={{ backgroundColor: themeColor }}
+            className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+            {previewMode ? `${t.submit} (미리보기)` : loading ? t.submitting : t.submit}
+          </button>
+        )}
       </form>
     </div>
   )
@@ -167,6 +288,8 @@ function FieldRenderer({ field, value, onChange, onToggleCheckbox, themeColor, t
   const inputClass =
     'w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-gray-900'
 
+  if (field.type === 'section') return null  // splitSections에서 페이지 제목으로 소비됨
+
   if (field.type === 'text_block') {
     return (
       <h3 className="whitespace-pre-wrap font-bold leading-relaxed text-gray-700">
@@ -180,7 +303,7 @@ function FieldRenderer({ field, value, onChange, onToggleCheckbox, themeColor, t
     return (
       <figure>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={field.content} alt={field.label} className="w-full rounded-xl object-cover" />        
+        <img src={field.content} alt={field.label} className="w-full rounded-xl object-cover" />
       </figure>
     )
   }
@@ -196,14 +319,13 @@ function FieldRenderer({ field, value, onChange, onToggleCheckbox, themeColor, t
       rows = parsed.rows ?? []
     } catch { return null }
     if (headers.length === 0) return null
-    console.log(themeColor);
     return (
       <div className="overflow-x-auto rounded-xl border border-gray-200">
-        <table className="w-full border-collapse text-sm">          
+        <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="bg-gray-50">
               {headers.map((h, i) => (
-                <th key={i} className="bg-gray-300 border-b border-gray-200 px-4 py-2.5 text-left text-xs font-semibold text-gray-700">{h}</th>
+                <th key={i} className="border-b border-gray-200 px-4 py-2.5 text-left text-xs font-semibold text-gray-700">{h}</th>
               ))}
             </tr>
           </thead>
@@ -211,7 +333,7 @@ function FieldRenderer({ field, value, onChange, onToggleCheckbox, themeColor, t
             {rows.map((row, ri) => (
               <tr key={ri} className="even:bg-gray-50">
                 {row.map((cell, ci) => (
-                  <td key={ci} className="border-b border-gray-200 px-4 py-2 text-gray-700">{cell}</td>
+                  <td key={ci} className="border-b border-gray-100 px-4 py-2 text-gray-700 last:border-b-0">{cell}</td>
                 ))}
               </tr>
             ))}
@@ -244,13 +366,7 @@ function FieldRenderer({ field, value, onChange, onToggleCheckbox, themeColor, t
     if (!src) return null
     return (
       <div className="relative w-full overflow-hidden rounded-xl" style={{ paddingBottom: '56.25%' }}>
-        <iframe
-          src={src}
-          className="absolute inset-0 h-full w-full border-0"
-          allowFullScreen
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-        />
+        <iframe src={src} className="absolute inset-0 h-full w-full border-0" allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
       </div>
     )
   }
@@ -267,13 +383,47 @@ function FieldRenderer({ field, value, onChange, onToggleCheckbox, themeColor, t
           src={`https://www.youtube.com/embed/${videoId}`}
           className="absolute inset-0 h-full w-full border-0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          loading="lazy"
+          allowFullScreen loading="lazy"
         />
       </div>
     )
   }
 
+  // ── 평점 ──────────────────────────────────────────────────────────────────
+  if (field.type === 'rating') {
+    const max = Number(field.content ?? 5)
+    const current = Number(value ?? 0)
+    return (
+      <div className="space-y-1.5">
+        <label className="block text-sm font-medium text-gray-800">
+          {field.label || '(제목 없음)'}
+          {field.required && <span className="ml-1 text-red-500">*</span>}
+        </label>
+        {field.description && <p className="text-xs text-gray-500">{field.description}</p>}
+        <div className="flex items-center gap-1">
+          {Array.from({ length: max }, (_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onChange(String(i + 1))}
+              className="transition-transform hover:scale-110 active:scale-95"
+            >
+              <Star
+                className={`h-7 w-7 transition-colors ${
+                  i < current ? 'fill-amber-400 text-amber-400' : 'text-gray-300'
+                }`}
+              />
+            </button>
+          ))}
+          {current > 0 && (
+            <span className="ml-2 text-sm text-gray-500">{current} / {max}</span>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── 공통 입력 필드 ────────────────────────────────────────────────────────
   return (
     <div className="space-y-1.5">
       <label className="block text-sm font-medium text-gray-800">

@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Download } from 'lucide-react'
+import { ArrowLeft, Download, BarChart2 } from 'lucide-react'
 import { createServerClient } from '@/utils/supabase/server'
 import ResponsesTable from '@/components/dashboard/ResponsesTable'
 import type { FormField } from '@/types/database'
@@ -87,11 +87,18 @@ export default async function ResponsesPage({ params, searchParams }: ResponsesP
             </div>
           </div>
           {total > 0 && (
-            <Link href={`/dashboard/${id}/responses/export`}
-              className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-              <Download className="h-4 w-4" />
-              CSV 내보내기
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href={`/dashboard/${id}/responses/stats`}
+                className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                <BarChart2 className="h-4 w-4" />
+                상세 통계
+              </Link>
+              <Link href={`/dashboard/${id}/responses/export`}
+                className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                <Download className="h-4 w-4" />
+                CSV 내보내기
+              </Link>
+            </div>
           )}
         </div>
       </header>

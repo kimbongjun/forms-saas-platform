@@ -12,7 +12,7 @@ export default async function DashboardPage() {
   const [{ data: projects, error }, role] = await Promise.all([
     supabase
       .from('projects')
-      .select(`id, title, slug, banner_url, created_at, is_published, form_fields (count)`)
+      .select(`id, title, slug, banner_url, thumbnail_url, created_at, is_published, form_fields (count)`)
       .order('created_at', { ascending: false }),
     user ? getUserRole(user.id) : Promise.resolve('editor' as const),
   ])
@@ -22,6 +22,7 @@ export default async function DashboardPage() {
     title: p.title,
     slug: p.slug,
     banner_url: p.banner_url ?? null,
+    thumbnail_url: (p as unknown as { thumbnail_url?: string | null }).thumbnail_url ?? null,
     created_at: p.created_at,
     created_at_label: new Intl.DateTimeFormat('ko-KR', {
       year: 'numeric',

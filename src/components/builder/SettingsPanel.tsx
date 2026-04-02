@@ -347,6 +347,44 @@ export default function SettingsPanel({ settings, slug }: SettingsPanelProps) {
               </div>
             </section>
 
+            {/* SEO 설정 */}
+            <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">SEO 설정</h2>
+                <p className="mt-1 text-xs text-gray-400">폼 공개 URL의 검색 엔진 표시 정보를 설정합니다.</p>
+              </div>
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">페이지 제목 (SEO Title)</p>
+                <input
+                  type="text"
+                  value={settings.seoTitle}
+                  onChange={(e) => settings.setSeoTitle(e.target.value)}
+                  placeholder="비워두면 프로젝트 제목 사용"
+                  className={INPUT_CLASS}
+                />
+              </div>
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">메타 설명 (Meta Description)</p>
+                <textarea
+                  value={settings.seoDescription}
+                  onChange={(e) => settings.setSeoDescription(e.target.value)}
+                  placeholder="검색 결과에 표시될 설명 (150자 이내 권장)"
+                  rows={2}
+                  className={`${INPUT_CLASS} resize-none`}
+                />
+              </div>
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">OG 이미지 URL</p>
+                <input
+                  type="url"
+                  value={settings.seoOgImage}
+                  onChange={(e) => settings.setSeoOgImage(e.target.value)}
+                  placeholder="https://... (SNS 공유 시 표시되는 이미지)"
+                  className={INPUT_CLASS}
+                />
+              </div>
+            </section>
+
             {/* 다국어 설정 */}
             <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-5">
               <div className="flex items-center justify-between">

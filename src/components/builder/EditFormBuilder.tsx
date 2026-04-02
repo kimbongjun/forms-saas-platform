@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Loader2, CheckCircle2, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Loader2, CheckCircle2, ExternalLink, PanelLeft } from 'lucide-react'
 
 import { useFormFields } from '@/hooks/useFormFields'
 import { useFormSettings } from '@/hooks/useFormSettings'
@@ -26,6 +26,7 @@ export default function EditFormBuilder({ project, initialFields, initialDeadlin
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const fieldState = useFormFields(initialFields)
   const settings = useFormSettings({
@@ -59,6 +60,7 @@ export default function EditFormBuilder({ project, initialFields, initialDeadlin
           order_index: f.order_index,
           options: f.options ?? null,
           content: f.content ?? null,
+          logic: f.logic ?? null,
         }))
         const { error: insertErr } = await supabase.from('form_fields').insert(rows)
         if (insertErr) throw new Error(`필드 저장 실패: ${insertErr.message}`)
@@ -86,7 +88,7 @@ export default function EditFormBuilder({ project, initialFields, initialDeadlin
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3 shadow-sm">
+      <header className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 shadow-sm sm:px-6">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -126,8 +128,25 @@ export default function EditFormBuilder({ project, initialFields, initialDeadlin
       <BuilderTabBar activeTab={activeTab} onChange={setActiveTab} showResponses />
 
       {activeTab === 'edit' && (
-        <div className="flex flex-1 overflow-hidden">
-          <BuilderSidebar onAddField={fieldState.addField} />
+        <div className="relative flex flex-1 overflow-hidden">
+          {sidebarOpen && (
+            <div className="fixed inset-0 z-20 bg-black/30 sm:hidden" onClick={() => setSidebarOpen(false)} />
+          )}
+          <div className={[
+            'z-30 transition-transform duration-200',
+            'fixed left-0 top-0 h-full sm:relative sm:translate-x-0 sm:z-auto',
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0',
+          ].join(' ')}>
+            <BuilderSidebar onAddField={(type) => { fieldState.addField(type); setSidebarOpen(false) }} />
+          </div>
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-gray-200 bg-white px-4 py-2 sm:hidden">
+              <button type="button" onClick={() => setSidebarOpen(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                <PanelLeft className="h-3.5 w-3.5" />
+                필드 추가
+              </button>
+            </div>
           <BuilderCanvas
             title={settings.title}
             onTitleChange={(v) => { settings.setTitle(v); setError('') }}
@@ -137,6 +156,7 @@ export default function EditFormBuilder({ project, initialFields, initialDeadlin
             onDragEnd={fieldState.handleDragEnd}
             titlePlaceholder=""
           />
+          </div>
         </div>
       )}
 

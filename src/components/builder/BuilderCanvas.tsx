@@ -20,6 +20,30 @@ interface BuilderCanvasProps {
   titlePlaceholder?: string
 }
 
+/**
+ * Groups fields by section boundaries.
+ * Returns an array of groups: { sectionField?: FormField, fields: FormField[] }
+ * Fields before any section are in a group with no sectionField.
+ */
+function groupBySection(fields: FormField[]) {
+  const groups: { sectionField?: FormField; fields: FormField[] }[] = []
+  let current: { sectionField?: FormField; fields: FormField[] } = { fields: [] }
+
+  for (const f of fields) {
+    if (f.type === 'section') {
+      // Push previous group only if it has fields (or it's the initial group)
+      if (current.fields.length > 0 || current.sectionField) {
+        groups.push(current)
+      }
+      current = { sectionField: f, fields: [] }
+    } else {
+      current.fields.push(f)
+    }
+  }
+  groups.push(current)
+  return groups
+}
+
 export default function BuilderCanvas({
   title,
   onTitleChange,
@@ -30,6 +54,8 @@ export default function BuilderCanvas({
   titlePlaceholder = '예: 2024 고객 만족도 설문',
 }: BuilderCanvasProps) {
   const sensors = useSensors(useSensor(PointerSensor))
+  const groups = groupBySection(fields)
+  const hasSections = fields.some((f) => f.type === 'section')
 
   return (
     <main className="flex-1 overflow-y-auto px-8 py-6">
@@ -65,16 +91,60 @@ export default function BuilderCanvas({
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
               <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-2">
-                  {fields.map((field) => (
-                    <FieldCard
-                      key={field.id}
-                      field={field}
-                      onUpdate={(patch) => onUpdateField(field.id, patch)}
-                      onRemove={() => onRemoveField(field.id)}
-                    />
-                  ))}
-                </div>
+                {hasSections ? (
+                  // ── 섹션 그룹 뷰 ──────────────────────────────────────────
+                  <div className="space-y-4">
+                    {groups.map((group, gi) => (
+                      <div key={group.sectionField?.id ?? `pre-${gi}`}>
+                        {/* 섹션 헤더 카드 */}
+                        {group.sectionField && (
+                          <FieldCard
+                            field={group.sectionField}
+                            allFields={fields}
+                            onUpdate={(patch) => onUpdateField(group.sectionField!.id, patch)}
+                            onRemove={() => onRemoveField(group.sectionField!.id)}
+                          />
+                        )}
+                        {/* 섹션에 속한 필드들 — 들여쓰기 + 왼쪽 보더 */}
+                        {group.fields.length > 0 && (
+                          <div className={[
+                            'space-y-2',
+                            group.sectionField ? 'ml-4 border-l-2 border-slate-200 pl-4' : '',
+                          ].join(' ')}>
+                            {group.fields.map((field) => (
+                              <FieldCard
+                                key={field.id}
+                                field={field}
+                                allFields={fields}
+                                onUpdate={(patch) => onUpdateField(field.id, patch)}
+                                onRemove={() => onRemoveField(field.id)}
+                              />
+                            ))}
+                          </div>
+                        )}
+                        {/* 빈 섹션 안내 */}
+                        {group.sectionField && group.fields.length === 0 && (
+                          <div className="ml-4 border-l-2 border-dashed border-slate-200 pl-4 py-3">
+                            <p className="text-xs text-gray-400">이 섹션에 필드를 드래그해 넣으세요.</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  // ── 단순 flat 뷰 (섹션 없을 때) ──────────────────────────
+                  <div className="space-y-2">
+                    {fields.map((field) => (
+                      <FieldCard
+                        key={field.id}
+                        field={field}
+                        allFields={fields}
+                        onUpdate={(patch) => onUpdateField(field.id, patch)}
+                        onRemove={() => onRemoveField(field.id)}
+                      />
+                    ))}
+                  </div>
+                )}
               </SortableContext>
             </DndContext>
           )}

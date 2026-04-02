@@ -21,6 +21,8 @@ export function useFormFields(initialFields: FormField[] = []) {
         options: needsOptions ? [''] : undefined,
         content: type === 'table'
           ? JSON.stringify({ headers: ['컬럼 1', '컬럼 2'], rows: [['', '']] })
+          : type === 'rating'
+          ? '5'
           : needsContent ? '' : undefined,
       },
     ])

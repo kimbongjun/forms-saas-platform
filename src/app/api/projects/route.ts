@@ -16,6 +16,9 @@ interface CreateProjectBody {
   userEmailTemplate?: string | null
   thumbnailUrl?: string | null
   localeSettings?: LocaleSettings | null
+  seoTitle?: string | null
+  seoDescription?: string | null
+  seoOgImage?: string | null
   fields?: FormField[]
 }
 
@@ -48,6 +51,9 @@ export async function POST(req: NextRequest) {
         user_email_template: body.userEmailTemplate ?? null,
         thumbnail_url: body.thumbnailUrl ?? null,
         locale_settings: body.localeSettings ?? null,
+        seo_title: body.seoTitle ?? null,
+        seo_description: body.seoDescription ?? null,
+        seo_og_image: body.seoOgImage ?? null,
         user_id: user.id,
       })
       .select('id')
@@ -65,11 +71,13 @@ export async function POST(req: NextRequest) {
       const rows = fields.map((f, index) => ({
         project_id: project.id,
         label: f.label.trim() || '(제목 없음)',
+        description: f.description ?? null,
         type: f.type,
         required: f.required,
         order_index: f.order_index ?? index,
         options: f.options ?? null,
         content: f.content ?? null,
+        logic: f.logic ?? null,
       }))
 
       const { error: fieldsErr } = await supabase.from('form_fields').insert(rows)

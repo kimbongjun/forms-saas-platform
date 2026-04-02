@@ -23,6 +23,9 @@ export default function AuthForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [agreedPrivacy, setAgreedPrivacy] = useState(false)
+  const [agreedTerms, setAgreedTerms] = useState(false)
+  const [agreedService, setAgreedService] = useState(false)
 
   const email = username.trim() ? `${username.trim()}@${ALLOWED_DOMAIN}` : ''
 
@@ -43,6 +46,9 @@ export default function AuthForm() {
     setTeam('')
     setError('')
     setMessage('')
+    setAgreedPrivacy(false)
+    setAgreedTerms(false)
+    setAgreedService(false)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -59,6 +65,7 @@ export default function AuthForm() {
       if (!name.trim()) { setError('이름을 입력해주세요.'); return }
       if (!team.trim()) { setError('소속팀을 입력해주세요.'); return }
       if (password !== passwordConfirm) { setError('비밀번호가 일치하지 않습니다.'); return }
+      if (!agreedPrivacy || !agreedTerms || !agreedService) { setError('모든 필수 약관에 동의해주세요.'); return }
     }
 
     if (password.length < 6) {
@@ -201,6 +208,34 @@ export default function AuthForm() {
               required
               className={inputClass}
             />
+          </div>
+        )}
+
+        {/* 약관 동의 (회원가입 전용) */}
+        {tab === 'signup' && (
+          <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <p className="text-xs font-medium text-gray-600 mb-2">필수 약관 동의</p>
+            {[
+              { key: 'privacy', label: '개인정보처리방침', href: '/privacy', state: agreedPrivacy, setter: setAgreedPrivacy },
+              { key: 'terms', label: '이용약관', href: '/terms', state: agreedTerms, setter: setAgreedTerms },
+              { key: 'service', label: '서비스이용동의', href: '/service', state: agreedService, setter: setAgreedService },
+            ].map(({ key, label, href, state, setter }) => (
+              <label key={key} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={state}
+                  onChange={(e) => setter(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+                />
+                <span className="text-xs text-gray-700">
+                  (필수){' '}
+                  <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">
+                    {label}
+                  </a>
+                  에 동의합니다.
+                </span>
+              </label>
+            ))}
           </div>
         )}
 

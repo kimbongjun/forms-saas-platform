@@ -1,10 +1,32 @@
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
+import type { Metadata } from 'next'
 import { createServerClient } from '@/utils/supabase/server'
 import PublicForm from '@/components/form/PublicForm'
+import SiteFooter from '@/components/common/SiteFooter'
 
 interface SlugPageProps {
   params: Promise<{ slug: string }>
+}
+
+export async function generateMetadata({ params }: SlugPageProps): Promise<Metadata> {
+  const { slug } = await params
+  try {
+    const supabase = await createServerClient()
+    const { data } = await supabase
+      .from('projects')
+      .select('title, seo_title, seo_description, seo_og_image, thumbnail_url, banner_url')
+      .eq('slug', slug)
+      .single()
+    if (!data) return {}
+    const title = data.seo_title || data.title
+    const image = data.seo_og_image || data.thumbnail_url || data.banner_url
+    return {
+      title,
+      description: data.seo_description || undefined,
+      openGraph: { title, description: data.seo_description || undefined, images: image ? [image] : undefined },
+    }
+  } catch { return {} }
 }
 
 export default async function SlugPage({ params }: SlugPageProps) {
@@ -71,7 +93,7 @@ export default async function SlugPage({ params }: SlugPageProps) {
     .order('order_index', { ascending: true })
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex min-h-screen flex-col bg-gray-50">
       {project.banner_url && (
         <div className="relative h-48 w-full overflow-hidden sm:h-64">
           <Image
@@ -83,7 +105,7 @@ export default async function SlugPage({ params }: SlugPageProps) {
           />
         </div>
       )}
-      <div className="mx-auto w-full max-w-xl px-4 py-10">
+      <div className="flex-1 mx-auto w-full max-w-xl px-4 py-10">
         <h1 className="mb-8 text-2xl font-bold text-gray-900">{project.title}</h1>
         <PublicForm
           projectId={project.id}
@@ -93,6 +115,7 @@ export default async function SlugPage({ params }: SlugPageProps) {
           localeSettings={project.locale_settings ?? null}
         />
       </div>
+      <SiteFooter />
     </div>
   )
 }

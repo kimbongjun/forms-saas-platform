@@ -9,6 +9,7 @@ import {
   Type, AtSign, AlignLeft, CheckSquare,
   ChevronDown, CircleDot, LayoutList, Code2,
   MapPin, PlaySquare, AlignJustify, Image as ImageIcon, Minus, Upload, Loader2, Table2,
+  Star, Layers,
 } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { uploadFieldImage } from '@/utils/supabase/storage'
@@ -19,6 +20,9 @@ const RichTextEditor = dynamic(() => import('./RichTextEditor'), { ssr: false })
 
 // Google Maps Places Autocomplete 에디터 (SSR 제외)
 const MapFieldEditor = dynamic(() => import('./MapFieldEditor'), { ssr: false })
+
+// 레이블 리치텍스트 에디터 (SSR 제외)
+const LabelEditor = dynamic(() => import('./LabelEditor'), { ssr: false })
 
 // ── Field type metadata ───────────────────────────────────────────────────────
 
@@ -40,6 +44,8 @@ export const FIELD_TYPE_META: Record<
   image:         { label: '이미지',       icon: <ImageIcon className="h-3.5 w-3.5" />,        color: 'bg-sky-100 text-sky-700' },
   divider:       { label: '구분선',       icon: <Minus className="h-3.5 w-3.5" />,            color: 'bg-gray-100 text-gray-600' },
   table:         { label: '표',           icon: <Table2 className="h-3.5 w-3.5" />,           color: 'bg-cyan-100 text-cyan-700' },
+  rating:        { label: '평점',         icon: <Star className="h-3.5 w-3.5" />,             color: 'bg-amber-100 text-amber-700' },
+  section:       { label: '섹션',         icon: <Layers className="h-3.5 w-3.5" />,           color: 'bg-slate-200 text-slate-700' },
 }
 
 const MULTI_OPTION_TYPES: FieldType[] = ['select', 'radio', 'checkbox_group']
@@ -107,11 +113,12 @@ function ImageSection({ field, onUpdate }: { field: FormField; onUpdate: (patch:
 
 interface FieldCardProps {
   field: FormField
+  allFields?: FormField[]
   onUpdate: (patch: Partial<FormField>) => void
   onRemove: () => void
 }
 
-export default function FieldCard({ field, onUpdate, onRemove }: FieldCardProps) {
+export default function FieldCard({ field, allFields = [], onUpdate, onRemove }: FieldCardProps) {
   const {
     attributes,
     listeners,
@@ -129,7 +136,7 @@ export default function FieldCard({ field, onUpdate, onRemove }: FieldCardProps)
   const meta = FIELD_TYPE_META[field.type]
   const isMultiOption = MULTI_OPTION_TYPES.includes(field.type)
 
-  const isInputType = ['text', 'email', 'textarea', 'checkbox', 'select', 'radio', 'checkbox_group'].includes(field.type)
+  const isInputType = ['text', 'email', 'textarea', 'checkbox', 'select', 'radio', 'checkbox_group', 'rating'].includes(field.type)
   const isHtml = field.type === 'html'
   const isTextBlock = field.type === 'text_block'
   const isImage = field.type === 'image'
@@ -137,7 +144,9 @@ export default function FieldCard({ field, onUpdate, onRemove }: FieldCardProps)
   const isMap = field.type === 'map'
   const isYoutube = field.type === 'youtube'
   const isTable = field.type === 'table'
-  const showLabel = isInputType
+  const isRating = field.type === 'rating'
+  const isSection = field.type === 'section'
+  const showLabel = isInputType || isSection
   const showRequired = isInputType
 
   // ── Table helpers ─────────────────────────────────────────────────────────
@@ -231,14 +240,12 @@ export default function FieldCard({ field, onUpdate, onRemove }: FieldCardProps)
           {meta.label}
         </span>
 
-        {/* Label input */}
+        {/* Label editor */}
         {showLabel && (
-          <input
-            type="text"
+          <LabelEditor
             value={field.label}
-            onChange={(e) => onUpdate({ label: e.target.value })}
-            placeholder="필드 레이블"
-            className="flex-1 rounded-lg border border-gray-100 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 placeholder-gray-400 focus:border-transparent focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+            onChange={(html) => onUpdate({ label: html })}
+            placeholder={isSection ? '섹션 제목' : '필드 레이블'}
           />
         )}
 
@@ -316,6 +323,76 @@ export default function FieldCard({ field, onUpdate, onRemove }: FieldCardProps)
             <Plus className="h-3.5 w-3.5" />
             옵션 추가
           </button>
+        </div>
+      )}
+
+      {/* ── Conditional logic (radio 전용) ── */}
+      {field.type === 'radio' && (() => {
+        const sectionFields = allFields.filter((f) => f.type === 'section')
+        if (sectionFields.length === 0) return null
+        const options = (field.options ?? []).filter(Boolean)
+        if (options.length === 0) return null
+        return (
+          <div className="border-t border-gray-100 px-3 pb-3 pt-2 space-y-2">
+            <p className="text-xs font-medium text-gray-400">조건 분기 (답변 → 섹션 이동)</p>
+            {options.map((opt) => (
+              <div key={opt} className="flex items-center gap-2 text-xs">
+                <span className="w-28 truncate text-gray-600 shrink-0">"{opt}" 선택 시</span>
+                <select
+                  value={field.logic?.[opt] ?? ''}
+                  onChange={(e) => {
+                    const next = { ...(field.logic ?? {}) }
+                    if (e.target.value) next[opt] = e.target.value
+                    else delete next[opt]
+                    onUpdate({ logic: Object.keys(next).length > 0 ? next : undefined })
+                  }}
+                  className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                >
+                  <option value="">→ 다음 섹션 (순서대로)</option>
+                  {sectionFields.map((s) => (
+                    <option key={s.id} value={s.id}>{s.label || `섹션 (${s.id.slice(0, 6)})`}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
+
+      {/* ── Rating config section ── */}
+      {isRating && (
+        <div className="border-t border-gray-100 px-3 pb-3 pt-2 flex items-center gap-3">
+          <span className="text-xs text-gray-500 shrink-0">최대 점수</span>
+          {[3, 5, 10].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => onUpdate({ content: String(n) })}
+              className={[
+                'rounded-lg px-3 py-1 text-xs font-medium transition-colors',
+                String(n) === (field.content ?? '5')
+                  ? 'bg-gray-900 text-white'
+                  : 'border border-gray-200 text-gray-500 hover:bg-gray-50',
+              ].join(' ')}
+            >
+              {n}점
+            </button>
+          ))}
+          <div className="flex gap-0.5 ml-1">
+            {Array.from({ length: Number(field.content ?? 5) }, (_, i) => (
+              <Star key={i} className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Section divider preview ── */}
+      {isSection && (
+        <div className="border-t border-gray-100 px-3 pb-3 pt-2">
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            <Layers className="h-3.5 w-3.5" />
+            <span>이 필드부터 새 페이지로 시작됩니다</span>
+          </div>
         </div>
       )}
 

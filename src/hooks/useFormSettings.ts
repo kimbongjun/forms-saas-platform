@@ -32,6 +32,9 @@ export function useFormSettings(initial: Initial = {}) {
   const [localeSettings, setLocaleSettings] = useState<LocaleSettings>(
     initial.locale_settings ?? DEFAULT_LOCALE_SETTINGS
   )
+  const [seoTitle, setSeoTitle] = useState(initial.seo_title ?? '')
+  const [seoDescription, setSeoDescription] = useState(initial.seo_description ?? '')
+  const [seoOgImage, setSeoOgImage] = useState(initial.seo_og_image ?? '')
 
   /** Payload for POST /api/projects (camelCase) */
   function toApiPayload() {
@@ -47,6 +50,9 @@ export function useFormSettings(initial: Initial = {}) {
       userEmailTemplate: isHtmlEmpty(userEmailTemplate) ? null : userEmailTemplate,
       thumbnailUrl: thumbnailUrl || null,
       localeSettings,
+      seoTitle: seoTitle.trim() || null,
+      seoDescription: seoDescription.trim() || null,
+      seoOgImage: seoOgImage.trim() || null,
     }
   }
 
@@ -64,6 +70,9 @@ export function useFormSettings(initial: Initial = {}) {
       user_email_template: isHtmlEmpty(userEmailTemplate) ? null : userEmailTemplate,
       thumbnail_url: thumbnailUrl || null,
       locale_settings: localeSettings,
+      seo_title: seoTitle.trim() || null,
+      seo_description: seoDescription.trim() || null,
+      seo_og_image: seoOgImage.trim() || null,
     }
   }
 
@@ -81,6 +90,9 @@ export function useFormSettings(initial: Initial = {}) {
     userEmailTemplate, setUserEmailTemplate,
     thumbnailUrl, setThumbnailUrl,
     localeSettings, setLocaleSettings,
+    seoTitle, setSeoTitle,
+    seoDescription, setSeoDescription,
+    seoOgImage, setSeoOgImage,
     toApiPayload,
     toUpdatePayload,
   }

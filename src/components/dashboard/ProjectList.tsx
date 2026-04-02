@@ -15,6 +15,7 @@ interface Project {
   title: string
   slug: string
   banner_url: string | null
+  thumbnail_url: string | null
   created_at: string
   created_at_label: string
   is_published: boolean
@@ -171,10 +172,11 @@ export default function ProjectList({ projects }: ProjectListProps) {
             <input type="checkbox" checked={isChecked} onChange={() => toggleOne(project.id)}
               onClick={(e) => e.stopPropagation()} className="h-4 w-4 shrink-0 rounded accent-gray-900" />
 
-            {/* 배너 썸네일 */}
+            {/* 썸네일 (폼 썸네일 우선, 없으면 배너) */}
             <div className="h-16 w-24 shrink-0 overflow-hidden rounded-xl bg-gray-100">
-              {project.banner_url ? (
-                <img src={project.banner_url} alt={project.title} className="h-full w-full object-cover" />
+              {(project.thumbnail_url ?? project.banner_url) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={(project.thumbnail_url ?? project.banner_url)!} alt={project.title} className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center">
                   <FileText className="h-6 w-6 text-gray-300" />
