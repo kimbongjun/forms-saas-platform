@@ -46,6 +46,14 @@ export default function ProjectSectionNav({
           >
             <span>프로젝트 폼 열기</span>
             <SquarePen className="h-4 w-4" />
+          </Link>          
+          <Link
+            href={`/${projectSlug}`}
+            target="_blank"
+            className="flex items-center justify-between rounded-2xl border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            <span>페이지 보기</span>
+            <ExternalLink className="h-4 w-4" />
           </Link>
           <Link
             href={`/projects/${projectId}/execution/live-responses`}
@@ -53,14 +61,6 @@ export default function ProjectSectionNav({
           >
             <span>응답 보기</span>
             <MessageSquareText className="h-4 w-4" />
-          </Link>
-          <Link
-            href={`/${projectSlug}`}
-            target="_blank"
-            className="flex items-center justify-between rounded-2xl border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-          >
-            <span>공개 폼 열기</span>
-            <ExternalLink className="h-4 w-4" />
           </Link>
         </div>
       </div>

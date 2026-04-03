@@ -8,7 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 async function uploadToStorage(supabase: SupabaseClient, path: string, file: File, label: string): Promise<string> {
   const { error } = await supabase.storage
     .from('banners')
-    .upload(path, file, { cacheControl: '3600', upsert: false })
+    .upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type })
 
   if (error) {
     console.error(`[storage] ${label} 업로드 실패:`, error)

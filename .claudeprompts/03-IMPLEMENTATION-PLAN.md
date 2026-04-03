@@ -132,8 +132,10 @@
 ---
 
 ## 향후 작업
-- [x] **저장 시 오류 해결** : SEO/logic 컬럼 누락 → 조건부 포함으로 수정. announcements/release_notes CRUD를 서버 API 라우트로 이전(브라우저 RLS 우회). TinyMCE controlled mode(`value`) 버그 → `initialValue`로 수정.
-- [x] **레이아웃 통일** : 공지사항·릴리즈노트에 `layout.tsx` 추가(SiteHeader/SiteFooter 공유), 콘텐츠 컨테이너 `max-w-7xl`로 확장, SiteHeader 내부 `max-w-7xl px-8`로 통일.
-- [x] **릴리즈 노트** : `POST /api/admin/release-notes/generate` 구현 — git log 파싱 → 카테고리 분류 → 버전 자동 증가 → DB 저장. 관리자 페이지에 "자동 생성" 버튼 추가.
-- [x] **위지윅 에디터 변경** : Toast UI Editor → TinyMCE(self-hosted, `public/tinymce`) 교체. `scripts/copy-tinymce.js` + `postinstall` 스크립트로 자동 복사.
-- [x] **글로벌 설정 수정** : OG 이미지·파비콘을 URL 입력 → 파일 업로드(Supabase Storage `site-assets/`) 형태로 변경. 파일 크기 5MB·MIME 화이트리스트 검증 포함.
+- [] **프로젝트 상세페이지(src/app/projects/[id]) 구조 개선** : 프로젝트 관리 영역의 서브 메뉴를 "개요, 마일스톤(간트 차트), 상세 실행, 이슈 트래커"로 정리해주고 상세 실행 하위 메뉴 중에 "폼/서베이 관리" 라는 메뉴를 만들어 그 안에 폼 신청 관련 내용들을 넣어줘. 즉 이제는 프로젝트와 폼에 대한 정의를 완전히 분리해야되니 관련하여 코드에도 적용해줘.
+그리고 현재의 UI 구조를 개편된 메뉴구조에 맞게 전체적으로 바꿔줘.
+
+1. 개요 (Overview) : 프로젝트 카테고리, 목표, 기간, 예산, 주요 마일스톤, 참여 멤버(R&R)
+2. 일정 (간트 차트) : 프로젝트 일정, 일정별 프로젝트의 진행사항 체크 (간트 차트 UI 적용할 것)
+3. 상세 실행 : 산출물 관리(현재 구현하지 말 것), **신청폼/설문 관리** 현재까지 작업한 폼 제작 프로세스를 이 계층 구조에 적용해야돼.
+4. 이슈 트래커 : 결함(Bug), 건의사항, 질문 등 유형별 작성할 수 있는 게시판으로 "긴급도"를 옵션이 있어야돼.

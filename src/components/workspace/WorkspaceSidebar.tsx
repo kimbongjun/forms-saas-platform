@@ -46,7 +46,7 @@ export default function WorkspaceSidebar({ role = 'editor' }: WorkspaceSidebarPr
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">Quick Action</p>
         <Link
           href="/projects/new"
-          className="mt-3 flex items-center justify-between rounded-2xl bg-blue-900 px-4 py-4 text-white transition-colors hover:bg-blue-800"
+          className="mt-3 flex items-center justify-between rounded-2xl bg-gray-900 px-4 py-4 text-white transition-colors hover:bg-gray-800"
         >
           <div>
             <p className="text-sm font-semibold">신규 프로젝트 생성</p>
@@ -109,8 +109,7 @@ export default function WorkspaceSidebar({ role = 'editor' }: WorkspaceSidebarPr
         )}
       </nav>
 
-      <div className="border-t border-gray-100 px-4 py-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">Utility</p>
+      <div className="border-t border-gray-100 px-4 py-4">        
         <div className="mt-3 space-y-1 text-sm">
           <Link href="/dashboard/account" className={[
             'flex items-center gap-2 rounded-xl px-3 py-2 transition-colors',

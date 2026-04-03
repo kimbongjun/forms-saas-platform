@@ -1,32 +1,32 @@
-import { notFound } from 'next/navigation'
-import { createServerClient } from '@/utils/supabase/server'
+﻿import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
+import { getPublishedAnnouncementById } from '@/utils/public-content'
 
 interface Props {
   params: Promise<{ id: string }>
 }
 
 function formatDate(iso: string) {
-  return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
+  return new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(iso))
 }
 
 export default async function AnnouncementDetailPage({ params }: Props) {
   const { id } = await params
-  const supabase = await createServerClient()
-  const { data } = await supabase
-    .from('announcements')
-    .select('*')
-    .eq('id', id)
-    .eq('is_published', true)
-    .single()
+  const data = await getPublishedAnnouncementById(id)
 
   if (!data) notFound()
 
   return (
     <div className="mx-auto w-full max-w-7xl px-8 py-8">
       <div className="mb-6 flex items-center gap-2">
-        <Link href="/announcements" className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
+        <Link href="/announcements" className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700">
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <span className="text-sm text-gray-500">공지사항</span>

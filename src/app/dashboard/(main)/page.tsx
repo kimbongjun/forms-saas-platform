@@ -26,8 +26,8 @@ export default async function DashboardPage() {
   return (
     <WorkspacePage
       eyebrow="Dashboard"
-      title="전사 성과 요약"
-      description="현재 운영 중인 폼/설문 프로젝트를 허브 단위로 묶고, 가장 자주 보는 지표와 진입점을 한 화면에서 확인할 수 있도록 정리했습니다."
+      title="마케팅 프로젝트 Overview"
+      description="현재 진행중인 프로젝트 관련 주요 지표를 확인할 수 있습니다."
       actions={[
         { href: '/projects/new', label: '신규 프로젝트 생성' },
         { href: '/projects', label: '프로젝트 목록', variant: 'secondary' },

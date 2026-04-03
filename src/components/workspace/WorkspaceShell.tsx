@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import classysLogo from '@/imgs/classys_logo.svg'
 import { createServerClient, getUserRole } from '@/utils/supabase/server'
-import { getResolvedSiteTitle } from '@/utils/site-settings'
+import { getGlobalSiteSettings, getResolvedSiteTitle } from '@/utils/site-settings'
 import UserMenu from '@/components/dashboard/UserMenu'
 import WorkspaceSidebar from './WorkspaceSidebar'
 
@@ -19,12 +19,7 @@ export default async function WorkspaceShell({ children }: WorkspaceShellProps) 
 
   if (!user) redirect('/login')
 
-  const [role, settingsData] = await Promise.all([
-    getUserRole(user.id),
-    supabase.from('site_settings').select('settings').eq('id', 1).single(),
-  ])
-
-  const siteSettings = settingsData.data?.settings ?? {}
+  const [role, siteSettings] = await Promise.all([getUserRole(user.id), getGlobalSiteSettings()])
   const siteTitle = getResolvedSiteTitle(siteSettings)
   const footerText = siteSettings.footer_text || `© ${siteTitle}. All rights reserved.`
 

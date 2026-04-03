@@ -7,13 +7,7 @@ import { ArrowLeft, CheckCircle2, ExternalLink, Loader2, PanelLeft } from 'lucid
 import BuilderTabBar, { type BuilderTab } from './BuilderTabBar'
 import BuilderSidebar from './BuilderSidebar'
 import BuilderCanvas from './BuilderCanvas'
-import { createClient } from '@/utils/supabase/client'
-import {
-  buildFormFieldRows,
-  buildProjectUpdatePayload,
-  getFormBuilderState,
-  useFormBuilderStore,
-} from '@/stores/form-builder-store'
+import { getFormBuilderState, useFormBuilderStore } from '@/stores/form-builder-store'
 import type { FormField, Project } from '@/types/database'
 
 const SettingsPanel = dynamic(() => import('./SettingsPanel'))
@@ -90,28 +84,34 @@ export default function EditFormBuilder({ project, initialFields, initialDeadlin
 
     setLoading(true)
     setError('')
-    const supabase = createClient()
 
     try {
-      const { error: updateError } = await supabase
-        .from('projects')
-        .update({ title: state.title.trim(), ...buildProjectUpdatePayload(state) })
-        .eq('id', project.id)
+      const response = await fetch(`/api/projects/${project.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: state.title.trim(),
+          notificationEmail: state.notificationEmail,
+          themeColor: state.themeColor,
+          isPublished: state.isPublished,
+          deadline: state.deadline || null,
+          maxSubmissions: state.maxSubmissions ? parseInt(state.maxSubmissions, 10) : null,
+          webhookUrl: state.webhookUrl,
+          submissionMessage: state.submissionMessage,
+          adminEmailTemplate: state.adminEmailTemplate,
+          userEmailTemplate: state.userEmailTemplate,
+          thumbnailUrl: state.thumbnailUrl,
+          localeSettings: state.localeSettings,
+          seoTitle: state.seoTitle,
+          seoDescription: state.seoDescription,
+          seoOgImage: state.seoOgImage,
+          fields: state.fields,
+        }),
+      })
 
-      if (updateError) {
-        throw new Error(`프로젝트 수정 실패: ${updateError.message}`)
-      }
-
-      await supabase.from('form_fields').delete().eq('project_id', project.id)
-
-      if (state.fields.length > 0) {
-        const { error: insertError } = await supabase
-          .from('form_fields')
-          .insert(buildFormFieldRows(state.fields, project.id))
-
-        if (insertError) {
-          throw new Error(`필드 저장 실패: ${insertError.message}`)
-        }
+      if (!response.ok) {
+        const json = await response.json().catch(() => null)
+        throw new Error(json?.error ?? '프로젝트 저장에 실패했습니다.')
       }
 
       setSaved(true)
@@ -177,9 +177,7 @@ export default function EditFormBuilder({ project, initialFields, initialDeadlin
 
       {activeTab === 'edit' && (
         <div className="relative flex flex-1 overflow-hidden">
-          {sidebarOpen && (
-            <div className="fixed inset-0 z-20 bg-black/30 sm:hidden" onClick={() => setSidebarOpen(false)} />
-          )}
+          {sidebarOpen && <div className="fixed inset-0 z-20 bg-black/30 sm:hidden" onClick={() => setSidebarOpen(false)} />}
 
           <div
             className={[
@@ -188,7 +186,12 @@ export default function EditFormBuilder({ project, initialFields, initialDeadlin
               sidebarOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0',
             ].join(' ')}
           >
-            <BuilderSidebar onAddField={(type) => { addField(type); setSidebarOpen(false) }} />
+            <BuilderSidebar
+              onAddField={(type) => {
+                addField(type)
+                setSidebarOpen(false)
+              }}
+            />
           </div>
 
           <div className="flex flex-1 flex-col overflow-hidden">
