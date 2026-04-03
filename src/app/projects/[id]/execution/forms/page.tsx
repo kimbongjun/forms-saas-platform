@@ -1,4 +1,6 @@
-﻿import { notFound } from 'next/navigation'
+﻿export const dynamic = 'force-dynamic'
+
+import { notFound } from 'next/navigation'
 import { createServerClient } from '@/utils/supabase/server'
 import EditFormBuilder from '@/components/builder/EditFormBuilder'
 

@@ -277,4 +277,44 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER projects_set_user_id
   BEFORE INSERT ON projects
   FOR EACH ROW EXECUTE FUNCTION set_user_id();
+
+-- 마이그레이션 18: 프로젝트 마일스톤 테이블 (간트 차트)
+CREATE TABLE IF NOT EXISTS project_milestones (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  description text DEFAULT '',
+  start_date date NOT NULL,
+  end_date date NOT NULL,
+  progress int DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
+  status text NOT NULL DEFAULT 'not_started'
+    CHECK (status IN ('not_started', 'in_progress', 'completed')),
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE project_milestones ENABLE ROW LEVEL SECURITY;
+CREATE POLICY auth_all_project_milestones ON project_milestones TO authenticated
+  USING (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()))
+  WITH CHECK (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
+
+-- 마이그레이션 19: 프로젝트 이슈 트래커 테이블
+CREATE TABLE IF NOT EXISTS project_issues (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  description text DEFAULT '',
+  type text NOT NULL DEFAULT 'bug'
+    CHECK (type IN ('bug', 'suggestion', 'question')),
+  urgency text NOT NULL DEFAULT 'normal'
+    CHECK (urgency IN ('critical', 'high', 'normal', 'low')),
+  status text NOT NULL DEFAULT 'open'
+    CHECK (status IN ('open', 'in_progress', 'resolved')),
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE project_issues ENABLE ROW LEVEL SECURITY;
+CREATE POLICY auth_all_project_issues ON project_issues TO authenticated
+  USING (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()))
+  WITH CHECK (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
 ```

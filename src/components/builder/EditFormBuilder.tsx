@@ -115,6 +115,7 @@ export default function EditFormBuilder({ project, initialFields, initialDeadlin
       }
 
       setSaved(true)
+      router.refresh()
       setTimeout(() => router.push(`/projects/${project.id}`), 1200)
     } catch (err) {
       setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.')

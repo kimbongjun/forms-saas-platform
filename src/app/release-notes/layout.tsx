@@ -1,5 +1,5 @@
-﻿import PublicSiteFrame from '@/components/common/PublicSiteFrame'
+import WorkspaceShell from '@/components/workspace/WorkspaceShell'
 
 export default function ReleaseNotesLayout({ children }: { children: React.ReactNode }) {
-  return <PublicSiteFrame>{children}</PublicSiteFrame>
+  return <WorkspaceShell>{children}</WorkspaceShell>
 }
