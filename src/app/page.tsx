@@ -17,13 +17,13 @@ export default async function Home() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
+      <div className="w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
         <div className="space-y-4">
           <div className="flex justify-center">
             <Image src={classysLogo} alt={siteTitle} width={180} height={40} priority className="h-10 w-auto" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-gray-900">{siteTitle}</h1>
+            <h1 className="text-xl font-bold text-gray-900">{siteTitle}</h1>
             <p className="text-sm text-gray-500">
               프로젝트 생성부터 실행, 응답 수집, 인사이트 확인까지 한 흐름으로 관리합니다.
             </p>
