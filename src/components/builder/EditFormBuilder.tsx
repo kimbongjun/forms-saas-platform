@@ -1,17 +1,23 @@
-'use client'
+﻿'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { ArrowLeft, CheckCircle2, ExternalLink, Loader2, PanelLeft } from 'lucide-react'
-import { useFormFields } from '@/hooks/useFormFields'
-import { useFormSettings } from '@/hooks/useFormSettings'
 import BuilderTabBar, { type BuilderTab } from './BuilderTabBar'
 import BuilderSidebar from './BuilderSidebar'
 import BuilderCanvas from './BuilderCanvas'
-import SettingsPanel from './SettingsPanel'
-import ResponsesTab from './ResponsesTab'
 import { createClient } from '@/utils/supabase/client'
+import {
+  buildFormFieldRows,
+  buildProjectUpdatePayload,
+  getFormBuilderState,
+  useFormBuilderStore,
+} from '@/stores/form-builder-store'
 import type { FormField, Project } from '@/types/database'
+
+const SettingsPanel = dynamic(() => import('./SettingsPanel'))
+const ResponsesTab = dynamic(() => import('./ResponsesTab'))
 
 interface EditFormBuilderProps {
   project: Project & { id: string }
@@ -27,14 +33,57 @@ export default function EditFormBuilder({ project, initialFields, initialDeadlin
   const [saved, setSaved] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const fieldState = useFormFields(initialFields)
-  const settings = useFormSettings({
-    ...project,
-    initialDeadline,
-  })
+  const initialize = useFormBuilderStore((state) => state.initialize)
+  const title = useFormBuilderStore((state) => state.title)
+  const fields = useFormBuilderStore((state) => state.fields)
+  const setTitle = useFormBuilderStore((state) => state.setTitle)
+  const addField = useFormBuilderStore((state) => state.addField)
+  const updateField = useFormBuilderStore((state) => state.updateField)
+  const removeField = useFormBuilderStore((state) => state.removeField)
+  const handleDragEnd = useFormBuilderStore((state) => state.handleDragEnd)
+  const settings = useFormBuilderStore((state) => ({
+    title: state.title,
+    customSlug: state.customSlug,
+    isPublished: state.isPublished,
+    themeColor: state.themeColor,
+    notificationEmail: state.notificationEmail,
+    deadline: state.deadline,
+    maxSubmissions: state.maxSubmissions,
+    webhookUrl: state.webhookUrl,
+    submissionMessage: state.submissionMessage,
+    adminEmailTemplate: state.adminEmailTemplate,
+    userEmailTemplate: state.userEmailTemplate,
+    thumbnailUrl: state.thumbnailUrl,
+    localeSettings: state.localeSettings,
+    seoTitle: state.seoTitle,
+    seoDescription: state.seoDescription,
+    seoOgImage: state.seoOgImage,
+    setTitle: state.setTitle,
+    setCustomSlug: state.setCustomSlug,
+    setIsPublished: state.setIsPublished,
+    setThemeColor: state.setThemeColor,
+    setNotificationEmail: state.setNotificationEmail,
+    setDeadline: state.setDeadline,
+    setMaxSubmissions: state.setMaxSubmissions,
+    setWebhookUrl: state.setWebhookUrl,
+    setSubmissionMessage: state.setSubmissionMessage,
+    setAdminEmailTemplate: state.setAdminEmailTemplate,
+    setUserEmailTemplate: state.setUserEmailTemplate,
+    setThumbnailUrl: state.setThumbnailUrl,
+    setLocaleSettings: state.setLocaleSettings,
+    setSeoTitle: state.setSeoTitle,
+    setSeoDescription: state.setSeoDescription,
+    setSeoOgImage: state.setSeoOgImage,
+  }))
+
+  useEffect(() => {
+    initialize({ ...project, initialDeadline }, initialFields)
+  }, [initialize, initialDeadline, initialFields, project])
 
   async function handleUpdate() {
-    if (!settings.title.trim()) {
+    const state = getFormBuilderState()
+
+    if (!state.title.trim()) {
       setError('프로젝트 제목을 입력해 주세요.')
       return
     }
@@ -46,7 +95,7 @@ export default function EditFormBuilder({ project, initialFields, initialDeadlin
     try {
       const { error: updateError } = await supabase
         .from('projects')
-        .update({ title: settings.title.trim(), ...settings.toUpdatePayload() })
+        .update({ title: state.title.trim(), ...buildProjectUpdatePayload(state) })
         .eq('id', project.id)
 
       if (updateError) {
@@ -55,25 +104,11 @@ export default function EditFormBuilder({ project, initialFields, initialDeadlin
 
       await supabase.from('form_fields').delete().eq('project_id', project.id)
 
-      if (fieldState.fields.length > 0) {
-        const rows = fieldState.fields.map((field) => {
-          const row: Record<string, unknown> = {
-            id: field.id,
-            project_id: project.id,
-            label: field.label.trim() || '(제목 없음)',
-            description: field.description ?? null,
-            type: field.type,
-            required: field.required,
-            order_index: field.order_index,
-            options: field.options ?? null,
-            content: field.content ?? null,
-          }
+      if (state.fields.length > 0) {
+        const { error: insertError } = await supabase
+          .from('form_fields')
+          .insert(buildFormFieldRows(state.fields, project.id))
 
-          if (field.logic != null) row.logic = field.logic
-          return row
-        })
-
-        const { error: insertError } = await supabase.from('form_fields').insert(rows)
         if (insertError) {
           throw new Error(`필드 저장 실패: ${insertError.message}`)
         }
@@ -93,7 +128,7 @@ export default function EditFormBuilder({ project, initialFields, initialDeadlin
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gray-50 text-green-600">
         <CheckCircle2 className="h-14 w-14" />
         <p className="text-lg font-semibold">수정이 완료되었습니다.</p>
-        <p className="text-sm text-gray-500">프로젝트 홈으로 이동합니다.</p>
+        <p className="text-sm text-gray-500">프로젝트 화면으로 이동합니다.</p>
       </div>
     )
   }
@@ -153,7 +188,7 @@ export default function EditFormBuilder({ project, initialFields, initialDeadlin
               sidebarOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0',
             ].join(' ')}
           >
-            <BuilderSidebar onAddField={(type) => { fieldState.addField(type); setSidebarOpen(false) }} />
+            <BuilderSidebar onAddField={(type) => { addField(type); setSidebarOpen(false) }} />
           </div>
 
           <div className="flex flex-1 flex-col overflow-hidden">
@@ -169,15 +204,15 @@ export default function EditFormBuilder({ project, initialFields, initialDeadlin
             </div>
 
             <BuilderCanvas
-              title={settings.title}
+              title={title}
               onTitleChange={(value) => {
-                settings.setTitle(value)
+                setTitle(value)
                 setError('')
               }}
-              fields={fieldState.fields}
-              onUpdateField={fieldState.updateField}
-              onRemoveField={fieldState.removeField}
-              onDragEnd={fieldState.handleDragEnd}
+              fields={fields}
+              onUpdateField={updateField}
+              onRemoveField={removeField}
+              onDragEnd={handleDragEnd}
               titlePlaceholder=""
             />
           </div>
@@ -185,10 +220,7 @@ export default function EditFormBuilder({ project, initialFields, initialDeadlin
       )}
 
       {activeTab === 'settings' && <SettingsPanel settings={settings} slug={project.slug} />}
-
-      {activeTab === 'responses' && (
-        <ResponsesTab projectId={project.id} projectSlug={project.slug} fields={fieldState.fields} />
-      )}
+      {activeTab === 'responses' && <ResponsesTab projectId={project.id} projectSlug={project.slug} fields={fields} />}
     </div>
   )
 }

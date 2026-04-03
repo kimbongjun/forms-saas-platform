@@ -1,25 +1,23 @@
-﻿import WorkspaceShell from '@/components/workspace/WorkspaceShell'
-import { createServerClient } from '@/utils/supabase/server'
+﻿import PublicSiteFrame from '@/components/common/PublicSiteFrame'
+import { getGlobalSiteSettings } from '@/utils/site-settings'
 
 export default async function PrivacyPage() {
-  const supabase = await createServerClient()
-  const { data } = await supabase.from('site_settings').select('settings').eq('id', 1).single()
-  const s = data?.settings ?? {}
+  const s = await getGlobalSiteSettings()
 
   return (
-    <WorkspaceShell>
+    <PublicSiteFrame>
       <div className="border-b border-gray-200 bg-white px-6 py-4">
         <div className="mx-auto max-w-3xl">
           <h1 className="text-base font-semibold text-gray-900">개인정보처리방침</h1>
         </div>
       </div>
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
+      <section className="mx-auto w-full max-w-3xl px-6 py-10">
         {s.privacy_policy ? (
           <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: s.privacy_policy }} />
         ) : (
           <p className="text-sm text-gray-400">개인정보처리방침이 아직 등록되지 않았습니다.</p>
         )}
-      </main>
-    </WorkspaceShell>
+      </section>
+    </PublicSiteFrame>
   )
 }

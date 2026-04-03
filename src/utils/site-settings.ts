@@ -1,6 +1,6 @@
-import { cache } from 'react'
+﻿import { unstable_cache } from 'next/cache'
+import { createClient } from '@supabase/supabase-js'
 import { APP_TITLE } from '@/constants/branding'
-import { createServerClient } from '@/utils/supabase/server'
 
 export interface GlobalSiteSettings {
   site_title?: string
@@ -9,11 +9,22 @@ export interface GlobalSiteSettings {
   og_image_url?: string
   primary_color?: string
   footer_text?: string
+  privacy_policy?: string
+  terms_of_service?: string
+  service_agreement?: string
 }
 
-export const getGlobalSiteSettings = cache(async (): Promise<GlobalSiteSettings> => {
-  try {
-    const supabase = await createServerClient()
+const getCachedGlobalSiteSettings = unstable_cache(
+  async (): Promise<GlobalSiteSettings> => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!url || !anonKey) return {}
+
+    const supabase = createClient(url, anonKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+
     const { data } = await supabase
       .from('site_settings')
       .select('settings')
@@ -21,10 +32,18 @@ export const getGlobalSiteSettings = cache(async (): Promise<GlobalSiteSettings>
       .single()
 
     return (data?.settings as GlobalSiteSettings | null) ?? {}
+  },
+  ['global-site-settings'],
+  { revalidate: 300, tags: ['site-settings'] }
+)
+
+export async function getGlobalSiteSettings() {
+  try {
+    return await getCachedGlobalSiteSettings()
   } catch {
     return {}
   }
-})
+}
 
 export function getResolvedSiteTitle(settings: GlobalSiteSettings) {
   return settings.site_title?.trim() || APP_TITLE
