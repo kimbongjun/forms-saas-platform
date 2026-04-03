@@ -59,7 +59,7 @@ export default function BuilderCanvas({
 
   return (
     <main className="flex-1 overflow-y-auto px-8 py-6">
-      <div className="mx-auto w-full max-w-2xl space-y-6">
+      <div className="mx-auto w-full max-w-3xl space-y-6">
         <section className="space-y-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">

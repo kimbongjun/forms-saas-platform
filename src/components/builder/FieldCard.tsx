@@ -15,14 +15,11 @@ import { createClient } from '@/utils/supabase/client'
 import { uploadFieldImage } from '@/utils/supabase/storage'
 import type { FormField, FieldType } from '@/types/database'
 
-// WYSIWYG 에디터는 SSR 제외 (tiptap은 브라우저 전용)
+// WYSIWYG 에디터는 SSR 제외
 const RichTextEditor = dynamic(() => import('./RichTextEditor'), { ssr: false })
 
 // Google Maps Places Autocomplete 에디터 (SSR 제외)
 const MapFieldEditor = dynamic(() => import('./MapFieldEditor'), { ssr: false })
-
-// 레이블 리치텍스트 에디터 (SSR 제외)
-const LabelEditor = dynamic(() => import('./LabelEditor'), { ssr: false })
 
 // ── Field type metadata ───────────────────────────────────────────────────────
 
@@ -240,12 +237,14 @@ export default function FieldCard({ field, allFields = [], onUpdate, onRemove }:
           {meta.label}
         </span>
 
-        {/* Label editor */}
+        {/* Label input */}
         {showLabel && (
-          <LabelEditor
-            value={field.label}
-            onChange={(html) => onUpdate({ label: html })}
+          <input
+            type="text"
+            value={field.label.replace(/<[^>]+>/g, '')}
+            onChange={(e) => onUpdate({ label: e.target.value })}
             placeholder={isSection ? '섹션 제목' : '필드 레이블'}
+            className="flex-1 rounded-lg border border-gray-100 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 placeholder-gray-400 focus:border-transparent focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900"
           />
         )}
 

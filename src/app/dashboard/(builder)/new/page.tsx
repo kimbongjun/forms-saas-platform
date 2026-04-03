@@ -1,5 +1,5 @@
-import FormBuilder from '@/components/builder/FormBuilder'
+import { redirect } from 'next/navigation'
 
-export default function NewProjectPage() {
-  return <FormBuilder />
+export default function LegacyNewProjectPage() {
+  redirect('/projects/new')
 }

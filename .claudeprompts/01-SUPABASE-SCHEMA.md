@@ -102,6 +102,20 @@ CREATE POLICY anon_select_submissions ON submissions FOR SELECT TO anon USING (t
 - 사이트 에셋 경로: `site-assets/og-image-{uuid}.{ext}` / `site-assets/favicon-{uuid}.{ext}` → `uploadSiteAsset(supabase, file, type)`
 - 네 함수 모두 `src/utils/supabase/storage.ts` 에 정의, Public URL 반환
 
+### project_members
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| id | uuid PK | gen_random_uuid() |
+| project_id | uuid FK | → projects ON DELETE CASCADE |
+| name | text NOT NULL | 멤버 이름 |
+| email | text | 알림 수신 이메일 (NULL 허용) |
+| role | text NOT NULL | 'owner' \| 'manager' \| 'member' \| 'viewer' |
+| department | text | 소속 부서 (NULL 허용) |
+| notify | boolean | DEFAULT true — 이메일 알림 수신 여부 |
+| created_at | timestamptz | now() |
+
+---
+
 ## 환경변수 (.env.local)
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
@@ -207,6 +221,33 @@ CREATE POLICY auth_delete_form_fields ON form_fields
   FOR DELETE TO authenticated USING (
     project_id IN (SELECT id FROM projects WHERE user_id = auth.uid())
   );
+
+-- 마이그레이션 17: 프로젝트 위자드 컬럼 + project_members 테이블
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS category text;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS start_date date;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS end_date date;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS budget bigint;
+
+CREATE TABLE IF NOT EXISTS project_members (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  email text,
+  role text NOT NULL DEFAULT 'member',
+  department text,
+  notify boolean DEFAULT true,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE project_members ENABLE ROW LEVEL SECURITY;
+CREATE POLICY auth_select_project_members ON project_members FOR SELECT TO authenticated
+  USING (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
+CREATE POLICY auth_insert_project_members ON project_members FOR INSERT TO authenticated
+  WITH CHECK (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
+CREATE POLICY auth_update_project_members ON project_members FOR UPDATE TO authenticated
+  USING (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
+CREATE POLICY auth_delete_project_members ON project_members FOR DELETE TO authenticated
+  USING (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
 
 -- 마이그레이션 7: 웹훅 + Auth
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS webhook_url text;

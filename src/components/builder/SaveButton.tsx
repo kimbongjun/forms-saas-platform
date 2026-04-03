@@ -28,22 +28,41 @@ function generateSlug(title: string, custom: string): string {
   if (custom.trim()) {
     return custom.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '') || `form-${rand}`
   }
-  const base = title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-').slice(0, 40)
+
+  const base = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 40)
+
   return base ? `${base}-${rand}` : `form-${rand}`
 }
 
 export default function SaveButton({
-  title, customSlug, notificationEmail, themeColor, isPublished,
-  deadline, maxSubmissions, webhookUrl, submissionMessage,
-  adminEmailTemplate, userEmailTemplate, thumbnailUrl, localeSettings,
-  fields, onError,
+  title,
+  customSlug,
+  notificationEmail,
+  themeColor,
+  isPublished,
+  deadline,
+  maxSubmissions,
+  webhookUrl,
+  submissionMessage,
+  adminEmailTemplate,
+  userEmailTemplate,
+  thumbnailUrl,
+  localeSettings,
+  fields,
+  onError,
 }: SaveButtonProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
   async function handleSave() {
     if (!title.trim()) {
-      onError('프로젝트 제목을 입력해주세요.')
+      onError('프로젝트 제목을 입력해 주세요.')
       return
     }
 
@@ -52,7 +71,7 @@ export default function SaveButton({
 
     try {
       const slug = generateSlug(title, customSlug)
-      const res = await fetch('/api/projects', {
+      const response = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -73,12 +92,12 @@ export default function SaveButton({
         }),
       })
 
-      if (!res.ok) {
-        const json = await res.json().catch(() => null)
-        throw new Error(json?.error ?? '프로젝트 저장 실패')
+      if (!response.ok) {
+        const json = await response.json().catch(() => null)
+        throw new Error(json?.error ?? '프로젝트 저장에 실패했습니다.')
       }
 
-      router.push('/dashboard')
+      router.push('/projects')
     } catch (err) {
       onError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.')
     } finally {

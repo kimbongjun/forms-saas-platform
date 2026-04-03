@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -21,6 +21,7 @@ interface SiteSettings {
   privacy_policy?: string
   terms_of_service?: string
   service_agreement?: string
+  primary_color?: string
 }
 
 interface Props {
@@ -46,6 +47,7 @@ export default function AdminSettingsForm({ initialSettings }: Props) {
     privacy_policy: '',
     terms_of_service: '',
     service_agreement: '',
+    primary_color: '#111827',
     ...initialSettings,
   })
   const [loading, setLoading] = useState(false)
@@ -272,6 +274,56 @@ export default function AdminSettingsForm({ initialSettings }: Props) {
                     {uploadingFavicon ? '업로드 중...' : '파비콘 파일 선택 (권장: 32×32 PNG)'}
                   </button>
                 )}
+              </div>
+            </section>
+
+            {/* 색상 테마 */}
+            <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">색상 테마</h2>
+                <p className="mt-0.5 text-xs text-gray-400">사이드바 활성 메뉴, 주요 버튼 등 Primary 요소에 전역 적용됩니다.</p>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-gray-500">Primary Color</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={settings.primary_color ?? '#111827'}
+                    onChange={(e) => set('primary_color', e.target.value)}
+                    className="h-10 w-14 cursor-pointer rounded-lg border border-gray-200 bg-white p-1"
+                  />
+                  <input
+                    type="text"
+                    value={settings.primary_color ?? '#111827'}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (/^#[0-9a-fA-F]{0,6}$/.test(v)) set('primary_color', v)
+                    }}
+                    placeholder="#111827"
+                    className="w-32 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-mono text-gray-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  />
+                  <div
+                    className="h-10 w-10 rounded-xl border border-gray-200 shadow-sm"
+                    style={{ backgroundColor: settings.primary_color ?? '#111827' }}
+                  />
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {['#111827','#1D4ED8','#7C3AED','#0F766E','#DC2626','#D97706','#065F46','#9D174D'].map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => set('primary_color', c)}
+                      title={c}
+                      className="h-7 w-7 rounded-lg border-2 transition-transform hover:scale-110"
+                      style={{
+                        backgroundColor: c,
+                        borderColor: settings.primary_color === c ? '#111827' : 'transparent',
+                        outline: settings.primary_color === c ? '2px solid #e5e7eb' : 'none',
+                        outlineOffset: '1px',
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
             </section>
 

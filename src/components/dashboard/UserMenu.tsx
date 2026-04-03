@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { User, LogOut, Settings, ChevronDown, Shield } from 'lucide-react'
+import { ChevronDown, LogOut, Settings, Shield, User } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 
 interface UserMenuProps {

@@ -25,8 +25,8 @@ export async function POST() {
       .limit(1)
       .single()
 
-    // NUL(\x00)을 구분자로 사용 — 커밋 메시지에 등장 불가
-    const SEP = '\x00'
+    // 커밋 필드 구분자 — \x1F(Unit Separator)는 NUL 바이트가 아니므로 execSync에 안전
+    const SEP = '\x1F'
     const FMT = `%H${SEP}%s${SEP}%ae${SEP}%ad`
 
     // git log 범위 결정: 마지막 릴리즈 이후 or 최근 30커밋

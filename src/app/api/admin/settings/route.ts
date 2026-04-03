@@ -22,7 +22,7 @@ export async function PUT(req: NextRequest) {
     const body = await req.json()
     const { error } = await supabase
       .from('site_settings')
-      .upsert({ id: 1, settings: body, updated_at: new Date().toISOString() })
+      .upsert({ id: 1, settings: body })
     if (error) throw error
     return NextResponse.json({ ok: true })
   } catch (err) {

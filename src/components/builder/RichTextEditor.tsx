@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useRef } from 'react'
 import { Editor } from '@tinymce/tinymce-react'
@@ -13,23 +13,24 @@ interface RichTextEditorProps {
 export default function RichTextEditor({
   content,
   onChange,
-  placeholder = '내용을 입력하세요...',
+  placeholder = '내용을 입력해 주세요...',
   height = '300px',
 }: RichTextEditorProps) {
   const editorRef = useRef<Parameters<NonNullable<React.ComponentProps<typeof Editor>['onInit']>>[1] | null>(null)
-
   const numericHeight = parseInt(height, 10) || 300
 
   return (
     <Editor
       tinymceScriptSrc="/tinymce/tinymce.min.js"
-      onInit={(_evt, editor) => { editorRef.current = editor }}
+      licenseKey="gpl"
+      onInit={(_evt, editor) => {
+        editorRef.current = editor
+      }}
       initialValue={content}
       onEditorChange={(newContent) => onChange(newContent)}
       init={{
         height: numericHeight,
         menubar: false,
-        license_key: 'gpl',
         plugins: [
           'lists', 'link', 'image', 'code', 'table',
           'wordcount', 'autolink', 'charmap', 'searchreplace',

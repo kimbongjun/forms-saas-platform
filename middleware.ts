@@ -28,10 +28,13 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const isDashboard = request.nextUrl.pathname.startsWith('/dashboard')
+  const isProjects = request.nextUrl.pathname.startsWith('/projects')
+  const isEngagement = request.nextUrl.pathname.startsWith('/engagement')
+  const isShared = request.nextUrl.pathname.startsWith('/shared')
   const isAdminApi = request.nextUrl.pathname.startsWith('/api/admin')
   const isLogin = request.nextUrl.pathname === '/login'
 
-  if (!user && (isDashboard || isAdminApi)) {
+  if (!user && (isDashboard || isProjects || isEngagement || isShared || isAdminApi)) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
@@ -47,5 +50,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/login', '/api/admin/:path*'],
+  matcher: ['/dashboard/:path*', '/projects/:path*', '/engagement/:path*', '/shared/:path*', '/login', '/api/admin/:path*'],
 }

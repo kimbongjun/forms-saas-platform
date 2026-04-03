@@ -3,7 +3,6 @@ import Image from 'next/image'
 import type { Metadata } from 'next'
 import { createServerClient } from '@/utils/supabase/server'
 import PublicForm from '@/components/form/PublicForm'
-import SiteFooter from '@/components/common/SiteFooter'
 
 interface SlugPageProps {
   params: Promise<{ slug: string }>
@@ -114,8 +113,7 @@ export default async function SlugPage({ params }: SlugPageProps) {
           submissionMessage={project.submission_message}
           localeSettings={project.locale_settings ?? null}
         />
-      </div>
-      <SiteFooter />
+      </div>      
     </div>
   )
 }
