@@ -49,7 +49,6 @@ export default async function DashboardPage() {
       title="마케팅 프로젝트 Overview"
       description="현재 진행중인 프로젝트 관련 주요 지표를 확인할 수 있습니다."
       actions={[
-        { href: '/projects/new', label: '신규 프로젝트 생성' },
         { href: '/projects', label: '프로젝트 목록', variant: 'secondary' },
       ]}
       stats={[

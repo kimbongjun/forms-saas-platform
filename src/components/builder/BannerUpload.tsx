@@ -3,6 +3,7 @@
 // 02-FORM-BUILDER-UI.md: 상단 배너 이미지 업로드 및 미리보기 영역
 
 import { useRef } from 'react'
+import Image from 'next/image'
 import { ImageIcon, X, RefreshCw } from 'lucide-react'
 
 interface BannerUploadProps {
@@ -37,9 +38,12 @@ export default function BannerUpload({ preview, onFileChange, onRemove }: Banner
       >
         {preview ? (
           <>
-            <img
+            <Image
               src={preview}
               alt="배너 미리보기"
+              width={1600}
+              height={900}
+              unoptimized
               className="w-full rounded-2xl object-cover"
               style={{ maxHeight: '200px' }}
             />

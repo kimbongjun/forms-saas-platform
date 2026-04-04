@@ -5,6 +5,7 @@ import {
   Shield, User, RotateCcw, ChevronDown,
   Loader2, CheckCircle2, X, Search, Trash2,
 } from 'lucide-react'
+import { SkeletonBlock } from '@/components/common/LoadingSkeleton'
 
 interface UserRow {
   id: string
@@ -272,8 +273,23 @@ export default function AdminUserList() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="border-b border-gray-100 bg-gray-50 px-5 py-3">
+            <SkeletonBlock className="h-4 w-36" />
+          </div>
+          <div className="divide-y divide-gray-50">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="flex items-center gap-4 px-5 py-4">
+                <SkeletonBlock className="h-9 w-9 rounded-full" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <SkeletonBlock className="h-4 w-48" />
+                  <SkeletonBlock className="h-3 w-64" />
+                </div>
+                <SkeletonBlock className="h-9 w-28 rounded-xl" />
+                <SkeletonBlock className="h-9 w-24 rounded-xl" />
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
+import Image from 'next/image'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
@@ -94,12 +95,14 @@ function ImageSection({ field, onUpdate }: { field: FormField; onUpdate: (patch:
       </div>
       {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
       {field.content && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={field.content}
           alt="preview"
+          width={320}
+          height={160}
+          unoptimized
           className="max-h-24 rounded-lg object-cover"
-          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+          onError={(event) => { event.currentTarget.style.display = 'none' }}
         />
       )}
     </div>
@@ -336,7 +339,7 @@ export default function FieldCard({ field, allFields = [], onUpdate, onRemove }:
             <p className="text-xs font-medium text-gray-400">조건 분기 (답변 → 섹션 이동)</p>
             {options.map((opt) => (
               <div key={opt} className="flex items-center gap-2 text-xs">
-                <span className="w-28 truncate text-gray-600 shrink-0">"{opt}" 선택 시</span>
+                <span className="w-28 truncate text-gray-600 shrink-0">&quot;{opt}&quot; 선택 시</span>
                 <select
                   value={field.logic?.[opt] ?? ''}
                   onChange={(e) => {

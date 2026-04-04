@@ -12,7 +12,9 @@ export default function TabNavigation({ projectId }: TabNavigationProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [executionOpen, setExecutionOpen] = useState(false)
+  const [outputsOpen, setOutputsOpen] = useState(false)
   const executionRef = useRef<HTMLDivElement>(null)
+  const outputsRef = useRef<HTMLDivElement>(null)
 
   const baseUrl = `/projects/${projectId}`
   const isOverview = pathname === baseUrl
@@ -20,19 +22,29 @@ export default function TabNavigation({ projectId }: TabNavigationProps) {
   const isExecution = pathname.startsWith(`${baseUrl}/execution`)
   const isIssues = pathname.startsWith(`${baseUrl}/issues`)
   const isBudget = pathname.startsWith(`${baseUrl}/budget`)
+  const isOutputs = pathname.startsWith(`${baseUrl}/outputs`)
+  const isInsights = pathname.startsWith(`${baseUrl}/insights`)
+
   const showExecutionMenu = executionOpen || isExecution
+  const showOutputsMenu = outputsOpen || isOutputs
 
   const executionLinks = [
     { href: `${baseUrl}/execution/forms`, label: '폼/서베이 관리' },
     { href: `${baseUrl}/execution/tasks`, label: 'Task & WBS' },
   ]
 
-  const defaultExecutionHref = executionLinks[0].href
+  const outputsLinks = [
+    { href: `${baseUrl}/outputs/deliverables`, label: '산출물 관리' },
+    { href: `${baseUrl}/outputs/clippings`, label: '보도자료 클리핑' },
+  ]
 
   useEffect(() => {
     function handleOutsideClick(event: MouseEvent) {
       if (executionRef.current && !executionRef.current.contains(event.target as Node)) {
         setExecutionOpen(false)
+      }
+      if (outputsRef.current && !outputsRef.current.contains(event.target as Node)) {
+        setOutputsOpen(false)
       }
     }
     document.addEventListener('mousedown', handleOutsideClick)
@@ -40,12 +52,23 @@ export default function TabNavigation({ projectId }: TabNavigationProps) {
   }, [])
 
   function handleExecutionClick() {
+    setOutputsOpen(false)
     if (!executionOpen) {
       setExecutionOpen(true)
-      if (!isExecution) router.push(defaultExecutionHref)
+      if (!isExecution) router.push(executionLinks[0].href)
       return
     }
     setExecutionOpen(false)
+  }
+
+  function handleOutputsClick() {
+    setExecutionOpen(false)
+    if (!outputsOpen) {
+      setOutputsOpen(true)
+      if (!isOutputs) router.push(outputsLinks[0].href)
+      return
+    }
+    setOutputsOpen(false)
   }
 
   const tabClass = (active: boolean) =>
@@ -64,8 +87,10 @@ export default function TabNavigation({ projectId }: TabNavigationProps) {
         : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50 hover:text-gray-900',
     ].join(' ')
 
+  const activeSubMenu = showExecutionMenu ? executionLinks : showOutputsMenu ? outputsLinks : null
+
   return (
-    <div ref={executionRef} className="space-y-2">
+    <div className="space-y-2">
       <div className="flex items-center gap-1 overflow-x-auto pb-1">
         <Link href={baseUrl} className={tabClass(isOverview)}>
           개요
@@ -82,11 +107,20 @@ export default function TabNavigation({ projectId }: TabNavigationProps) {
         <Link href={`${baseUrl}/issues`} className={tabClass(isIssues)}>
           이슈 트래커
         </Link>
+        <button type="button" onClick={handleOutputsClick} className={tabClass(isOutputs)}>
+          산출물
+        </button>
+        <Link href={`${baseUrl}/insights`} className={tabClass(isInsights)}>
+          인사이트
+        </Link>
       </div>
 
-      {showExecutionMenu && (
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 p-2">         
-          {executionLinks.map((item) => {
+      {activeSubMenu && (
+        <div
+          ref={showExecutionMenu ? executionRef : outputsRef}
+          className="flex flex-wrap items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 p-2"
+        >
+          {activeSubMenu.map((item) => {
             const active = pathname.startsWith(item.href)
             return (
               <Link key={item.href} href={item.href} className={subTabClass(active)}>

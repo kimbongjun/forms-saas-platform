@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Image from 'next/image'
 import { CheckCircle2, Loader2, Globe, Star, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { FormField, LocaleSettings, Locale } from '@/types/database'
 import { resolveLocaleStrings, LOCALE_LABELS } from '@/constants/locale'
@@ -302,8 +303,14 @@ function FieldRenderer({ field, value, onChange, onToggleCheckbox, themeColor, t
     if (!field.content) return null
     return (
       <figure>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={field.content} alt={field.label} className="w-full rounded-xl object-cover" />
+        <Image
+          src={field.content}
+          alt={field.label}
+          width={1600}
+          height={900}
+          unoptimized
+          className="w-full rounded-xl object-cover"
+        />
       </figure>
     )
   }

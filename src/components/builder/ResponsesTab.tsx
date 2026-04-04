@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { BarChart2, Download } from 'lucide-react'
+import { SectionSkeleton, SkeletonBlock } from '@/components/common/LoadingSkeleton'
 import { createClient } from '@/utils/supabase/client'
 import type { FormField } from '@/types/database'
 
@@ -63,8 +64,32 @@ export default function ResponsesTab({ workspaceId, projectId, projectSlug, fiel
 
   if (loading) {
     return (
-      <main className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-gray-400">응답 데이터를 불러오는 중입니다...</p>
+      <main className="flex-1 overflow-y-auto px-8 py-6">
+        <div className="mx-auto max-w-4xl space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <SkeletonBlock className="h-4 w-28" />
+              <SkeletonBlock className="h-8 w-24" />
+            </div>
+            <SkeletonBlock className="h-9 w-28 rounded-lg" />
+          </div>
+          <SectionSkeleton titleWidth="w-40" lines={4} />
+          <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+            <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
+              <SkeletonBlock className="h-4 w-32" />
+            </div>
+            <div className="space-y-3 p-4">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="grid grid-cols-4 gap-4">
+                  <SkeletonBlock className="h-4 w-24" />
+                  <SkeletonBlock className="h-4 w-full" />
+                  <SkeletonBlock className="h-4 w-full" />
+                  <SkeletonBlock className="h-4 w-full" />
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
       </main>
     )
   }

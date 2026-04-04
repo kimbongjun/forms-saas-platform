@@ -50,8 +50,6 @@ const CATEGORY_COLORS: Record<string, string> = {
   'B2B 마케팅': 'bg-amber-100 text-amber-700',
 }
 
-const ALL_CATEGORIES = Object.keys(CATEGORY_COLORS)
-
 function formatDateShort(d: string | null) {
   if (!d) return null
   return new Intl.DateTimeFormat('ko-KR', { year: '2-digit', month: 'numeric', day: 'numeric' }).format(new Date(d))
@@ -73,13 +71,24 @@ export default function ProjectList({ projects }: ProjectListProps) {
   const [filterCountry, setFilterCountry] = useState('')
   const [filterMemberName, setFilterMemberName] = useState('')
 
+  const categoryOptions = useMemo(
+    () => Array.from(new Set(projects.map((project) => project.category).filter(Boolean) as string[])).sort(),
+    [projects]
+  )
+
   const filtered = useMemo(() => {
     return projects.filter((p) => {
       if (filterTitle && !p.title.toLowerCase().includes(filterTitle.toLowerCase())) return false
       if (filterCategory && p.category !== filterCategory) return false
       if (filterCountry && p.country !== filterCountry) return false
-      if (filterDateFrom && p.end_date && p.end_date < filterDateFrom) return false
-      if (filterDateTo && p.start_date && p.start_date > filterDateTo) return false
+      if (filterDateFrom) {
+        if (!p.start_date && !p.end_date) return false
+        if (p.end_date && p.end_date < filterDateFrom) return false
+      }
+      if (filterDateTo) {
+        if (!p.start_date && !p.end_date) return false
+        if (p.start_date && p.start_date > filterDateTo) return false
+      }
       if (filterMemberName) {
         const q = filterMemberName.toLowerCase()
         const match = p.memberNames.some((n) => n.toLowerCase().includes(q))
@@ -101,6 +110,8 @@ export default function ProjectList({ projects }: ProjectListProps) {
   }
 
   const allSelected = filtered.length > 0 && filtered.every((p) => selected.has(p.id))
+  const visibleSelectedIds = filtered.filter((project) => selected.has(project.id)).map((project) => project.id)
+  const visibleSelectedCount = visibleSelectedIds.length
 
   function toggleOne(id: string) {
     setSelected((prev) => {
@@ -152,7 +163,7 @@ export default function ProjectList({ projects }: ProjectListProps) {
   }
 
   async function handleBulkDelete() {
-    await deleteProjects(Array.from(selected))
+    await deleteProjects(visibleSelectedIds)
     setConfirmBulk(false)
   }
 
@@ -228,7 +239,7 @@ export default function ProjectList({ projects }: ProjectListProps) {
             className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-700 focus:border-gray-400 focus:outline-none"
           >
             <option value="">카테고리 전체</option>
-            {ALL_CATEGORIES.map((c) => (
+            {categoryOptions.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
@@ -283,8 +294,8 @@ export default function ProjectList({ projects }: ProjectListProps) {
         <label className="flex cursor-pointer items-center gap-2.5 text-sm text-gray-600 select-none">
           <input type="checkbox" checked={allSelected} onChange={toggleAll} className="h-4 w-4 rounded accent-gray-900" />
           전체 선택
-          {selected.size > 0 && (
-            <span className="ml-1 rounded-full bg-gray-900 px-2 py-0.5 text-xs text-white">{selected.size}</span>
+          {visibleSelectedCount > 0 && (
+            <span className="ml-1 rounded-full bg-gray-900 px-2 py-0.5 text-xs text-white">{visibleSelectedCount}</span>
           )}
         </label>
 
@@ -292,10 +303,10 @@ export default function ProjectList({ projects }: ProjectListProps) {
           {hasFilter ? `${filtered.length} / ${projects.length}개` : `${projects.length}개`}
         </span>
 
-        {selected.size > 0 && (
+        {visibleSelectedCount > 0 && (
           confirmBulk ? (
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-gray-500">{selected.size}개를 삭제할까요?</span>
+              <span className="text-gray-500">{visibleSelectedCount}개를 삭제할까요?</span>
               <button
                 type="button"
                 onClick={handleBulkDelete}
@@ -316,7 +327,7 @@ export default function ProjectList({ projects }: ProjectListProps) {
               className="flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
             >
               <Trash2 className="h-3.5 w-3.5" />
-              {selected.size}개 삭제
+              {visibleSelectedCount}개 삭제
             </button>
           )
         )}

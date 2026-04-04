@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
+import Image from 'next/image'
 import { ChevronDown, Copy, Globe, Loader2, Upload, X } from 'lucide-react'
 import { PRESET_COLORS, TEMPLATE_VARS, INPUT_CLASS } from '@/constants/builder'
 import { ALL_LOCALES, DEFAULT_LOCALE_STRINGS, LOCALE_LABELS } from '@/constants/locale'
@@ -166,8 +167,14 @@ export default function SettingsPanel({ settings, slug }: SettingsPanelProps) {
           <Section title="썸네일">
             {settings.thumbnailUrl ? (
               <div className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={settings.thumbnailUrl} alt="thumbnail preview" className="max-h-40 w-full rounded-xl object-cover" />
+                <Image
+                  src={settings.thumbnailUrl}
+                  alt="thumbnail preview"
+                  width={1200}
+                  height={630}
+                  unoptimized
+                  className="max-h-40 w-full rounded-xl object-cover"
+                />
                 <button
                   type="button"
                   onClick={() => settings.setThumbnailUrl('')}

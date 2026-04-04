@@ -61,7 +61,6 @@ export default async function ProjectsPage() {
       eyebrow="Projects"
       title="프로젝트 목록"
       actions={[
-        { href: '/projects/new', label: '새 프로젝트' },
         { href: '/dashboard', label: '대시보드', variant: 'secondary' },
       ]}
       stats={[

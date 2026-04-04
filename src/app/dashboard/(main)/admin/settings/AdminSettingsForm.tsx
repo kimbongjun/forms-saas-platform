@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useRef } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { ArrowLeft, Save, Loader2, CheckCircle2, Upload, X } from 'lucide-react'
@@ -209,8 +210,14 @@ export default function AdminSettingsForm({ initialSettings }: Props) {
                 />
                 {settings.og_image_url ? (
                   <div className="flex items-center gap-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={settings.og_image_url} alt="OG preview" className="h-16 w-28 rounded-lg border border-gray-200 object-cover" />
+                    <Image
+                      src={settings.og_image_url}
+                      alt="OG preview"
+                      width={112}
+                      height={64}
+                      unoptimized
+                      className="h-16 w-28 rounded-lg border border-gray-200 object-cover"
+                    />
                     <div className="flex flex-col gap-1.5">
                       <button type="button" onClick={() => ogInputRef.current?.click()} disabled={uploadingOg}
                         className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors">
@@ -252,8 +259,14 @@ export default function AdminSettingsForm({ initialSettings }: Props) {
                 />
                 {settings.favicon_url ? (
                   <div className="flex items-center gap-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={settings.favicon_url} alt="favicon preview" className="h-10 w-10 rounded-lg border border-gray-200 object-contain p-1" />
+                    <Image
+                      src={settings.favicon_url}
+                      alt="favicon preview"
+                      width={40}
+                      height={40}
+                      unoptimized
+                      className="h-10 w-10 rounded-lg border border-gray-200 object-contain p-1"
+                    />
                     <div className="flex flex-col gap-1.5">
                       <button type="button" onClick={() => faviconInputRef.current?.click()} disabled={uploadingFavicon}
                         className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors">

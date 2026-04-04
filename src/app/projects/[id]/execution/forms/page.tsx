@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createServerClient } from '@/utils/supabase/server'
 import { Eye, FileText, MessageSquareText, Plus, SquarePen } from 'lucide-react'
+import DeleteFormButton from '@/app/projects/[id]/execution/forms/_components/DeleteFormButton'
 
 interface FormsPageProps {
   params: Promise<{ id: string }>
@@ -138,6 +139,11 @@ export default async function FormsPage({ params }: FormsPageProps) {
                   <SquarePen className="h-3.5 w-3.5" />
                   편집
                 </Link>
+                <DeleteFormButton
+                  formId={form.id}
+                  title={form.title}
+                  responseCount={submissionCounts[form.id] ?? 0}
+                />
               </div>
             </div>
           ))}
