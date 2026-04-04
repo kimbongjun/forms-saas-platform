@@ -1,8 +1,9 @@
-﻿import type { Metadata } from 'next'
+﻿export const dynamic = 'force-dynamic'
+
+import type { Metadata } from 'next'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import PublicForm from '@/components/form/PublicForm'
-import { getPublicFormFields, getPublicProjectBySlug } from '@/utils/public-content'
 import { createPublicClient } from '@/utils/supabase/public'
 
 interface SlugPageProps {
@@ -13,7 +14,8 @@ export async function generateMetadata({ params }: SlugPageProps): Promise<Metad
   const { slug } = await params
 
   try {
-    const data = await getPublicProjectBySlug(slug)
+    const supabase = createPublicClient()
+    const { data } = await supabase.from('projects').select('*').eq('slug', slug).single()
     if (!data) return {}
 
     const title = data.seo_title || data.title
@@ -35,7 +37,11 @@ export async function generateMetadata({ params }: SlugPageProps): Promise<Metad
 
 export default async function SlugPage({ params }: SlugPageProps) {
   const { slug } = await params
-  const project = await getPublicProjectBySlug(slug)
+  const supabase = createPublicClient()
+
+  const { data: project, error: projectError } = await supabase.from('projects').select('*').eq('slug', slug).single()
+
+  console.log(`[슬러그 페이지] slug=${slug}, project=${project?.id ?? 'null'}, error=${projectError?.message ?? 'none'}`)
 
   if (!project) notFound()
 
@@ -58,7 +64,6 @@ export default async function SlugPage({ params }: SlugPageProps) {
   }
 
   if (project.max_submissions) {
-    const supabase = createPublicClient()
     const { count } = await supabase
       .from('submissions')
       .select('*', { count: 'exact', head: true })
@@ -74,7 +79,13 @@ export default async function SlugPage({ params }: SlugPageProps) {
     }
   }
 
-  const fields = await getPublicFormFields(project.id)
+  const { data: fields, error: fieldsError } = await supabase
+    .from('form_fields')
+    .select('*')
+    .eq('project_id', project.id)
+    .order('order_index', { ascending: true })
+
+  console.log(`[슬러그 페이지] 필드 조회: ${fields?.length ?? 0}개, error=${fieldsError?.message ?? 'none'}`, fields?.map(f => `${f.type}:${f.label}`))
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
@@ -88,7 +99,7 @@ export default async function SlugPage({ params }: SlugPageProps) {
         <h1 className="mb-8 text-2xl font-bold text-gray-900">{project.title}</h1>
         <PublicForm
           projectId={project.id}
-          fields={fields}
+          fields={fields ?? []}
           themeColor={project.theme_color ?? '#111827'}
           submissionMessage={project.submission_message}
           localeSettings={project.locale_settings ?? null}

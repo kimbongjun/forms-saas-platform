@@ -1,5 +1,4 @@
-﻿import { unstable_cache } from 'next/cache'
-import { createClient } from '@supabase/supabase-js'
+﻿import { createClient } from '@supabase/supabase-js'
 import { APP_TITLE } from '@/constants/branding'
 
 export interface GlobalSiteSettings {
@@ -14,8 +13,8 @@ export interface GlobalSiteSettings {
   service_agreement?: string
 }
 
-const getCachedGlobalSiteSettings = unstable_cache(
-  async (): Promise<GlobalSiteSettings> => {
+export async function getGlobalSiteSettings(): Promise<GlobalSiteSettings> {
+  try {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
@@ -32,14 +31,6 @@ const getCachedGlobalSiteSettings = unstable_cache(
       .single()
 
     return (data?.settings as GlobalSiteSettings | null) ?? {}
-  },
-  ['global-site-settings'],
-  { revalidate: 300, tags: ['site-settings'] }
-)
-
-export async function getGlobalSiteSettings() {
-  try {
-    return await getCachedGlobalSiteSettings()
   } catch {
     return {}
   }
@@ -55,6 +46,58 @@ export function getResolvedSiteDescription(settings: GlobalSiteSettings) {
 
 export function getResolvedPrimaryColor(settings: GlobalSiteSettings) {
   return settings.primary_color?.trim() || '#111827'
+}
+
+function normalizeHex(hex: string) {
+  const trimmed = hex.trim()
+  if (!/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(trimmed)) {
+    return '#111827'
+  }
+
+  if (trimmed.length === 4) {
+    return `#${trimmed[1]}${trimmed[1]}${trimmed[2]}${trimmed[2]}${trimmed[3]}${trimmed[3]}`
+  }
+
+  return trimmed
+}
+
+function hexToRgb(hex: string) {
+  const normalized = normalizeHex(hex)
+  return {
+    r: parseInt(normalized.slice(1, 3), 16),
+    g: parseInt(normalized.slice(3, 5), 16),
+    b: parseInt(normalized.slice(5, 7), 16),
+  }
+}
+
+function clampChannel(value: number) {
+  return Math.max(0, Math.min(255, Math.round(value)))
+}
+
+function rgbToHex(r: number, g: number, b: number) {
+  return `#${[r, g, b].map((value) => clampChannel(value).toString(16).padStart(2, '0')).join('')}`
+}
+
+function mixWith(hex: string, target: { r: number; g: number; b: number }, ratio: number) {
+  const source = hexToRgb(hex)
+  return rgbToHex(
+    source.r + (target.r - source.r) * ratio,
+    source.g + (target.g - source.g) * ratio,
+    source.b + (target.b - source.b) * ratio
+  )
+}
+
+export function getResolvedPrimaryPalette(settings: GlobalSiteSettings) {
+  const primary = getResolvedPrimaryColor(settings)
+
+  return {
+    primary,
+    primaryHover: mixWith(primary, { r: 0, g: 0, b: 0 }, 0.14),
+    primaryActive: mixWith(primary, { r: 0, g: 0, b: 0 }, 0.22),
+    primarySoft: mixWith(primary, { r: 255, g: 255, b: 255 }, 0.9),
+    primarySoftBorder: mixWith(primary, { r: 255, g: 255, b: 255 }, 0.72),
+    primaryRing: mixWith(primary, { r: 255, g: 255, b: 255 }, 0.5),
+  }
 }
 
 export function getResolvedFavicon(settings: GlobalSiteSettings) {

@@ -6,5 +6,5 @@ interface LegacyResponsesStatsPageProps {
 
 export default async function LegacyResponsesStatsPage({ params }: LegacyResponsesStatsPageProps) {
   const { id } = await params
-  redirect(`/projects/${id}/execution/live-responses/stats`)
+  redirect(`/projects/${id}/execution/forms`)
 }

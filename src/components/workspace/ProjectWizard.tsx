@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ArrowRight, Check, Loader2, Plus, Trash2, Users } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Loader2, MapPin, Pencil, Plus, Trash2, Users } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
+import { COUNTRY_OPTIONS } from '@/constants/countries'
+import { formatNumberWithCommas, parseNumberInput } from '@/utils/money'
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
 
@@ -33,14 +35,55 @@ interface WizardMember {
   notify: boolean
 }
 
+interface ProjectWizardProps {
+  mode?: 'create' | 'edit'
+  projectId?: string
+  initialData?: {
+    category: string | null
+    title: string
+    startDate: string | null
+    endDate: string | null
+    budget: number | null
+    country: string | null
+    venueName: string | null
+    venueMapUrl: string | null
+    members: Array<{
+      id?: string
+      name: string | null
+      email: string | null
+      role: string | null
+      department: string | null
+      notify: boolean | null
+    }>
+  }
+}
+
 // ── 유틸 ──────────────────────────────────────────────────────────────────────
 
 function randomSlug() {
   return `proj-${Math.random().toString(36).slice(2, 8)}`
 }
 
-function newMember(): WizardMember {
-  return { _key: crypto.randomUUID(), name: '', email: '', role: 'member', department: '', notify: true }
+function createMember(key: string): WizardMember {
+  return { _key: key, name: '', email: '', role: 'member', department: '', notify: true }
+}
+
+/** Google Maps "지도 퍼가기" iframe / URL → embed URL 변환 */
+function parseMapUrl(raw: string): string {
+  const trimmed = raw.trim()
+  // <iframe src="..."> 형식
+  const iframeSrc = trimmed.match(/src="([^"]+)"/)?.[1]
+  if (iframeSrc) return iframeSrc
+  // 이미 embed URL
+  if (trimmed.includes('output=embed') || trimmed.includes('maps/embed')) return trimmed
+  // 일반 URL / 주소 텍스트 → q 파라미터로 변환
+  try {
+    const url = new URL(trimmed)
+    const q = url.searchParams.get('q') ?? trimmed
+    return `https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=16&output=embed`
+  } catch {
+    return `https://maps.google.com/maps?q=${encodeURIComponent(trimmed)}&z=16&output=embed`
+  }
 }
 
 // ── 입력 클래스 ───────────────────────────────────────────────────────────────
@@ -50,18 +93,50 @@ const inputCls =
 
 // ── 컴포넌트 ──────────────────────────────────────────────────────────────────
 
-export default function ProjectWizard() {
+export default function ProjectWizard({
+  mode = 'create',
+  projectId,
+  initialData,
+}: ProjectWizardProps) {
   const router = useRouter()
+  const initialMembers =
+    initialData?.members.length
+      ? initialData.members.map((member, index) => ({
+          _key: member.id ?? `member-${index + 1}`,
+          name: member.name ?? '',
+          email: member.email ?? '',
+          role: member.role ?? 'member',
+          department: member.department ?? '',
+          notify: member.notify ?? true,
+        }))
+      : [createMember('member-1')]
+  const memberIdRef = useRef(initialMembers.length)
 
   const [step, setStep] = useState<1 | 2 | 3>(1)
-  const [category, setCategory] = useState('')
-  const [title, setTitle] = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
-  const [budget, setBudget] = useState('')
-  const [members, setMembers] = useState<WizardMember[]>([newMember()])
+  const [category, setCategory] = useState(initialData?.category ?? '')
+  const [title, setTitle] = useState(initialData?.title ?? '')
+  const [startDate, setStartDate] = useState(initialData?.startDate ?? '')
+  const [endDate, setEndDate] = useState(initialData?.endDate ?? '')
+  const [budget, setBudget] = useState(
+    initialData?.budget != null ? formatNumberWithCommas(initialData.budget) : ''
+  )
+  const [country, setCountry] = useState(initialData?.country ?? '')
+  const [venueName, setVenueName] = useState(initialData?.venueName ?? '')
+  const [venueMapInput, setVenueMapInput] = useState(initialData?.venueMapUrl ?? '')
+  const [venueMapPreview, setVenueMapPreview] = useState(initialData?.venueMapUrl ?? '')
+  const [members, setMembers] = useState<WizardMember[]>(initialMembers)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // ── 지도 파싱 ──────────────────────────────────────────────────────────────
+
+  function handleVenueMapBlur() {
+    if (!venueMapInput.trim()) {
+      setVenueMapPreview('')
+      return
+    }
+    setVenueMapPreview(parseMapUrl(venueMapInput))
+  }
 
   // ── 멤버 핸들러 ────────────────────────────────────────────────────────────
 
@@ -70,7 +145,8 @@ export default function ProjectWizard() {
   }
 
   function addMember() {
-    setMembers((prev) => [...prev, newMember()])
+    memberIdRef.current += 1
+    setMembers((prev) => [...prev, createMember(`member-${memberIdRef.current}`)])
   }
 
   function removeMember(key: string) {
@@ -84,42 +160,71 @@ export default function ProjectWizard() {
     setError('')
     try {
       const supabase = createClient()
+      const resolvedVenueMapUrl = venueMapInput.trim() ? parseMapUrl(venueMapInput) : null
+      const payload = {
+        title: title.trim(),
+        category,
+        start_date: startDate || null,
+        end_date: endDate || null,
+        budget: budget ? parseNumberInput(budget) : null,
+        country: country || null,
+        venue_name: venueName.trim() || null,
+        venue_map_url: resolvedVenueMapUrl,
+      }
 
-      const { data: project, error: projectErr } = await supabase
-        .from('projects')
-        .insert({
-          title: title.trim(),
-          slug: randomSlug(),
-          category,
-          start_date: startDate || null,
-          end_date: endDate || null,
-          budget: budget ? Number(budget) : null,
-        })
-        .select('id')
-        .single()
+      let targetProjectId = projectId
 
-      if (projectErr) throw projectErr
+      if (mode === 'edit') {
+        if (!projectId) throw new Error('편집할 프로젝트 정보가 없습니다.')
+        const { error: projectErr } = await supabase
+          .from('projects')
+          .update(payload)
+          .eq('id', projectId)
+
+        if (projectErr) throw projectErr
+      } else {
+        const { data: project, error: projectErr } = await supabase
+          .from('projects')
+          .insert({
+            ...payload,
+            slug: randomSlug(),
+          })
+          .select('id')
+          .single()
+
+        if (projectErr) throw projectErr
+        targetProjectId = project.id
+      }
+
+      if (!targetProjectId) throw new Error('프로젝트를 확인할 수 없습니다.')
+      setVenueMapPreview(resolvedVenueMapUrl ?? '')
 
       const validMembers = members.filter((m) => m.name.trim())
+      const { error: deleteMembersErr } = await supabase
+        .from('project_members')
+        .delete()
+        .eq('project_id', targetProjectId)
+
+      if (deleteMembersErr) throw deleteMembersErr
+
       if (validMembers.length > 0) {
-        const { error: membersErr } = await supabase
-          .from('project_members')
-          .insert(
-            validMembers.map((m) => ({
-              project_id: project.id,
-              name: m.name.trim(),
-              email: m.email.trim() || null,
-              role: m.role,
-              department: m.department.trim() || null,
-              notify: m.notify,
-            }))
-          )
+        const { error: membersErr } = await supabase.from('project_members').insert(
+          validMembers.map((m) => ({
+            project_id: targetProjectId,
+            name: m.name.trim(),
+            email: m.email.trim() || null,
+            role: m.role,
+            department: m.department.trim() || null,
+            notify: m.notify,
+          }))
+        )
         if (membersErr) throw membersErr
       }
 
-      router.push(`/projects/${project.id}`)
+      router.push(`/projects/${targetProjectId}`)
+      router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '프로젝트 생성에 실패했습니다.')
+      setError(err instanceof Error ? err.message : `프로젝트 ${mode === 'edit' ? '수정' : '생성'}에 실패했습니다.`)
       setLoading(false)
     }
   }
@@ -162,8 +267,12 @@ export default function ProjectWizard() {
         <section className="rounded-[28px] border border-gray-200 bg-white p-8 shadow-sm space-y-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">Step 1</p>
-            <h2 className="mt-2 text-2xl font-semibold text-gray-900">카테고리 선정</h2>
-            <p className="mt-2 text-sm text-gray-500">프로젝트의 마케팅 유형을 선택하세요.</p>
+            <h2 className="mt-2 text-2xl font-semibold text-gray-900">
+              {mode === 'edit' ? '프로젝트 정보 편집' : '카테고리 선정'}
+            </h2>
+            <p className="mt-2 text-sm text-gray-500">
+              프로젝트의 마케팅 유형을 선택하세요.
+            </p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -211,6 +320,7 @@ export default function ProjectWizard() {
           </div>
 
           <div className="space-y-4">
+            {/* 프로젝트명 */}
             <div>
               <label className="mb-1.5 block text-xs font-medium text-gray-500">프로젝트명 *</label>
               <input
@@ -223,6 +333,7 @@ export default function ProjectWizard() {
               />
             </div>
 
+            {/* 기간 */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-gray-500">시작일</label>
@@ -245,20 +356,86 @@ export default function ProjectWizard() {
               </div>
             </div>
 
+            {/* 예산 */}
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-gray-500">초기 예산 (원)</label>
+              <label className="mb-1.5 block text-xs font-medium text-gray-500">초기 예산</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={budget}
-                onChange={(e) => setBudget(e.target.value)}
-                placeholder="0"
-                min={0}
+                onChange={(e) => setBudget(formatNumberWithCommas(parseNumberInput(e.target.value)))}
+                placeholder="예) 1,000"
                 className={inputCls}
               />
               {budget && (
                 <p className="mt-1 text-xs text-gray-400">
-                  {Number(budget).toLocaleString('ko-KR')}원
+                  입력한 금액이 프로젝트 기본 예산으로 저장됩니다.
                 </p>
+              )}
+            </div>
+
+            {/* 국가 */}
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-gray-500">국가</label>
+              <select
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                className={inputCls}
+              >
+                <option value="">국가를 선택하세요</option>
+                {COUNTRY_OPTIONS.map((option) => (
+                  <option key={option.code} value={option.code}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 행사장 */}
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-gray-500">행사장명</label>
+                <input
+                  type="text"
+                  value={venueName}
+                  onChange={(e) => setVenueName(e.target.value)}
+                  placeholder="예) 코엑스 그랜드볼룸"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-gray-500">행사장 지도</label>
+                <textarea
+                  value={venueMapInput}
+                  onChange={(e) => setVenueMapInput(e.target.value)}
+                  onBlur={handleVenueMapBlur}
+                  placeholder={`Google Maps 주소, URL, 또는 <iframe> 코드를 붙여넣으세요.\n예) 서울 강남구 테헤란로 152`}
+                  rows={3}
+                  className={`${inputCls} resize-none`}
+                />
+                <p className="mt-1 text-xs text-gray-400">
+                  Google Maps → 공유 → 지도 퍼가기 → &lt;iframe&gt; 코드 붙여넣기 가능
+                </p>
+              </div>
+
+              {/* 지도 미리보기 */}
+              {venueMapPreview && (
+                <div className="overflow-hidden rounded-2xl border border-gray-200">
+                  <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-2">
+                    <MapPin className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="text-xs text-gray-500">지도 미리보기</span>
+                  </div>
+                  <div className="relative w-full" style={{ paddingBottom: '45%' }}>
+                    <iframe
+                      src={venueMapPreview}
+                      className="absolute inset-0 h-full w-full"
+                      style={{ border: 0 }}
+                      allowFullScreen
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                    />
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -385,9 +562,12 @@ export default function ProjectWizard() {
               className="flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
             >
               {loading ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> 생성 중...</>
+                <><Loader2 className="h-4 w-4 animate-spin" /> {mode === 'edit' ? '저장 중...' : '생성 중...'}</>
               ) : (
-                <><Check className="h-4 w-4" /> 프로젝트 생성</>
+                <>
+                  {mode === 'edit' ? <Pencil className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+                  {mode === 'edit' ? '프로젝트 저장' : '프로젝트 생성'}
+                </>
               )}
             </button>
           </div>

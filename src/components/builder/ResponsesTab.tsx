@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { BarChart2, Download, ExternalLink } from 'lucide-react'
+import { BarChart2, Download } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import type { FormField } from '@/types/database'
 
@@ -17,12 +17,13 @@ interface Submission {
 }
 
 interface ResponsesTabProps {
+  workspaceId: string
   projectId: string
   projectSlug: string
   fields: FormField[]
 }
 
-export default function ResponsesTab({ projectId, projectSlug, fields }: ResponsesTabProps) {
+export default function ResponsesTab({ workspaceId, projectId, projectSlug, fields }: ResponsesTabProps) {
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -78,25 +79,15 @@ export default function ResponsesTab({ projectId, projectSlug, fields }: Respons
               {total >= LOAD_LIMIT && <span className="ml-1 text-xs text-gray-400">(최근 {LOAD_LIMIT}건 기준)</span>}
             </p>
           </div>
-
-          <div className="flex items-center gap-2">
-            {total > 0 && (
-              <Link
-                href={`/projects/${projectId}/execution/live-responses/export`}
-                className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
-              >
-                <Download className="h-3.5 w-3.5" />
-                CSV 내보내기
-              </Link>
-            )}
-            <Link
-              href={`/projects/${projectId}/execution/live-responses`}
-              className="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-gray-700"
+          {total > 0 && (
+            <a
+              href={`/projects/${workspaceId}/execution/forms/${projectId}/export`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
-              <ExternalLink className="h-3.5 w-3.5" />
-              전체 응답 보기
-            </Link>
-          </div>
+              <Download className="h-3.5 w-3.5" />
+              CSV 내보내기
+            </a>
+          )}
         </div>
 
         {total === 0 ? (
@@ -201,13 +192,9 @@ export default function ResponsesTab({ projectId, projectSlug, fields }: Respons
                     </table>
                   </div>
                 </div>
-
                 {total > 10 && (
                   <p className="mt-2 text-center text-xs text-gray-400">
-                    + {total - 10}건이 더 있습니다.{' '}
-                    <Link href={`/projects/${projectId}/execution/live-responses`} className="text-blue-500 hover:underline">
-                      전체 보기
-                    </Link>
+                    + {total - 10}건의 추가 응답은 이 폼의 신청 현황 탭에서 계속 확인할 수 있습니다.
                   </p>
                 )}
               </section>

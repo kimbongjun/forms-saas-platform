@@ -1,5 +1,4 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
-import { revalidateTag } from 'next/cache'
 import { createServerClient, getUserRole } from '@/utils/supabase/server'
 
 async function requireAdmin() {
@@ -46,7 +45,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 })
 
-    revalidateTag('announcements', 'max')
     return NextResponse.json({ ok: true })
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : '서버 오류' }, { status: 500 })
@@ -62,7 +60,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     const { error: dbErr } = await supabase!.from('announcements').delete().eq('id', id)
     if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 })
 
-    revalidateTag('announcements', 'max')
     return NextResponse.json({ ok: true })
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : '서버 오류' }, { status: 500 })

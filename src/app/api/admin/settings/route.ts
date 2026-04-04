@@ -1,5 +1,4 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
-import { revalidateTag } from 'next/cache'
 import { createServerClient, getUserRole } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 
@@ -37,7 +36,6 @@ export async function PUT(req: NextRequest) {
 
     if (error) throw error
 
-    revalidateTag('site-settings', 'max')
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error('[/api/admin/settings] error:', err)

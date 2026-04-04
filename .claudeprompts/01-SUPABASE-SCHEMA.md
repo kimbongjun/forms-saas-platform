@@ -102,6 +102,18 @@ CREATE POLICY anon_select_submissions ON submissions FOR SELECT TO anon USING (t
 - 사이트 에셋 경로: `site-assets/og-image-{uuid}.{ext}` / `site-assets/favicon-{uuid}.{ext}` → `uploadSiteAsset(supabase, file, type)`
 - 네 함수 모두 `src/utils/supabase/storage.ts` 에 정의, Public URL 반환
 
+### profiles
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| id | uuid PK | auth.users.id 와 동일 |
+| role | text | 'editor' \| 'administrator', DEFAULT 'editor' |
+
+### site_settings
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| id | int PK | 항상 1 (단일 행) |
+| settings | jsonb | GlobalSiteSettings (site_title, description, og_image_url, favicon_url, footer_text, privacy_policy, terms_of_service, service_agreement 등) |
+
 ### project_members
 | 컬럼 | 타입 | 비고 |
 |---|---|---|

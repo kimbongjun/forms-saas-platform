@@ -1,9 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useState, useRef, useEffect } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 
 interface TabNavigationProps {
   projectId: string
@@ -11,24 +10,43 @@ interface TabNavigationProps {
 
 export default function TabNavigation({ projectId }: TabNavigationProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const [executionOpen, setExecutionOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const executionRef = useRef<HTMLDivElement>(null)
 
   const baseUrl = `/projects/${projectId}`
   const isOverview = pathname === baseUrl
   const isSchedule = pathname.startsWith(`${baseUrl}/schedule`)
   const isExecution = pathname.startsWith(`${baseUrl}/execution`)
   const isIssues = pathname.startsWith(`${baseUrl}/issues`)
+  const isBudget = pathname.startsWith(`${baseUrl}/budget`)
+  const showExecutionMenu = executionOpen || isExecution
+
+  const executionLinks = [
+    { href: `${baseUrl}/execution/forms`, label: '폼/서베이 관리' },
+    { href: `${baseUrl}/execution/tasks`, label: 'Task & WBS' },
+  ]
+
+  const defaultExecutionHref = executionLinks[0].href
 
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+    function handleOutsideClick(event: MouseEvent) {
+      if (executionRef.current && !executionRef.current.contains(event.target as Node)) {
         setExecutionOpen(false)
       }
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
   }, [])
+
+  function handleExecutionClick() {
+    if (!executionOpen) {
+      setExecutionOpen(true)
+      if (!isExecution) router.push(defaultExecutionHref)
+      return
+    }
+    setExecutionOpen(false)
+  }
 
   const tabClass = (active: boolean) =>
     [
@@ -38,61 +56,46 @@ export default function TabNavigation({ projectId }: TabNavigationProps) {
         : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100',
     ].join(' ')
 
-  return (
-    <div className="flex items-center gap-1 overflow-x-auto">
-      <Link href={baseUrl} className={tabClass(isOverview)}>
-        개요
-      </Link>
-      <Link href={`${baseUrl}/schedule`} className={tabClass(isSchedule)}>
-        일정
-      </Link>
+  const subTabClass = (active: boolean) =>
+    [
+      'inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap',
+      active
+        ? 'bg-gray-900 text-white'
+        : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50 hover:text-gray-900',
+    ].join(' ')
 
-      <div className="relative" ref={dropdownRef}>
-        <button
-          onClick={() => setExecutionOpen(!executionOpen)}
-          className={[
-            tabClass(isExecution),
-            'flex items-center gap-1',
-          ].join(' ')}
-        >
-          상세 실행
-          <ChevronDown
-            className={[
-              'h-3.5 w-3.5 transition-transform',
-              executionOpen ? 'rotate-180' : '',
-            ].join(' ')}
-          />
+  return (
+    <div ref={executionRef} className="space-y-2">
+      <div className="flex items-center gap-1 overflow-x-auto pb-1">
+        <Link href={baseUrl} className={tabClass(isOverview)}>
+          개요
+        </Link>
+        <Link href={`${baseUrl}/schedule`} className={tabClass(isSchedule)}>
+          일정
+        </Link>
+        <Link href={`${baseUrl}/budget`} className={tabClass(isBudget)}>
+          예산
+        </Link>
+        <button type="button" onClick={handleExecutionClick} className={tabClass(isExecution)}>
+          운영
         </button>
-        {executionOpen && (
-          <div className="absolute left-0 top-full z-50 mt-1 min-w-[176px] rounded-2xl border border-gray-200 bg-white p-1.5 shadow-lg">
-            <p className="px-3 pb-1.5 pt-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
-              상세 실행
-            </p>
-            <span className="flex cursor-not-allowed items-center justify-between rounded-xl px-3 py-2 text-sm text-gray-300">
-              산출물 관리
-              <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs text-gray-400">
-                준비중
-              </span>
-            </span>
-            <Link
-              href={`${baseUrl}/execution/forms`}
-              onClick={() => setExecutionOpen(false)}
-              className={[
-                'flex items-center rounded-xl px-3 py-2 text-sm transition-colors',
-                pathname.startsWith(`${baseUrl}/execution`)
-                  ? 'bg-gray-900 font-semibold text-white'
-                  : 'text-gray-700 hover:bg-gray-50',
-              ].join(' ')}
-            >
-              폼/서베이 관리
-            </Link>
-          </div>
-        )}
+        <Link href={`${baseUrl}/issues`} className={tabClass(isIssues)}>
+          이슈 트래커
+        </Link>
       </div>
 
-      <Link href={`${baseUrl}/issues`} className={tabClass(isIssues)}>
-        이슈 트래커
-      </Link>
+      {showExecutionMenu && (
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 p-2">         
+          {executionLinks.map((item) => {
+            const active = pathname.startsWith(item.href)
+            return (
+              <Link key={item.href} href={item.href} className={subTabClass(active)}>
+                {item.label}
+              </Link>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

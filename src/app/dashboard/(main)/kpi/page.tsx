@@ -4,16 +4,35 @@ import WorkspacePage from '@/components/workspace/WorkspacePage'
 export default async function DashboardKpiPage() {
   const supabase = await createServerClient()
 
+  const { data: rootProjects } = await supabase
+    .from('projects')
+    .select('id')
+    .is('workspace_project_id', null)
+
+  const rootProjectIds = (rootProjects ?? []).map((project) => project.id)
+  const { data: formProjects } = rootProjectIds.length > 0
+    ? await supabase.from('projects').select('id').in('workspace_project_id', rootProjectIds)
+    : { data: [] as { id: string }[] }
+
+  const metricProjectIds = [...new Set([
+    ...rootProjectIds,
+    ...(formProjects ?? []).map((project) => project.id),
+  ])]
+
   const [
     { count: totalProjects },
     { count: publishedProjects },
     { count: totalFields },
     { count: totalSubmissions },
   ] = await Promise.all([
-    supabase.from('projects').select('*', { count: 'exact', head: true }),
-    supabase.from('projects').select('*', { count: 'exact', head: true }).eq('is_published', true),
-    supabase.from('form_fields').select('*', { count: 'exact', head: true }),
-    supabase.from('submissions').select('*', { count: 'exact', head: true }),
+    supabase.from('projects').select('*', { count: 'exact', head: true }).is('workspace_project_id', null),
+    supabase.from('projects').select('*', { count: 'exact', head: true }).is('workspace_project_id', null).eq('is_published', true),
+    metricProjectIds.length > 0
+      ? supabase.from('form_fields').select('*', { count: 'exact', head: true }).in('project_id', metricProjectIds)
+      : Promise.resolve({ count: 0 }),
+    metricProjectIds.length > 0
+      ? supabase.from('submissions').select('*', { count: 'exact', head: true }).in('project_id', metricProjectIds)
+      : Promise.resolve({ count: 0 }),
   ])
 
   const projectCount = totalProjects ?? 0

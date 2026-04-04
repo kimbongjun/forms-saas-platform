@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { revalidateTag } from 'next/cache'
 import { createServerClient } from '@/utils/supabase/server'
 import type { FormField, LocaleSettings } from '@/types/database'
 
@@ -68,7 +67,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       seo_title: body.seoTitle?.trim() || null,
       seo_description: body.seoDescription?.trim() || null,
       seo_og_image: body.seoOgImage?.trim() || null,
-      updated_at: new Date().toISOString(),
     }
 
     const { error: updateError } = await supabase
@@ -81,12 +79,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: `프로젝트 수정 실패: ${updateError.message}` }, { status: 500 })
     }
 
-    const { error: deleteError } = await supabase.from('form_fields').delete().eq('project_id', id)
+    const { data: deleteData, error: deleteError } = await supabase.from('form_fields').delete().eq('project_id', id).select('id')
     if (deleteError) {
+      console.error('[PUT /api/projects] 필드 삭제 실패:', deleteError)
       return NextResponse.json({ error: `필드 정리 실패: ${deleteError.message}` }, { status: 500 })
     }
+    console.log(`[PUT /api/projects] 필드 삭제 완료: ${deleteData?.length ?? 0}개 삭제됨`)
 
     const fields = Array.isArray(body.fields) ? body.fields : []
+    console.log(`[PUT /api/projects] 새 필드 ${fields.length}개 저장 시도`)
     if (fields.length > 0) {
       const rows = fields.map((field, index) => {
         const row: Record<string, unknown> = {
@@ -105,13 +106,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         return row
       })
 
-      const { error: insertError } = await supabase.from('form_fields').insert(rows)
+      const { data: insertData, error: insertError } = await supabase.from('form_fields').insert(rows).select('id')
       if (insertError) {
+        console.error('[PUT /api/projects] 필드 저장 실패:', insertError)
         return NextResponse.json({ error: `필드 저장 실패: ${insertError.message}` }, { status: 500 })
       }
+      console.log(`[PUT /api/projects] 필드 저장 완료: ${insertData?.length ?? 0}개 저장됨`)
     }
 
-    revalidateTag('projects-public', 'max')
+    // 저장 후 검증: DB에서 다시 조회
+    const { data: verifyFields } = await supabase.from('form_fields').select('id, label, type').eq('project_id', id).order('order_index')
+    console.log(`[PUT /api/projects] 저장 후 DB 검증: ${verifyFields?.length ?? 0}개 필드`, verifyFields?.map(f => `${f.type}:${f.label}`))
+
     return NextResponse.json({ id: ownedProject.id, slug: ownedProject.slug })
   } catch (error) {
     return NextResponse.json(

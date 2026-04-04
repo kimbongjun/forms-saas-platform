@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ExternalLink, MessageSquareText, SquarePen } from 'lucide-react'
+import { ExternalLink, SquarePen } from 'lucide-react'
 import { PROJECT_NAV_GROUPS } from '@/constants/ia'
 
 interface ProjectSectionNavProps {
@@ -54,13 +54,6 @@ export default function ProjectSectionNav({
           >
             <span>페이지 보기</span>
             <ExternalLink className="h-4 w-4" />
-          </Link>
-          <Link
-            href={`/projects/${projectId}/execution/live-responses`}
-            className="flex items-center justify-between rounded-2xl border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-          >
-            <span>응답 보기</span>
-            <MessageSquareText className="h-4 w-4" />
           </Link>
         </div>
       </div>

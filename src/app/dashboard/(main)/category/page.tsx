@@ -4,16 +4,28 @@ import WorkspacePage from '@/components/workspace/WorkspacePage'
 
 export default async function DashboardCategoryPage() {
   const supabase = await createServerClient()
-  const { data: projects } = await supabase
-    .from('projects')
-    .select('id, title, created_at, is_published')
-    .order('created_at', { ascending: false })
+  const baseNow = new Date()
+  const thirtyDaysAgo = new Date(baseNow)
+  thirtyDaysAgo.setDate(baseNow.getDate() - 30)
+  const thirtyDaysAgoIso = thirtyDaysAgo.toISOString()
+
+  const [{ data: projects }, { count: recentCount }] = await Promise.all([
+    supabase
+      .from('projects')
+      .select('id, title, created_at, is_published')
+      .is('workspace_project_id', null)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('projects')
+      .select('*', { count: 'exact', head: true })
+      .is('workspace_project_id', null)
+      .gte('created_at', thirtyDaysAgoIso),
+  ])
 
   const projectList = projects ?? []
-  const now = Date.now()
   const publishedCount = projectList.filter((project) => project.is_published).length
   const draftCount = projectList.length - publishedCount
-  const recentCount = projectList.filter((project) => now - new Date(project.created_at).getTime() < 1000 * 60 * 60 * 24 * 30).length
+  const recentProjectCount = recentCount ?? 0
 
   return (
     <WorkspacePage
@@ -28,7 +40,7 @@ export default async function DashboardCategoryPage() {
         { label: 'Total', value: String(projectList.length), helper: '전체 프로젝트' },
         { label: 'Published', value: String(publishedCount), helper: '공개 상태' },
         { label: 'Draft', value: String(draftCount), helper: '비공개 상태' },
-        { label: 'New 30D', value: String(recentCount), helper: '최근 30일 생성' },
+        { label: 'New 30D', value: String(recentProjectCount), helper: '최근 30일 생성' },
       ]}
     >
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -38,7 +50,7 @@ export default async function DashboardCategoryPage() {
             {[
               { label: '공개 프로젝트', count: publishedCount, color: 'bg-emerald-500' },
               { label: '비공개 프로젝트', count: draftCount, color: 'bg-gray-400' },
-              { label: '최근 30일 신규 프로젝트', count: recentCount, color: 'bg-blue-500' },
+              { label: '최근 30일 신규 프로젝트', count: recentProjectCount, color: 'bg-blue-500' },
             ].map((item) => {
               const width = projectList.length > 0 ? `${Math.max(8, Math.round((item.count / projectList.length) * 100))}%` : '0%'
 

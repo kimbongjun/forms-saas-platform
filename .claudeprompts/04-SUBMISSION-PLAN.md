@@ -125,3 +125,5 @@ ALTER TABLE projects ADD COLUMN IF NOT EXISTS max_submissions int;
 | `src/app/[slug]/page.tsx` | 공개 폼 — 제한 검사 포함 |
 | `src/components/form/PublicForm.tsx` | 폼 렌더 + 제출 (Client) |
 | `src/utils/supabase/storage.ts` | `uploadBanner` + `uploadFieldImage` |
+
+

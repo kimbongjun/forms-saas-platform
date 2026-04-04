@@ -15,21 +15,28 @@ const SettingsPanel = dynamic(() => import('./SettingsPanel'))
 const ResponsesTab = dynamic(() => import('./ResponsesTab'))
 
 interface EditFormBuilderProps {
+  workspaceId?: string
   project: Project & { id: string }
   initialFields: FormField[]
   initialDeadline: string
+  initialTab?: BuilderTab
   /** 프로젝트 레이아웃 안에 임베드될 때 true — 자체 outer 헤더를 숨김 */
   embedded?: boolean
+  /** embedded 모드에서 저장 완료 후 이동할 경로 (기본: /projects/{id}) */
+  backHref?: string
 }
 
 export default function EditFormBuilder({
+  workspaceId,
   project,
   initialFields,
   initialDeadline,
+  initialTab = 'edit',
   embedded = false,
+  backHref,
 }: EditFormBuilderProps) {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<BuilderTab>('edit')
+  const [activeTab, setActiveTab] = useState<BuilderTab>(initialTab)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
@@ -124,7 +131,7 @@ export default function EditFormBuilder({
 
       setSaved(true)
       router.refresh()
-      setTimeout(() => router.push(`/projects/${project.id}`), 1200)
+      setTimeout(() => router.push(backHref ?? `/projects/${project.id}`), 1200)
     } catch (err) {
       setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.')
     } finally {
@@ -228,7 +235,12 @@ export default function EditFormBuilder({
 
         {activeTab === 'settings' && <SettingsPanel settings={settings} slug={project.slug} />}
         {activeTab === 'responses' && (
-          <ResponsesTab projectId={project.id} projectSlug={project.slug} fields={fields} />
+          <ResponsesTab
+            workspaceId={workspaceId ?? project.id}
+            projectId={project.id}
+            projectSlug={project.slug}
+            fields={fields}
+          />
         )}
       </div>
     )
@@ -324,7 +336,12 @@ export default function EditFormBuilder({
 
       {activeTab === 'settings' && <SettingsPanel settings={settings} slug={project.slug} />}
       {activeTab === 'responses' && (
-        <ResponsesTab projectId={project.id} projectSlug={project.slug} fields={fields} />
+        <ResponsesTab
+          workspaceId={workspaceId ?? project.id}
+          projectId={project.id}
+          projectSlug={project.slug}
+          fields={fields}
+        />
       )}
     </div>
   )

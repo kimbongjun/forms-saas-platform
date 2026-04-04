@@ -1,5 +1,4 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
-import { revalidateTag } from 'next/cache'
 import { createServerClient, getUserRole } from '@/utils/supabase/server'
 
 async function requireAdmin() {
@@ -40,7 +39,6 @@ export async function POST(req: NextRequest) {
 
     if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 })
 
-    revalidateTag('announcements', 'max')
     return NextResponse.json({ id: data.id })
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : '서버 오류' }, { status: 500 })

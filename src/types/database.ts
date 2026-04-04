@@ -61,7 +61,24 @@ export interface Project {
   seo_title?: string | null
   seo_description?: string | null
   seo_og_image?: string | null
+  category?: string | null
+  start_date?: string | null
+  end_date?: string | null
+  budget?: number | null
+  country?: string | null
+  venue_name?: string | null
+  venue_map_url?: string | null
   created_at?: string
+}
+
+export interface ProjectBudgetItem {
+  id: string
+  name: string
+  type: 'media' | 'production' | 'operation' | 'staff' | 'venue' | 'etc'
+  amount: number
+  min_amount: number | null
+  max_amount: number | null
+  weight: number
 }
 
 export interface Submission {

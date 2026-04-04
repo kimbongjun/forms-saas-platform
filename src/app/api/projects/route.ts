@@ -20,6 +20,8 @@ interface CreateProjectBody {
   seoDescription?: string | null
   seoOgImage?: string | null
   fields?: FormField[]
+  /** 프로젝트 워크스페이스에 속하는 폼인 경우 부모 프로젝트 ID */
+  workspaceProjectId?: string | null
 }
 
 export async function POST(req: NextRequest) {
@@ -56,6 +58,10 @@ export async function POST(req: NextRequest) {
       projectRow.seo_title = body.seoTitle ?? null
       projectRow.seo_description = body.seoDescription ?? null
       projectRow.seo_og_image = body.seoOgImage ?? null
+    }
+    // 워크스페이스 폼: 부모 프로젝트 ID 연결
+    if (body.workspaceProjectId) {
+      projectRow.workspace_project_id = body.workspaceProjectId
     }
 
     const { data: project, error: projectErr } = await supabase

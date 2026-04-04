@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import {
   getGlobalSiteSettings,
   getResolvedFavicon,
-  getResolvedPrimaryColor,
+  getResolvedPrimaryPalette,
   getResolvedSiteDescription,
   getResolvedSiteTitle,
 } from '@/utils/site-settings'
@@ -58,13 +58,22 @@ export default async function RootLayout({
   children: React.ReactNode
 }>) {
   const settings = await getGlobalSiteSettings()
-  const primaryColor = getResolvedPrimaryColor(settings)
+  const primaryPalette = getResolvedPrimaryPalette(settings)
 
   return (
     <html
       lang="ko"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-      style={{ '--color-primary': primaryColor } as React.CSSProperties}
+      style={
+        {
+          '--color-primary': primaryPalette.primary,
+          '--color-primary-hover': primaryPalette.primaryHover,
+          '--color-primary-active': primaryPalette.primaryActive,
+          '--color-primary-soft': primaryPalette.primarySoft,
+          '--color-primary-soft-border': primaryPalette.primarySoftBorder,
+          '--color-primary-ring': primaryPalette.primaryRing,
+        } as React.CSSProperties
+      }
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>

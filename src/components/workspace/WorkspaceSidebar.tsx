@@ -8,7 +8,6 @@ import {
   FolderKanban,
   LayoutDashboard,
   Megaphone,
-  Plus,
   Settings,
   Share2,
   Users,
@@ -42,19 +41,6 @@ export default function WorkspaceSidebar({ role = 'editor' }: WorkspaceSidebarPr
 
   return (
     <aside className="flex w-72 shrink-0 flex-col border-r border-gray-200 bg-white">
-      <div className="border-b border-gray-100 px-4 py-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">Quick Action</p>
-        <Link
-          href="/projects/new"
-          className="mt-3 flex items-center justify-between rounded-2xl bg-gray-900 px-4 py-4 text-white transition-colors hover:bg-gray-800"
-        >
-          <div>
-            <p className="text-sm font-semibold">신규 프로젝트 생성</p>
-          </div>
-          <Plus className="h-4 w-4 shrink-0" />
-        </Link>
-      </div>
-
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {WORKSPACE_HUBS.map((hub) => {
           const Icon = HUB_ICONS[hub.key]
