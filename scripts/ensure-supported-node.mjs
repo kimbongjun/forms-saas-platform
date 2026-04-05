@@ -5,8 +5,8 @@ if (Number.isNaN(major)) {
   process.exit(1)
 }
 
-if (major >= 24) {
-  console.error('[build] 현재 Node.js 버전에서는 Next.js 16 빌드가 불안정할 수 있습니다.')
+if (major !== 22) {
+  console.error('[build] 이 프로젝트는 Node.js 22.x 기준으로 검증되었습니다.')
   console.error('[build] `.nvmrc` 기준으로 Node.js 22를 사용한 뒤 다시 빌드해주세요.')
   console.error(`[build] current=${process.versions.node} expected=22.x`)
   process.exit(1)
