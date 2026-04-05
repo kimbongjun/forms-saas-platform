@@ -3,15 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "node:check": "node scripts/ensure-supported-node.mjs",
-    "predev": "npm run node:check",
-    "dev": "next dev",
-    "prebuild": "npm run node:check",
-    "build": "next build",
-    "prestart": "npm run node:check",
-    "start": "next start",
-    "prelint": "npm run node:check",
-    "lint": "eslint",
+    "node:check": "bash scripts/run-with-node-22.sh node scripts/ensure-supported-node.mjs",
+    "dev": "bash scripts/run-with-node-22.sh next dev",
+    "build": "bash scripts/run-with-node-22.sh next build",
+    "start": "bash scripts/run-with-node-22.sh next start",
+    "lint": "bash scripts/run-with-node-22.sh eslint",
     "postinstall": "node scripts/copy-tinymce.js"
   },
   "engines": {
