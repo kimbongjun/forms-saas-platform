@@ -1,9 +1,20 @@
 import { NextResponse } from 'next/server'
-import { execSync } from 'child_process'
 import { createServerClient, getUserRole } from '@/utils/supabase/server'
 
+interface GitHubCommit {
+  sha: string
+  commit: {
+    message: string
+    author: {
+      name: string
+      email: string
+      date: string
+    }
+  }
+}
+
 /**
- * git log를 파싱해 release_notes 테이블에 자동 저장.
+ * GitHub Commits API를 조회해 release_notes 테이블에 자동 저장.
  * POST /api/admin/release-notes/generate
  */
 export async function POST() {
@@ -25,45 +36,19 @@ export async function POST() {
       .limit(1)
       .single()
 
-    // 커밋 필드 구분자 — \x1F(Unit Separator)는 NUL 바이트가 아니므로 execSync에 안전
-    const SEP = '\x1F'
-    const FMT = `%H${SEP}%s${SEP}%ae${SEP}%ad`
-
-    // git log 범위 결정: 마지막 릴리즈 이후 or 최근 30커밋
-    let logCommand = `git log --pretty=format:"${FMT}" --date=iso -30`
-    if (lastNote?.created_at) {
-      const since = new Date(lastNote.created_at).toISOString()
-      logCommand = `git log --pretty=format:"${FMT}" --date=iso --after="${since}"`
-    }
-
-    let rawLog = ''
-    let gitError: string | null = null
+    let commits: Array<{ hash: string; subject: string; author: string; date: string }> = []
     try {
-      rawLog = execSync(logCommand, { encoding: 'utf8', cwd: process.cwd() }).trim()
+      commits = await fetchGitHubCommits(lastNote?.created_at ?? null)
     } catch (e) {
-      gitError = e instanceof Error ? e.message : String(e)
-    }
-
-    if (gitError !== null) {
       return NextResponse.json(
-        { error: `git 실행 실패: ${gitError}` },
+        { error: e instanceof Error ? e.message : 'GitHub 커밋 조회에 실패했습니다.' },
         { status: 500 }
       )
     }
 
-    if (!rawLog) {
+    if (commits.length === 0) {
       return NextResponse.json({ error: '마지막 릴리즈 이후 새 커밋이 없습니다.' }, { status: 422 })
     }
-
-    const commits = rawLog.split('\n').map((line) => {
-      const parts = line.split(SEP)
-      return {
-        hash: parts[0]?.trim(),
-        subject: parts[1]?.trim(),
-        author: parts[2]?.trim(),
-        date: parts[3]?.trim(),
-      }
-    }).filter((c) => c.hash && c.subject)
 
     // 버전 자동 결정: 마지막 버전에서 patch 증가 또는 날짜 기반
     const nextVersion = deriveNextVersion(lastNote?.version ?? null)
@@ -169,4 +154,57 @@ function escapeHtml(str: string) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
+}
+
+async function fetchGitHubCommits(lastReleaseAt: string | null) {
+  const provider = process.env.VERCEL_GIT_PROVIDER
+  if (provider && provider !== 'github') {
+    throw new Error(`현재 Git Provider(${provider})는 자동 릴리즈노트 생성 대상이 아닙니다. GitHub 저장소에서만 지원됩니다.`)
+  }
+
+  const owner = process.env.GITHUB_REPO_OWNER || process.env.VERCEL_GIT_REPO_OWNER
+  const repo = process.env.GITHUB_REPO_SLUG || process.env.VERCEL_GIT_REPO_SLUG
+  const token = process.env.GITHUB_TOKEN
+
+  if (!owner || !repo) {
+    throw new Error('저장소 정보를 찾을 수 없습니다. Vercel System Environment Variables를 노출하거나 GITHUB_REPO_OWNER / GITHUB_REPO_SLUG를 설정해주세요.')
+  }
+
+  if (!token) {
+    throw new Error('GITHUB_TOKEN 환경변수가 필요합니다. Vercel 프로젝트 환경변수에 GitHub 토큰을 추가해주세요.')
+  }
+
+  const params = new URLSearchParams({
+    per_page: '100',
+  })
+
+  if (lastReleaseAt) {
+    params.set('since', new Date(lastReleaseAt).toISOString())
+  }
+
+  const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits?${params.toString()}`, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${token}`,
+      'User-Agent': `${repo}-release-notes-generator`,
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+    cache: 'no-store',
+  })
+
+  if (!response.ok) {
+    const errorBody = await response.text()
+    throw new Error(`GitHub API 요청 실패 (${response.status}): ${errorBody || response.statusText}`)
+  }
+
+  const data = await response.json() as GitHubCommit[]
+
+  return data
+    .map((commit) => ({
+      hash: commit.sha,
+      subject: commit.commit.message.split('\n')[0]?.trim() ?? '',
+      author: commit.commit.author?.email?.trim() || commit.commit.author?.name?.trim() || 'unknown',
+      date: commit.commit.author?.date?.trim() || '',
+    }))
+    .filter((commit) => commit.hash && commit.subject)
 }
