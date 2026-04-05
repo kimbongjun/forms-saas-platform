@@ -2,12 +2,11 @@
   "name": "form-saas-platform",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "node:check": "bash scripts/run-with-node-22.sh node scripts/ensure-supported-node.mjs",
-    "dev": "bash scripts/run-with-node-22.sh next dev",
-    "build": "bash scripts/run-with-node-22.sh next build",
-    "start": "bash scripts/run-with-node-22.sh next start",
-    "lint": "bash scripts/run-with-node-22.sh eslint",
+  "scripts": {    
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
     "postinstall": "node scripts/copy-tinymce.js"
   },
   "engines": {
