@@ -70,7 +70,7 @@ export default async function LiveResponsesPage({ params }: LiveResponsesPagePro
 
   return (
     <div className="space-y-5">
-      <section className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm">
+      <section className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-400">Execution</p>
         <h2 className="mt-2 text-2xl font-semibold text-gray-900">라이브 응답 허브</h2>
         <p className="mt-2 text-sm text-gray-500">
@@ -97,7 +97,7 @@ export default async function LiveResponsesPage({ params }: LiveResponsesPagePro
       </section>
 
       {!forms || forms.length === 0 ? (
-        <div className="rounded-[28px] border-2 border-dashed border-gray-200 bg-white py-16 text-center">
+        <div className="rounded-[28px] border-2 border-dashed border-gray-200 bg-white px-4 py-10 text-center sm:py-16">
           <BarChart3 className="mx-auto h-10 w-10 text-gray-200" />
           <p className="mt-4 text-sm font-medium text-gray-500">응답을 수집할 폼이 아직 없습니다.</p>
           <p className="mt-1 text-xs text-gray-400">먼저 폼을 만들고 프로젝트 참여자에게 공유해 보세요.</p>
@@ -110,8 +110,8 @@ export default async function LiveResponsesPage({ params }: LiveResponsesPagePro
         </div>
       ) : (
         <>
-          <section className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between">
+          <section className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">폼별 응답 현황</h3>
                 <p className="mt-1 text-sm text-gray-500">응답이 많이 들어오는 폼과 바로 확인해야 할 폼을 구분할 수 있습니다.</p>
@@ -157,7 +157,7 @@ export default async function LiveResponsesPage({ params }: LiveResponsesPagePro
             </div>
           </section>
 
-          <section className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm">
+          <section className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
             <h3 className="text-lg font-semibold text-gray-900">최근 응답 피드</h3>
             <p className="mt-1 text-sm text-gray-500">최신 수집 응답 기준으로 어떤 폼이 움직이고 있는지 빠르게 확인합니다.</p>
 
@@ -173,7 +173,7 @@ export default async function LiveResponsesPage({ params }: LiveResponsesPagePro
                 <tbody>
                   {(submissions ?? []).length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="px-4 py-10 text-center text-sm text-gray-400">
+                      <td colSpan={3} className="px-4 py-6 text-center text-sm text-gray-400 sm:py-10">
                         아직 수집된 응답이 없습니다.
                       </td>
                     </tr>

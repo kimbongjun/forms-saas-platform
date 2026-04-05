@@ -49,7 +49,7 @@ export default function NewFormPage() {
 
   return (
     <div className="space-y-5">
-      <section className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm">
+      <section className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         <Link
           href={`/projects/${workspaceId}/execution/forms`}
           className="mb-4 flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 transition-colors"
@@ -62,7 +62,7 @@ export default function NewFormPage() {
         <p className="mt-2 text-sm text-gray-500">폼 이름을 입력하면 빌더 화면으로 이동합니다.</p>
       </section>
 
-      <section className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm space-y-4">
+      <section className="rounded-[28px] border border-gray-200 bg-white p-5 shadow-sm space-y-4 sm:p-6">
         <div>
           <label className="mb-1.5 block text-xs font-medium text-gray-500">폼 이름 *</label>
           <input
@@ -82,7 +82,7 @@ export default function NewFormPage() {
             type="button"
             onClick={handleCreate}
             disabled={loading}
-            className="flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50 sm:w-auto"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             {loading ? '생성 중...' : '폼 생성 및 편집 시작'}

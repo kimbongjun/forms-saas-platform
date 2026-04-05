@@ -22,9 +22,9 @@ export default function WorkspaceLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="flex h-screen flex-col bg-gray-50">
+    <div className="flex min-h-[100dvh] flex-col bg-gray-50">
       {/* 헤더 */}
-      <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 sm:px-6">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 sm:h-16 sm:px-6">
         <div className="flex items-center gap-3">
           {/* 모바일 햄버거 */}
           <button
@@ -56,7 +56,7 @@ export default function WorkspaceLayout({
           ].join(' ')}
         >
           {/* 모바일 닫기 버튼 */}
-          <div className="flex h-16 shrink-0 items-center justify-end border-b border-gray-100 px-4 lg:hidden">
+          <div className="flex h-14 shrink-0 items-center justify-end border-b border-gray-100 px-4 sm:h-16 lg:hidden">
             <button
               onClick={() => setSidebarOpen(false)}
               className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100"

@@ -187,7 +187,7 @@ export default function ProjectList({ projects }: ProjectListProps) {
 
   if (projects.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white py-24 text-center">
+      <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white px-4 py-12 text-center sm:py-24">
         <FileText className="mb-4 h-12 w-12 text-gray-300" />
         <p className="text-base font-medium text-gray-500">아직 프로젝트가 없습니다.</p>
         <p className="mt-1 text-sm text-gray-400">Project Wizard로 새 프로젝트를 시작해 보세요.</p>
@@ -335,7 +335,7 @@ export default function ProjectList({ projects }: ProjectListProps) {
 
       {/* 필터 결과 없음 */}
       {filtered.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white px-4 py-10 text-center sm:py-16">
           <Search className="mb-3 h-10 w-10 text-gray-300" />
           <p className="text-sm font-medium text-gray-500">검색 결과가 없습니다.</p>
           <button onClick={clearFilters} className="mt-3 text-xs text-gray-400 underline hover:text-gray-600">

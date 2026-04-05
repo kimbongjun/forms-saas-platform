@@ -329,7 +329,7 @@ export default function InsightsPage() {
 
           {/* 산출물 없을 때 */}
           {deliverables.length === 0 && clippings.length === 0 && (
-            <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white py-24 text-center">
+            <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white px-4 py-12 text-center sm:py-24">
               <BarChart3 className="mb-4 h-12 w-12 text-gray-300" />
               <p className="text-base font-medium text-gray-500">아직 데이터가 없습니다.</p>
               <p className="mt-1 text-sm text-gray-400">산출물 관리 또는 보도자료 클리핑에서 데이터를 먼저 등록하세요.</p>

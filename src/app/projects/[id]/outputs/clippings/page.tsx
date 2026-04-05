@@ -404,7 +404,7 @@ export default function ClippingsPage() {
       )}
 
       {!loading && items.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white py-24 text-center">
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white px-4 py-12 text-center sm:py-24">
           <Newspaper className="mb-4 h-12 w-12 text-gray-300" />
           <p className="text-base font-medium text-gray-500">등록된 클리핑이 없습니다.</p>
           <p className="mt-1 text-sm text-gray-400">키워드 조회로 관련 보도자료를 찾거나 수동 등록으로 아카이빙하세요.</p>

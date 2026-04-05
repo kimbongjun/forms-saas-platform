@@ -72,7 +72,7 @@ export default async function FormsPage({ params }: FormsPageProps) {
 
       {/* 폼 목록 */}
       {!forms || forms.length === 0 ? (
-        <div className="rounded-[28px] border-2 border-dashed border-gray-200 bg-white py-16 text-center">
+        <div className="rounded-[28px] border-2 border-dashed border-gray-200 bg-white px-4 py-10 text-center sm:py-16">
           <FileText className="mx-auto h-10 w-10 text-gray-200" />
           <p className="mt-4 text-sm font-medium text-gray-500">등록된 폼이 없습니다.</p>
           <p className="mt-1 text-xs text-gray-400">새 폼 만들기 버튼으로 첫 번째 폼을 생성하세요.</p>

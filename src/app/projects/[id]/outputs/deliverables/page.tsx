@@ -529,7 +529,7 @@ export default function DeliverablesPage() {
       )}
 
       {!loading && items.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white py-24 text-center">
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white px-4 py-12 text-center sm:py-24">
           <Share2 className="mb-4 h-12 w-12 text-gray-300" />
           <p className="text-base font-medium text-gray-500">등록된 산출물이 없습니다.</p>
           <p className="mt-1 text-sm text-gray-400">키워드 조회나 URL 조회로 첫 산출물을 등록해보세요.</p>

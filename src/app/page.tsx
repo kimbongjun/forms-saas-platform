@@ -16,8 +16,8 @@ export default async function Home() {
   const siteTitle = getResolvedSiteTitle(await getGlobalSiteSettings())
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-6 sm:py-8">
+      <div className="w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-sm sm:p-10">
         <div className="space-y-4">
           <div className="flex justify-center">
             <Image src={classysLogo} alt={siteTitle} width={180} height={40} priority className="h-10 w-auto" />
@@ -30,7 +30,7 @@ export default async function Home() {
           </div>
         </div>
 
-        <div className="mt-8 flex flex-col gap-3">
+        <div className="mt-6 flex flex-col gap-3 sm:mt-8">
           <Link
             href="/login"
             className="inline-flex w-full items-center justify-center rounded-xl bg-gray-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-700"
