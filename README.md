@@ -1,5 +1,15 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Node.js Version
+
+This project is pinned to `Node.js 22.x`.
+
+- Local development: `nvm use 22`
+- Vercel Project Settings: `Node.js 22.x`
+- Repo signals: `package.json#engines`, `.nvmrc`, `.node-version`
+
+All entry scripts (`dev`, `build`, `start`, `lint`) now validate the Node.js major version before running, so a mismatched local shell fails fast instead of producing environment-specific behavior.
+
 ## Getting Started
 
 First, run the development server:
