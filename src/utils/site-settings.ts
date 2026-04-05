@@ -87,8 +87,41 @@ function mixWith(hex: string, target: { r: number; g: number; b: number }, ratio
   )
 }
 
+function channelToLinear(channel: number) {
+  const normalized = channel / 255
+  return normalized <= 0.04045
+    ? normalized / 12.92
+    : Math.pow((normalized + 0.055) / 1.055, 2.4)
+}
+
+function getLuminance(hex: string) {
+  const { r, g, b } = hexToRgb(hex)
+  return (
+    0.2126 * channelToLinear(r) +
+    0.7152 * channelToLinear(g) +
+    0.0722 * channelToLinear(b)
+  )
+}
+
+function getReadableTextColor(hex: string) {
+  return getLuminance(hex) > 0.42 ? '#0f172a' : '#f8fafc'
+}
+
+function ensureMinimumLuminance(hex: string, minimum: number) {
+  let candidate = normalizeHex(hex)
+  let attempts = 0
+
+  while (getLuminance(candidate) < minimum && attempts < 10) {
+    candidate = mixWith(candidate, { r: 255, g: 255, b: 255 }, 0.14)
+    attempts += 1
+  }
+
+  return candidate
+}
+
 export function getResolvedPrimaryPalette(settings: GlobalSiteSettings) {
   const primary = getResolvedPrimaryColor(settings)
+  const darkPrimary = ensureMinimumLuminance(primary, 0.42)
 
   return {
     primary,
@@ -97,6 +130,14 @@ export function getResolvedPrimaryPalette(settings: GlobalSiteSettings) {
     primarySoft: mixWith(primary, { r: 255, g: 255, b: 255 }, 0.9),
     primarySoftBorder: mixWith(primary, { r: 255, g: 255, b: 255 }, 0.72),
     primaryRing: mixWith(primary, { r: 255, g: 255, b: 255 }, 0.5),
+    primaryContrast: getReadableTextColor(primary),
+    darkPrimary,
+    darkPrimaryHover: mixWith(darkPrimary, { r: 255, g: 255, b: 255 }, 0.08),
+    darkPrimaryActive: mixWith(darkPrimary, { r: 0, g: 0, b: 0 }, 0.12),
+    darkPrimarySoft: mixWith(darkPrimary, { r: 15, g: 23, b: 42 }, 0.82),
+    darkPrimarySoftBorder: mixWith(darkPrimary, { r: 15, g: 23, b: 42 }, 0.6),
+    darkPrimaryRing: mixWith(darkPrimary, { r: 255, g: 255, b: 255 }, 0.32),
+    darkPrimaryContrast: getReadableTextColor(darkPrimary),
   }
 }
 

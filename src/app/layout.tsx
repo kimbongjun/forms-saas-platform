@@ -19,6 +19,21 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 })
 
+const THEME_INIT_SCRIPT = `
+(() => {
+  const storageKey = 'theme-preference';
+  const savedTheme = window.localStorage.getItem(storageKey);
+  const preferredTheme =
+    savedTheme === 'light' || savedTheme === 'dark'
+      ? savedTheme
+      : window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light';
+
+  document.documentElement.dataset.theme = preferredTheme;
+})();
+`
+
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getGlobalSiteSettings()
   const siteTitle = getResolvedSiteTitle(settings)
@@ -72,10 +87,21 @@ export default async function RootLayout({
           '--color-primary-soft': primaryPalette.primarySoft,
           '--color-primary-soft-border': primaryPalette.primarySoftBorder,
           '--color-primary-ring': primaryPalette.primaryRing,
+          '--color-primary-contrast': primaryPalette.primaryContrast,
+          '--color-dark-primary': primaryPalette.darkPrimary,
+          '--color-dark-primary-hover': primaryPalette.darkPrimaryHover,
+          '--color-dark-primary-active': primaryPalette.darkPrimaryActive,
+          '--color-dark-primary-soft': primaryPalette.darkPrimarySoft,
+          '--color-dark-primary-soft-border': primaryPalette.darkPrimarySoftBorder,
+          '--color-dark-primary-ring': primaryPalette.darkPrimaryRing,
+          '--color-dark-primary-contrast': primaryPalette.darkPrimaryContrast,
         } as React.CSSProperties
       }
       suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {children}
       </body>

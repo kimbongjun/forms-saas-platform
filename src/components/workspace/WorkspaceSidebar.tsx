@@ -12,6 +12,7 @@ import {
   Share2,
   Users,
 } from 'lucide-react'
+import ThemeToggle from '@/components/common/ThemeToggle'
 import { WORKSPACE_HUBS } from '@/constants/ia'
 
 const HUB_ICONS = {
@@ -114,6 +115,9 @@ export default function WorkspaceSidebar({ role = 'editor' }: WorkspaceSidebarPr
             <Bell className="h-3.5 w-3.5 shrink-0" />
             릴리즈노트
           </Link>
+        </div>
+        <div className="mt-4">
+          <ThemeToggle />
         </div>
       </div>
     </aside>
