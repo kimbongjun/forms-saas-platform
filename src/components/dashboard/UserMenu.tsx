@@ -35,7 +35,7 @@ export default function UserMenu({ email, role = 'editor' }: UserMenuProps) {
         }
         <span className="max-w-40 truncate">{email}</span>
         {role === 'administrator' && (
-          <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700">관리자</span>
+          <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700 hidden md:block">관리자</span>
         )}
         <ChevronDown className="h-3 w-3 text-gray-400" />
       </button>
