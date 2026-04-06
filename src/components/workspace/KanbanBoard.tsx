@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import {
   DndContext,
   DragEndEvent,
@@ -96,6 +96,11 @@ function DraggableCard({
   onEdit: (task: ProjectTask) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id })
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  )
   const dragAttributes = { ...attributes }
   delete (dragAttributes as { role?: string }).role
   delete (dragAttributes as { tabIndex?: number }).tabIndex
@@ -114,10 +119,11 @@ function DraggableCard({
     >
       <div className="flex items-start gap-2">
         <div
-          {...dragAttributes}
-          {...listeners}
+          {...(isMounted ? dragAttributes : {})}
+          {...(isMounted ? listeners : {})}
           className="theme-btn-icon mt-0.5 shrink-0 cursor-grab touch-none rounded-lg p-1 active:cursor-grabbing"
           aria-label="태스크 순서 이동"
+          suppressHydrationWarning
         >
           <GripVertical className="h-4 w-4" />
         </div>

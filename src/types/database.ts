@@ -82,6 +82,19 @@ export interface ProjectBudgetItem {
   weight: number
 }
 
+export interface ProjectGoalItem {
+  id: string
+  item: string
+  metric: string
+  evaluation_method: '정량' | '정성'
+  unit: string
+  target: string
+  actual: string
+  gap: string
+  final_evaluation: string
+  weight_percent: number
+}
+
 export interface Submission {
   id?: string
   project_id: string
