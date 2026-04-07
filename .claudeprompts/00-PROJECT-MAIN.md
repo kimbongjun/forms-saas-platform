@@ -2,13 +2,14 @@
 
 ## 스택
 - **Next.js 16** App Router · **TypeScript** · **Tailwind CSS v4** · **Supabase** (DB+Storage)
-- **Resend** (이메일 알림) · **@dnd-kit** (드래그앤드롭) · **Tiptap v2** (WYSIWYG)
+- **Resend** (이메일 알림) · **@dnd-kit** (드래그앤드롭) · **TinyMCE v8** (WYSIWYG, Tiptap에서 교체)
 - **lucide-react** · **@supabase/ssr** · **zustand** (form-builder-store)
+- **date-fns** + **react-day-picker** (날짜 처리)
 
 ## 핵심 규칙
 - `params`는 반드시 `await` → `params: Promise<{id:string}>`
 - Server Component → `createServerClient()` / Client Component → `createClient()` / 공개 폼(비인증) → `createPublicClient()`
-- Tiptap: `dynamic(...,{ssr:false})` + `immediatelyRender: false` 필수
+- Tiptap → TinyMCE로 교체됨. `RichTextEditor.tsx`는 TinyMCE 기반
 - 타입 정의: `src/types/database.ts` (FieldType, FormField, Project, Submission 등)
 - 슬러그: ASCII-only 자동 생성 (`form-{rand6}`, 한글 제거)
 
@@ -38,13 +39,26 @@ src/
 │   │   │   ├── route.ts                            POST (신규 생성)
 │   │   │   └── [id]/
 │   │   │       ├── route.ts                        PUT (수정)
+│   │   │       ├── budget/route.ts                 GET/PUT (예산 계획)
+│   │   │       ├── clippings/route.ts              GET/POST (클리핑 목록·생성)
+│   │   │       ├── clippings/parse/route.ts        POST (URL 메타데이터 자동 파싱)
+│   │   │       ├── clippings/search/route.ts       POST (클리핑 검색)
+│   │   │       ├── clippings/bulk/route.ts         POST (대량 클리핑)
+│   │   │       ├── clippings/[clippingId]/route.ts PUT/DELETE
+│   │   │       ├── deliverables/route.ts           GET/POST (결과물 목록·생성)
+│   │   │       ├── deliverables/parse/route.ts     POST (소셜미디어 데이터 파싱)
+│   │   │       ├── deliverables/search/route.ts    POST (결과물 검색)
+│   │   │       ├── deliverables/bulk/route.ts      POST (대량 결과물)
+│   │   │       ├── deliverables/[deliverableId]/route.ts PUT/DELETE
 │   │   │       ├── issues/route.ts                 GET/POST/PUT/DELETE
 │   │   │       └── milestones/route.ts             GET/POST/PUT/DELETE
-│   │   └── submit/route.ts                         POST (공개 폼 제출)
+│   │   ├── submit/route.ts                         POST (공개 폼 제출)
+│   │   ├── auth/callback/route.ts
+│   │   └── site-logo/route.ts                      GET (다크모드 로고)
 │   ├── auth/callback/route.ts
 │   ├── dashboard/
 │   │   ├── (builder)/
-│   │   │   ├── new/page.tsx                        새 폼 빌더 (FormBuilder 없음, 현재 project 연결)
+│   │   │   ├── new/page.tsx                        새 폼 빌더
 │   │   │   └── [id]/edit/page.tsx                  폼 편집 (EditFormBuilder)
 │   │   └── (main)/
 │   │       ├── layout.tsx                          DashboardMainLayout (헤더+사이드바)
@@ -55,14 +69,14 @@ src/
 │   │       │   ├── release-notes/                  관리자 릴리즈노트 관리
 │   │       │   ├── settings/                       사이트 설정 (AdminSettingsForm)
 │   │       │   └── users/page.tsx                  회원 관리 (AdminUserList)
-│   │       ├── category/page.tsx                   (준비중)
-│   │       ├── kpi/page.tsx                        (준비중)
-│   │       └── realtime/page.tsx                   (준비중)
+│   │       ├── category/page.tsx
+│   │       ├── kpi/page.tsx
+│   │       └── realtime/page.tsx
 │   │   └── [id]/responses/                         응답 확인 대시보드
 │   │       ├── page.tsx
 │   │       ├── export/route.ts                     CSV 내보내기
 │   │       └── stats/page.tsx                      필드별 상세 통계
-│   ├── engagement/                                 (준비중)
+│   ├── engagement/
 │   │   ├── leads/page.tsx
 │   │   └── templates/page.tsx
 │   ├── layout.tsx                                  글로벌 레이아웃 (동적 메타데이터)
@@ -78,17 +92,25 @@ src/
 │   │   └── [id]/
 │   │       ├── layout.tsx                          WorkspaceShell (사이드바+헤더)
 │   │       ├── page.tsx                            Overview (기본)
-│   │       ├── _components/TabNavigation.tsx
+│   │       ├── budget/page.tsx                     예산 계획 (BudgetPlanner)
+│   │       ├── edit/page.tsx                       프로젝트 편집
 │   │       ├── execution/
 │   │       │   ├── form-builder/page.tsx           폼 빌더 진입 (EditFormBuilder)
 │   │       │   ├── forms/page.tsx                  폼/서베이 관리 목록
+│   │       │   ├── forms/new/page.tsx
+│   │       │   ├── forms/[formId]/page.tsx
+│   │       │   ├── forms/[formId]/export/
 │   │       │   ├── live-responses/                 응답 확인 + export
 │   │       │   └── tasks/page.tsx                  칸반 (KanbanBoard)
+│   │       ├── insights/page.tsx                   인사이트 대시보드 (SNS 합산, KPI)
 │   │       ├── issues/                             이슈 트래커 (IssueTracker)
+│   │       ├── outputs/                            산출물 & 인게이지먼트
+│   │       │   ├── deliverables/page.tsx           개별 산출물 리스트 (Instagram/YouTube 등)
+│   │       │   └── clippings/page.tsx              보도자료·외부 링크 아카이빙
 │   │       └── schedule/                           간트 차트 (GanttChart)
-│   ├── release-notes/                              릴리즈노트 목록·상세
+│   ├── release-notes/
 │   ├── service/page.tsx
-│   ├── shared/                                     (준비중)
+│   ├── shared/
 │   └── terms/page.tsx
 ├── components/
 │   ├── auth/AuthForm.tsx
@@ -99,16 +121,21 @@ src/
 │   │   ├── BannerUpload.tsx
 │   │   ├── EditFormBuilder.tsx                     편집 빌더 루트 컴포넌트
 │   │   ├── FieldCard.tsx                           개별 필드 카드 (17종 타입)
+│   │   ├── FieldLabelEditor.tsx                    필드 레이블 에디터
 │   │   ├── MapFieldEditor.tsx
 │   │   ├── PreviewModal.tsx                        빌더 내 폼 미리보기 모달
 │   │   ├── ResponsesTab.tsx                        응답 탭 (EditFormBuilder 전용)
-│   │   ├── RichTextEditor.tsx                      Tiptap WYSIWYG (SSR 제외)
+│   │   ├── RichTextEditor.tsx                      TinyMCE WYSIWYG (SSR 제외, dynamic import)
 │   │   ├── SaveButton.tsx                          신규 저장 핸들러
 │   │   └── SettingsPanel.tsx                       설정 탭 (테마·알림·마감·이메일·다국어)
 │   ├── common/
+│   │   ├── DatePickerInput.tsx
+│   │   ├── LoadingSkeleton.tsx
 │   │   ├── PublicSiteFrame.tsx                     공개 페이지 공통 레이아웃 래퍼
 │   │   ├── SiteFooter.tsx
-│   │   └── SiteHeader.tsx
+│   │   ├── SiteHeader.tsx
+│   │   ├── SiteLogo.tsx
+│   │   └── ThemeToggle.tsx
 │   ├── dashboard/
 │   │   ├── AccountForm.tsx
 │   │   ├── AdminUserList.tsx
@@ -118,6 +145,7 @@ src/
 │   │   └── UserMenu.tsx
 │   ├── form/PublicForm.tsx                         공개 폼 렌더 + 제출 (Client)
 │   └── workspace/
+│       ├── BudgetPlanner.tsx                       예산 계획 도구 (항목별 금액/가중치)
 │       ├── KanbanBoard.tsx                         칸반 보드 (Task 관리)
 │       ├── ProjectSectionNav.tsx
 │       ├── ProjectWizard.tsx                       프로젝트 생성 위자드
@@ -126,18 +154,30 @@ src/
 │       ├── WorkspaceShell.tsx                      프로젝트 상세 레이아웃 셸
 │       └── WorkspaceSidebar.tsx
 ├── constants/
-│   ├── branding.ts                                 APP_TITLE 등 브랜딩 상수
+│   ├── branding.ts                                 APP_TITLE = '마케팅 프로젝트 관리 시스템'
 │   ├── builder.ts                                  INPUT_TYPES, CONTENT_TYPES, PRESET_COLORS
+│   ├── countries.ts                                국가 리스트
 │   ├── ia.ts                                       WORKSPACE_HUBS, PROJECT_NAV_GROUPS
 │   └── locale.ts                                   Locale 타입, resolveLocaleStrings()
+├── features/
+│   ├── clippings/
+│   │   ├── parser.ts                               URL 메타데이터 파싱 (og:title 등)
+│   │   └── types.ts                                클리핑 타입 정의
+│   └── deliverables/
+│       ├── parser.ts                               소셜미디어 데이터 파싱 (IG/YouTube)
+│       └── types.ts                                결과물 타입 정의
+├── hooks/
+│   └── useEscapeKey.ts                             ESC 키 처리
 ├── stores/
 │   └── form-builder-store.ts                       zustand (빌더 전역 상태)
 ├── types/
 │   ├── database.ts                                 FieldType, FormField, Project, Submission 등
-│   └── form.ts
+│   └── project-task.ts                             프로젝트 작업 상태·진행도
 └── utils/
+    ├── money.ts                                    통화 포맷팅
     ├── public-content.ts                           공지사항·릴리즈노트 공개 조회
-    ├── site-settings.ts                            GlobalSiteSettings (site_settings 테이블)
+    ├── rich-text.ts                                stripHtml() HTML 태그 제거
+    ├── site-settings.ts                            GlobalSiteSettings + 색상 변환 유틸
     └── supabase/
         ├── admin.ts                                createAdminClient() — service_role key
         ├── client.ts                               createClient() — 브라우저 (인증 세션)
@@ -154,15 +194,18 @@ Supabase Auth
   └── auth.admin API → 회원 삭제·비밀번호 초기화 (service_role key)
 
 Supabase DB
-  ├── projects          폼 메타데이터 (user_id FK, RLS 소유자 보호)
-  ├── form_fields        필드 정의 (project_id CASCADE)
-  ├── submissions        응답 데이터 (anon INSERT 허용)
-  ├── project_members    프로젝트 멤버
-  ├── project_milestones 간트 차트 마일스톤
-  ├── project_issues     이슈 트래커
-  ├── announcements      공지사항
-  ├── release_notes      릴리즈노트
-  └── site_settings      글로벌 사이트 설정 (단일 행, id=1)
+  ├── projects              폼+프로젝트 메타데이터 (user_id FK, RLS 소유자 보호)
+  ├── form_fields           필드 정의 (project_id CASCADE)
+  ├── submissions           응답 데이터 (anon INSERT 허용)
+  ├── project_members       프로젝트 멤버
+  ├── project_milestones    간트 차트 마일스톤
+  ├── project_issues        이슈 트래커
+  ├── project_budget_plans  예산 계획 (항목 JSON)
+  ├── project_clippings     보도자료·외부 링크 아카이빙
+  ├── project_deliverables  산출물 (Instagram/YouTube 등 소셜 콘텐츠)
+  ├── announcements         공지사항
+  ├── release_notes         릴리즈노트
+  └── site_settings         글로벌 사이트 설정 (단일 행, id=1)
 
 Supabase Storage (banners 버킷, public)
   ├── project-banners/{uuid}   배너
@@ -170,3 +213,17 @@ Supabase Storage (banners 버킷, public)
   ├── thumbnails/{uuid}        폼 썸네일
   └── site-assets/             OG 이미지, 파비콘
 ```
+
+## features/ 파서 모듈
+
+### clippings/parser.ts
+- `parseClippingUrl(url)` — og:title, og:description, og:image, 발행일 추출 (타임아웃 8초)
+
+### deliverables/parser.ts
+- `parseDeliverableUrl(url)` — Instagram·YouTube·TikTok 링크에서 통계(조회수, 좋아요, 댓글) 추출
+- 플랫폼 자동 감지: `instagram.com`, `youtube.com`/`youtu.be`, `tiktok.com`
+
+## utils/site-settings.ts 색상 유틸
+- `getGlobalSiteSettings()` — DB에서 site_settings 조회
+- `getResolvedPrimaryPalette()` — 10가지 명도 변형 팔레트 생성 (다크모드 포함)
+- `hexToRgb()`, `darken()`, `lighten()`, `getReadableTextColor()`, `ensureButtonContrast()`

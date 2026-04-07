@@ -24,6 +24,14 @@
 | seo_description | text | 폼 SEO 설명 |
 | seo_og_image | text | 폼 OG 이미지 URL |
 | user_id | uuid | Supabase Auth uid, 소유권 판별에 사용 |
+| category | text | 프로젝트 카테고리 |
+| start_date | date | 프로젝트 시작일 |
+| end_date | date | 프로젝트 종료일 |
+| budget | bigint | 총 예산 (원화 기준) |
+| country | text | 프로젝트 국가 |
+| venue_name | text | 행사장 이름 |
+| venue_map_url | text | 행사장 지도 URL |
+| workspace_project_id | uuid | 부모 워크스페이스 프로젝트 ID |
 | created_at | timestamptz | now() |
 
 ### form_fields
@@ -43,6 +51,20 @@
 
 **FieldType CHECK:**
 `'text','email','textarea','checkbox','select','radio','checkbox_group','rating','section','html','map','youtube','text_block','image','divider','table'`
+
+### submissions
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| id | uuid PK | |
+| project_id | uuid FK | → projects ON DELETE CASCADE |
+| answers | jsonb NOT NULL | `{fieldId: string \| boolean \| string[]}` |
+| created_at | timestamptz | |
+
+### profiles
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| id | uuid PK | auth.users.id 와 동일 |
+| role | text | 'editor' \| 'administrator', DEFAULT 'editor' |
 
 ### announcements
 | 컬럼 | 타입 | 비고 |
@@ -65,49 +87,6 @@
 | content | text NOT NULL | DEFAULT '' |
 | created_at | timestamptz | now() |
 
-### submissions
-| 컬럼 | 타입 | 비고 |
-|---|---|---|
-| id | uuid PK | |
-| project_id | uuid FK | → projects ON DELETE CASCADE |
-| answers | jsonb NOT NULL | `{fieldId: string \| boolean \| string[]}` |
-| created_at | timestamptz | |
-
----
-
-## RLS 정책 (anon 롤)
-
-```sql
--- projects (전체 허용)
-CREATE POLICY anon_select_projects ON projects FOR SELECT TO anon USING (true);
-CREATE POLICY anon_insert_projects ON projects FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY anon_update_projects ON projects FOR UPDATE TO anon USING (true);
-CREATE POLICY anon_delete_projects ON projects FOR DELETE TO anon USING (true);
-
--- form_fields
-CREATE POLICY anon_select_form_fields ON form_fields FOR SELECT TO anon USING (true);
-CREATE POLICY anon_insert_form_fields ON form_fields FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY anon_delete_form_fields ON form_fields FOR DELETE TO anon USING (true);
-
--- submissions
-CREATE POLICY anon_insert_submissions ON submissions FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY anon_select_submissions ON submissions FOR SELECT TO anon USING (true);
-```
-
-## Storage
-- 버킷명: `banners` (public)
-- 배너 경로: `project-banners/{uuid}.{ext}` → `uploadBanner(supabase, file)`
-- 이미지 필드 경로: `field-images/{uuid}.{ext}` → `uploadFieldImage(supabase, file)`
-- 썸네일 경로: `thumbnails/{uuid}.{ext}` → `uploadThumbnail(supabase, file)`
-- 사이트 에셋 경로: `site-assets/og-image-{uuid}.{ext}` / `site-assets/favicon-{uuid}.{ext}` → `uploadSiteAsset(supabase, file, type)`
-- 네 함수 모두 `src/utils/supabase/storage.ts` 에 정의, Public URL 반환
-
-### profiles
-| 컬럼 | 타입 | 비고 |
-|---|---|---|
-| id | uuid PK | auth.users.id 와 동일 |
-| role | text | 'editor' \| 'administrator', DEFAULT 'editor' |
-
 ### site_settings
 | 컬럼 | 타입 | 비고 |
 |---|---|---|
@@ -126,6 +105,110 @@ CREATE POLICY anon_select_submissions ON submissions FOR SELECT TO anon USING (t
 | notify | boolean | DEFAULT true — 이메일 알림 수신 여부 |
 | created_at | timestamptz | now() |
 
+### project_milestones
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| id | uuid PK | |
+| project_id | uuid FK | → projects ON DELETE CASCADE |
+| title | text NOT NULL | |
+| description | text | DEFAULT '' |
+| start_date | date NOT NULL | |
+| end_date | date NOT NULL | |
+| progress | int | DEFAULT 0, CHECK 0~100 |
+| status | text | 'not_started' \| 'in_progress' \| 'completed' |
+| created_at | timestamptz | |
+
+### project_issues
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| id | uuid PK | |
+| project_id | uuid FK | → projects ON DELETE CASCADE |
+| title | text NOT NULL | |
+| description | text | DEFAULT '' |
+| type | text | 'bug' \| 'suggestion' \| 'question' |
+| urgency | text | 'critical' \| 'high' \| 'normal' \| 'low' |
+| status | text | 'open' \| 'in_progress' \| 'resolved' |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
+
+### project_budget_plans
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| id | uuid PK | gen_random_uuid() |
+| project_id | uuid FK | → projects ON DELETE CASCADE |
+| total_budget | bigint | 총 예산 |
+| currency | text | DEFAULT 'KRW' |
+| items | jsonb | 예산 항목 배열 (category, label, min_amount, max_amount, weight) |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
+
+### project_clippings (보도자료·외부 링크 아카이빙)
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| id | uuid PK | gen_random_uuid() |
+| project_id | uuid FK | → projects ON DELETE CASCADE |
+| url | text NOT NULL | 원문 링크 |
+| title | text | 기사/콘텐츠 제목 |
+| description | text | 요약 설명 |
+| thumbnail_url | text | og:image 등 |
+| source | text | 매체명 (og:site_name 등) |
+| published_at | timestamptz | 발행일 |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
+
+### project_deliverables (산출물 — 소셜미디어 콘텐츠)
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| id | uuid PK | gen_random_uuid() |
+| project_id | uuid FK | → projects ON DELETE CASCADE |
+| platform | text | 'instagram' \| 'youtube' \| 'tiktok' \| 'twitter' \| 'facebook' \| 'blog' \| 'other' |
+| url | text NOT NULL | 콘텐츠 원문 링크 |
+| title | text | 콘텐츠 제목 |
+| thumbnail_url | text | 썸네일 이미지 URL |
+| channel_name | text | 채널/계정명 |
+| published_at | timestamptz | 게시일 |
+| views | bigint | 조회수 |
+| likes | bigint | 좋아요 수 |
+| comments | bigint | 댓글 수 |
+| shares | bigint | 공유 수 |
+| last_synced_at | timestamptz | 최근 지표 갱신 시각 |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
+
+---
+
+## RLS 정책 (anon 롤)
+
+```sql
+-- projects (전체 허용 → Auth 이후 소유자 제한)
+CREATE POLICY anon_select_projects ON projects FOR SELECT TO anon USING (true);
+CREATE POLICY auth_insert_projects ON projects FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+CREATE POLICY auth_update_projects ON projects FOR UPDATE TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY auth_delete_projects ON projects FOR DELETE TO authenticated USING (auth.uid() = user_id);
+
+-- form_fields
+CREATE POLICY anon_select_form_fields ON form_fields FOR SELECT TO anon USING (true);
+CREATE POLICY auth_insert_form_fields ON form_fields FOR INSERT TO authenticated
+  WITH CHECK (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
+CREATE POLICY auth_delete_form_fields ON form_fields FOR DELETE TO authenticated
+  USING (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
+
+-- submissions
+CREATE POLICY anon_insert_submissions ON submissions FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY auth_select_submissions ON submissions FOR SELECT TO authenticated
+  USING (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
+
+-- project_milestones, project_issues, project_members
+-- auth_all_xxx: authenticated에 대해 USING/WITH CHECK 모두 project 소유자 검증
+```
+
+## Storage
+- 버킷명: `banners` (public)
+- 배너 경로: `project-banners/{uuid}.{ext}` → `uploadBanner(supabase, file)`
+- 이미지 필드 경로: `field-images/{uuid}.{ext}` → `uploadFieldImage(supabase, file)`
+- 썸네일 경로: `thumbnails/{uuid}.{ext}` → `uploadThumbnail(supabase, file)`
+- 사이트 에셋 경로: `site-assets/og-image-{uuid}.{ext}` / `site-assets/favicon-{uuid}.{ext}` → `uploadSiteAsset(supabase, file, type)`
+
 ---
 
 ## 환경변수 (.env.local)
@@ -133,200 +216,74 @@ CREATE POLICY anon_select_submissions ON submissions FOR SELECT TO anon USING (t
 NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 RESEND_API_KEY=re_xxxxx
-RESEND_FROM_EMAIL=onboarding@resend.dev   # 도메인 인증 후 변경
+RESEND_FROM_EMAIL=onboarding@resend.dev
 ```
 
 ## 마이그레이션 히스토리
-1. 초기 4개 타입 → `options(jsonb)`, `content(text)` 컬럼 추가
-2. CHECK 제약 확장 → html, select, radio, checkbox_group 추가
-3. CHECK 재확장 → map, youtube 추가
-4. `notification_email`, `theme_color` 컬럼 추가 (ALTER TABLE ADD COLUMN IF NOT EXISTS)
-5. CHECK 재확장 → text_block, image, divider 추가
-6. `is_published(boolean)`, `deadline(timestamptz)`, `max_submissions(int)` 컬럼 추가
+
+| # | 내용 |
+|---|---|
+| 1~5 | 초기 필드 타입 확장 (options, content 컬럼 추가, CHECK 확장) |
+| 6 | is_published, deadline, max_submissions 추가 |
+| 7 | webhook_url 추가, Auth RLS 전환, set_user_id 트리거 |
+| 8 | submission_message, table 타입 추가 |
+| 9 | admin_email_template, user_email_template 추가 |
+| 10 | thumbnail_url, locale_settings 추가 |
+| 11 | form_fields.description 추가 |
+| 12 | seo_title, seo_description, seo_og_image 추가 |
+| 13 | form_fields.logic jsonb 추가 |
+| 14 | form_fields CHECK — section, rating 추가 |
+| 15 | announcements 테이블 생성 |
+| 16 | release_notes 테이블 생성 |
+| 17 | category, start_date, end_date, budget + project_members 테이블 |
+| 18 | project_milestones 테이블 (간트 차트) |
+| 19 | project_issues 테이블 (이슈 트래커) |
+| 20 | project_budget_plans 테이블 (예산 계획) |
+| 21 | project_clippings 테이블 (보도자료 아카이빙) |
+| 22 | project_deliverables 테이블 (산출물 소셜 지표) |
 
 ```sql
--- 마이그레이션 6: 공개 설정 컬럼
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS is_published boolean DEFAULT true;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS deadline timestamptz;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS max_submissions int;
-
--- 마이그레이션 9: 이메일 템플릿
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS admin_email_template text;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS user_email_template text;
-
--- 마이그레이션 8: submission_message + table 타입
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS submission_message text;
-
--- form_fields CHECK 확장 (table 타입 추가)
-ALTER TABLE form_fields DROP CONSTRAINT IF EXISTS form_fields_type_check;
-ALTER TABLE form_fields ADD CONSTRAINT form_fields_type_check
-  CHECK (type IN ('text','email','textarea','checkbox','select','radio','checkbox_group','html','map','youtube','text_block','image','divider','table'));
-
--- 마이그레이션 10: 썸네일 + 다국어 설정
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS thumbnail_url text;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS locale_settings jsonb;
-
--- 마이그레이션 11: 필드 상세 설명
-ALTER TABLE form_fields ADD COLUMN IF NOT EXISTS description text;
-
--- 마이그레이션 12: 프로젝트별 SEO 옵션 ← 미실행 시 저장 오류 발생
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS seo_title text;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS seo_description text;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS seo_og_image text;
-
--- 마이그레이션 13: form_fields 조건분기 logic 컬럼
-ALTER TABLE form_fields ADD COLUMN IF NOT EXISTS logic jsonb;
-
--- 마이그레이션 14: form_fields type CHECK — section / rating 추가
-ALTER TABLE form_fields DROP CONSTRAINT IF EXISTS form_fields_type_check;
-ALTER TABLE form_fields ADD CONSTRAINT form_fields_type_check
-  CHECK (type IN (
-    'text','email','textarea','checkbox','select','radio','checkbox_group',
-    'rating','section',
-    'html','map','youtube','text_block','image','divider','table'
-  ));
-
--- 마이그레이션 15: 공지사항 테이블
-CREATE TABLE IF NOT EXISTS announcements (
+-- 마이그레이션 20: 예산 계획
+CREATE TABLE IF NOT EXISTS project_budget_plans (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  title text NOT NULL,
-  content text NOT NULL DEFAULT '',
-  author_id uuid,
-  is_published boolean DEFAULT true,
-  is_pinned boolean DEFAULT false,
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  total_budget bigint,
+  currency text DEFAULT 'KRW',
+  items jsonb DEFAULT '[]',
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
 
--- 마이그레이션 16: 릴리즈노트 테이블
-CREATE TABLE IF NOT EXISTS release_notes (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  version text NOT NULL,
-  title text NOT NULL,
-  content text NOT NULL DEFAULT '',
-  created_at timestamptz DEFAULT now()
-);
-
--- RLS: announcements & release_notes
-ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
-CREATE POLICY anon_select_announcements ON announcements FOR SELECT TO anon USING (true);
-CREATE POLICY auth_select_announcements ON announcements FOR SELECT TO authenticated USING (true);
-CREATE POLICY auth_insert_announcements ON announcements FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY auth_update_announcements ON announcements FOR UPDATE TO authenticated USING (true);
-CREATE POLICY auth_delete_announcements ON announcements FOR DELETE TO authenticated USING (true);
-
-ALTER TABLE release_notes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY anon_select_release_notes ON release_notes FOR SELECT TO anon USING (true);
-CREATE POLICY auth_select_release_notes ON release_notes FOR SELECT TO authenticated USING (true);
-CREATE POLICY auth_insert_release_notes ON release_notes FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY auth_update_release_notes ON release_notes FOR UPDATE TO authenticated USING (true);
-CREATE POLICY auth_delete_release_notes ON release_notes FOR DELETE TO authenticated USING (true);
-
--- RLS: form_fields authenticated 정책 (브라우저 클라이언트에서 직접 호출 허용)
-DROP POLICY IF EXISTS auth_insert_form_fields ON form_fields;
-CREATE POLICY auth_insert_form_fields ON form_fields
-  FOR INSERT TO authenticated WITH CHECK (
-    project_id IN (SELECT id FROM projects WHERE user_id = auth.uid())
-  );
-DROP POLICY IF EXISTS auth_delete_form_fields ON form_fields;
-CREATE POLICY auth_delete_form_fields ON form_fields
-  FOR DELETE TO authenticated USING (
-    project_id IN (SELECT id FROM projects WHERE user_id = auth.uid())
-  );
-
--- 마이그레이션 17: 프로젝트 위자드 컬럼 + project_members 테이블
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS category text;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS start_date date;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS end_date date;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS budget bigint;
-
-CREATE TABLE IF NOT EXISTS project_members (
+-- 마이그레이션 21: 클리핑
+CREATE TABLE IF NOT EXISTS project_clippings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  name text NOT NULL,
-  email text,
-  role text NOT NULL DEFAULT 'member',
-  department text,
-  notify boolean DEFAULT true,
-  created_at timestamptz DEFAULT now()
-);
-
-ALTER TABLE project_members ENABLE ROW LEVEL SECURITY;
-CREATE POLICY auth_select_project_members ON project_members FOR SELECT TO authenticated
-  USING (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
-CREATE POLICY auth_insert_project_members ON project_members FOR INSERT TO authenticated
-  WITH CHECK (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
-CREATE POLICY auth_update_project_members ON project_members FOR UPDATE TO authenticated
-  USING (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
-CREATE POLICY auth_delete_project_members ON project_members FOR DELETE TO authenticated
-  USING (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
-
--- 마이그레이션 7: 웹훅 + Auth
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS webhook_url text;
-
--- Auth RLS (Supabase Auth 활성화 후 실행)
-DROP POLICY IF EXISTS anon_insert_projects ON projects;
-DROP POLICY IF EXISTS anon_update_projects ON projects;
-DROP POLICY IF EXISTS anon_delete_projects ON projects;
-
-CREATE POLICY auth_insert_projects ON projects FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
-CREATE POLICY auth_update_projects ON projects FOR UPDATE TO authenticated USING (auth.uid() = user_id);
-CREATE POLICY auth_delete_projects ON projects FOR DELETE TO authenticated USING (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS anon_select_submissions ON submissions;
-CREATE POLICY auth_select_submissions ON submissions FOR SELECT TO authenticated
-  USING (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
-
--- user_id 자동 설정 트리거
-CREATE OR REPLACE FUNCTION set_user_id()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.user_id = auth.uid();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER projects_set_user_id
-  BEFORE INSERT ON projects
-  FOR EACH ROW EXECUTE FUNCTION set_user_id();
-
--- 마이그레이션 18: 프로젝트 마일스톤 테이블 (간트 차트)
-CREATE TABLE IF NOT EXISTS project_milestones (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  title text NOT NULL,
-  description text DEFAULT '',
-  start_date date NOT NULL,
-  end_date date NOT NULL,
-  progress int DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
-  status text NOT NULL DEFAULT 'not_started'
-    CHECK (status IN ('not_started', 'in_progress', 'completed')),
-  created_at timestamptz DEFAULT now()
-);
-
-ALTER TABLE project_milestones ENABLE ROW LEVEL SECURITY;
-CREATE POLICY auth_all_project_milestones ON project_milestones TO authenticated
-  USING (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()))
-  WITH CHECK (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
-
--- 마이그레이션 19: 프로젝트 이슈 트래커 테이블
-CREATE TABLE IF NOT EXISTS project_issues (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  title text NOT NULL,
-  description text DEFAULT '',
-  type text NOT NULL DEFAULT 'bug'
-    CHECK (type IN ('bug', 'suggestion', 'question')),
-  urgency text NOT NULL DEFAULT 'normal'
-    CHECK (urgency IN ('critical', 'high', 'normal', 'low')),
-  status text NOT NULL DEFAULT 'open'
-    CHECK (status IN ('open', 'in_progress', 'resolved')),
+  url text NOT NULL,
+  title text,
+  description text,
+  thumbnail_url text,
+  source text,
+  published_at timestamptz,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
 
-ALTER TABLE project_issues ENABLE ROW LEVEL SECURITY;
-CREATE POLICY auth_all_project_issues ON project_issues TO authenticated
-  USING (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()))
-  WITH CHECK (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
+-- 마이그레이션 22: 결과물(산출물)
+CREATE TABLE IF NOT EXISTS project_deliverables (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  platform text,
+  url text NOT NULL,
+  title text,
+  thumbnail_url text,
+  channel_name text,
+  published_at timestamptz,
+  views bigint DEFAULT 0,
+  likes bigint DEFAULT 0,
+  comments bigint DEFAULT 0,
+  shares bigint DEFAULT 0,
+  last_synced_at timestamptz,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
 ```

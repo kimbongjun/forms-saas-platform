@@ -32,12 +32,20 @@
     │   └── /projects/new/build 위자드 Step 2+
     └── /projects/[id]          프로젝트 상세 (WorkspaceShell)
         ├── (기본)              Overview (개요)
+        ├── /budget             예산 계획 (BudgetPlanner)
         ├── /schedule           일정 – 간트 차트
         ├── /execution/
         │   ├── tasks           Task & WBS (칸반)
         │   ├── forms           폼/서베이 목록
+        │   │   ├── new         새 폼 생성
+        │   │   └── [formId]    폼 편집
+        │   │       └── export  응답 CSV 내보내기
         │   ├── form-builder    폼 빌더 (EditFormBuilder)
         │   └── live-responses  라이브 응답 + 통계 + CSV
+        ├── /outputs/           산출물 & 인게이지먼트
+        │   ├── deliverables    소셜 콘텐츠 목록 (IG/YT 등 + 실시간 지표)
+        │   └── clippings       보도자료·외부 링크 아카이빙
+        ├── /insights           전체 운영 결과 인사이트 대시보드
         └── /issues             이슈 트래커
 ```
 
@@ -75,7 +83,7 @@
 ### 프로젝트 워크스페이스 (WorkspaceShell — `/projects/[id]/layout.tsx`)
 - Sidebar: `WorkspaceSidebar` (WORKSPACE_HUBS + PROJECT_NAV_GROUPS from `constants/ia.ts`)
 - Header: 프로젝트명·상태 + UserMenu
-- 탭 네비: `TabNavigation` (개요/일정/실행/이슈)
+- 탭 네비: `TabNavigation` (개요/일정/실행/이슈/산출물/인사이트)
 
 ---
 
@@ -106,6 +114,20 @@ UserMenu → /dashboard/admin/users → AdminUserList
   → 역할 변경 / 비밀번호 초기화 / 삭제
 ```
 
+### 마케터 — 산출물 등록 & 지표 확인
+```
+/projects/[id]/outputs/deliverables → "산출물 등록" → URL 입력
+  → POST /api/projects/[id]/deliverables/parse (플랫폼 자동 감지·지표 파싱)
+  → 목록 저장 → 1시간 단위 자동 갱신 or 수동 새로고침
+```
+
+### 마케터 — 인사이트 확인
+```
+/projects/[id]/insights → deliverables + clippings 집계
+  → KPI 합산 (전체 조회/노출, 인게이지먼트, 보도자료 수)
+  → 목표 달성률 시각화
+```
+
 ---
 
 ## 5. 새 페이지·API 추가 시 체크리스트
@@ -129,3 +151,9 @@ UserMenu → /dashboard/admin/users → AdminUserList
 4. `src/constants/builder.ts` — 팔레트에 추가
 5. Supabase DB — `form_fields_type_check` 제약 업데이트
 6. `01-SUPABASE-SCHEMA.md` 타입 목록 업데이트
+
+### 새 DB 테이블
+1. Supabase SQL Editor에서 마이그레이션 실행
+2. RLS 정책 설정 (authenticated 소유자 검증 패턴)
+3. `src/types/database.ts` 에 타입 추가
+4. `01-SUPABASE-SCHEMA.md` 테이블 정의 및 마이그레이션 히스토리 업데이트

@@ -44,6 +44,12 @@ export default function TabNavigation({ projectId }: TabNavigationProps) {
 
   const activeMenu: OpenMenu = isExecution ? 'execution' : isOutputs ? 'outputs' : openMenu
 
+  // pathname 변경 시 현재 섹션에 해당하지 않는 메뉴 닫기
+  useEffect(() => {
+    if (!isExecution) setExecutionOpen(false)
+    if (!isOutputs) setOutputsOpen(false)
+  }, [pathname, isExecution, isOutputs])
+
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
       if (!containerRef.current?.contains(event.target as Node)) {
