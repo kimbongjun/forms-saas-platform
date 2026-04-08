@@ -6,7 +6,10 @@
       "Bash(xargs -I {} find {} -type f)",
       "Bash(npx tsc:*)",
       "Bash(node:*)",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(npx next:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)"
     ]
   }
 }

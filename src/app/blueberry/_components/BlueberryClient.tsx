@@ -115,7 +115,7 @@ function generateData(keyword: string, platform: 'naver' | 'google'): KeywordDat
   const suffixes = platform === 'naver' ? SUFFIXES_KR : SUFFIXES_EN
   const relatedKeywords: RelatedKeyword[] = [3, 4, 5, 6, 7].map((s, i) => {
     const vol = Math.max(100, Math.round(baseSearch * seededRand(seed + s, i) * 0.8))
-    const competition = vol > baseSearch * 0.5 ? 'high' : vol > baseSearch * 0.2 ? 'mid' : 'low'
+    const competition: RelatedKeyword['competition'] = vol > baseSearch * 0.5 ? 'high' : vol > baseSearch * 0.2 ? 'mid' : 'low'
     return { keyword: `${keyword} ${suffixes[i % suffixes.length]}`, volume: vol, competition }
   }).sort((a, b) => b.volume - a.volume)
 
