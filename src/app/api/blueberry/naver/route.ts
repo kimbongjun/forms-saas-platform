@@ -22,6 +22,19 @@ export interface NaverKeywordResult {
 }
 
 // ── Naver 검색광고 API — 실제 월간 오가닉 검색량 ─────────────────
+// Naver Ad API 응답의 검색량 필드 파싱
+// - 정수: 그대로 반환
+// - "< 10" 문자열: 0 반환 (10 미만)
+// - 숫자 문자열 "8770": 정수로 변환
+function parseQcCnt(v: number | string | undefined | null): number {
+  if (v === null || v === undefined) return 0
+  if (typeof v === 'number') return Math.round(v)
+  const s = String(v).trim()
+  if (s.startsWith('<')) return 0
+  const n = parseInt(s.replace(/,/g, ''), 10)
+  return isNaN(n) ? 0 : n
+}
+
 async function fetchAdSearchVolume(
   keyword: string,
   customerId: string,
@@ -48,7 +61,8 @@ async function fetchAdSearchVolume(
       },
     )
     if (!res.ok) {
-      console.error(`[Blueberry/Naver] AdAPI error: ${res.status}`)
+      const body = await res.text()
+      console.error(`[Blueberry/Naver] AdAPI error: ${res.status}`, body)
       return null
     }
     const json = await res.json() as {
@@ -58,13 +72,33 @@ async function fetchAdSearchVolume(
         monthlyMobileQcCnt: number | string
       }[]
     }
-    const row = json.keywordList?.find(
-      (k) => k.relKeyword === keyword,
-    ) ?? json.keywordList?.[0]
-    if (!row) return null
 
-    const pc = typeof row.monthlyPcQcCnt === 'number' ? row.monthlyPcQcCnt : 0
-    const mobile = typeof row.monthlyMobileQcCnt === 'number' ? row.monthlyMobileQcCnt : 0
+    // 응답 진단 로그 — 어떤 키워드들이 반환됐는지 확인
+    console.log(
+      `[Blueberry/Naver] AdAPI response for "${keyword}":`,
+      JSON.stringify(json.keywordList?.map(k => ({
+        relKeyword: k.relKeyword,
+        pc: k.monthlyPcQcCnt,
+        mobile: k.monthlyMobileQcCnt,
+      })).slice(0, 5)),
+    )
+
+    const trimmed = keyword.trim()
+    const row = json.keywordList?.find(
+      (k) => k.relKeyword.trim() === trimmed,
+    )
+    if (!row) {
+      console.warn(
+        `[Blueberry/Naver] "${keyword}" not found. Available: [${
+          json.keywordList?.map(k => k.relKeyword).slice(0, 5).join(', ')
+        }]`,
+      )
+      return null
+    }
+
+    const pc = parseQcCnt(row.monthlyPcQcCnt)
+    const mobile = parseQcCnt(row.monthlyMobileQcCnt)
+    console.log(`[Blueberry/Naver] parsed → pc=${pc}, mobile=${mobile}`)
     return { pc, mobile }
   } catch (e) {
     console.error('[Blueberry/Naver] AdAPI exception:', e)
@@ -124,9 +158,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ...cached.data, fromCache: true })
   }
 
-  const adCustomerId = process.env.NAVER_AD_CUSTOMER_ID
-  const adAccessLicense = process.env.NAVER_AD_ACCESS_LICENSE
-  const adSecretKey = process.env.NAVER_AD_SECRET_KEY
+  // .trim()으로 복사/붙여넣기 시 섞인 공백·줄바꿈 제거
+  const adCustomerId = process.env.NAVER_AD_CUSTOMER_ID?.trim()
+  const adAccessLicense = process.env.NAVER_AD_ACCESS_LICENSE?.trim()
+  const adSecretKey = process.env.NAVER_AD_SECRET_KEY?.trim()
   const hasAdApi = !!(adCustomerId && adAccessLicense && adSecretKey)
 
   try {

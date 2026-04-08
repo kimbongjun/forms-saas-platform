@@ -46,13 +46,21 @@ function useOutsideClose(open: boolean, onClose: () => void) {
 
 const baseDayPickerClassNames = {
   root: 'rdp-root',
-  months: 'flex flex-col gap-4 sm:flex-row',
+  // months는 relative 필수 — v9에서 nav가 months의 자식으로 렌더링됨
+  months: 'relative',
   month: 'space-y-4',
-  month_caption: 'flex items-center justify-center px-2 pt-2 relative',
+  // month_caption: captionLayout="dropdown" 시 dropdowns 컨테이너를 포함
+  month_caption: 'flex h-10 items-center justify-center px-10',
   caption_label: 'text-base font-semibold text-gray-900',
-  nav: 'flex items-center gap-1 absolute inset-x-0 justify-between px-1',
-  button_previous: 'flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900',
-  button_next: 'flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900',
+  // nav: months 기준 절대 위치로 좌우 화살표 배치
+  nav: 'absolute top-0 inset-x-0 flex h-10 items-center justify-between px-1',
+  button_previous: 'flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors',
+  button_next: 'flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors',
+  // dropdown 관련 (captionLayout="dropdown" 전용)
+  dropdowns: 'flex items-center gap-1.5',
+  months_dropdown: 'rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-sm font-semibold text-gray-700 cursor-pointer hover:border-gray-300 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 transition-colors',
+  years_dropdown: 'rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-sm font-semibold text-gray-700 cursor-pointer hover:border-gray-300 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 transition-colors',
+  dropdown: 'rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-sm font-semibold text-gray-700 cursor-pointer hover:border-gray-300 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 transition-colors',
   month_grid: 'w-full border-collapse',
   weekdays: 'grid grid-cols-7 gap-1',
   weekday: 'py-2 text-center text-xs font-semibold text-gray-400',

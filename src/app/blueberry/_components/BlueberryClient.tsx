@@ -5,6 +5,7 @@ import {
   Search, TrendingUp, FileText, MessageSquare, RefreshCw, Grape,
   Download, Monitor, Smartphone, Calendar, Plus, X, Info, Wifi, WifiOff,
 } from 'lucide-react'
+import { DateRangePickerInput } from '@/components/common/DatePickerInput'
 
 // ── Naver API 응답 타입 (route.ts 와 동기화) ────────────────────
 interface NaverApiData {
@@ -404,6 +405,7 @@ export default function BlueberryClient() {
   const [compareKeywords, setCompareKeywords] = useState<string[]>([])
   const [compareInput, setCompareInput] = useState('')
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [pcMobileSplit, setPcMobileSplit] = useState(false)
   const [, startTransition] = useTransition()
 
   // ── API 상태 (Naver 전용) ────────────────────────────────────
@@ -439,14 +441,26 @@ export default function BlueberryClient() {
       const hasAdVol = nd.monthlyPcQcCnt !== null && nd.monthlyMobileQcCnt !== null
       const totalMonthly = hasAdVol ? (nd.monthlyPcQcCnt! + nd.monthlyMobileQcCnt!) : null
 
-      // 검색량: 검색광고 API 실측값으로 목업 형태 스케일링
-      const scaleArr = (arr: number[], total: number) => {
-        const max = Math.max(...arr) || 1
-        return arr.map((v) => Math.round(v / max * total))
+      // 검색량: 월평균 = Ad API 실측값이 되도록 스케일
+      // sum(12개월) = 12 × 월간실측값 → 1m뷰 ≈ Ad Center값, 1y뷰 = 12×월간
+      const scaleToMonthlyAvg = (arr: number[], monthlyVal: number) => {
+        const arrSum = arr.reduce((s, v) => s + v, 0) || 1
+        const scaled = arr.map((v) => Math.round(v / arrSum * 12 * monthlyVal))
+        // 마지막 달(현재월)은 Ad API 실측값 그대로 고정 → 1m 뷰 정확히 일치
+        scaled[scaled.length - 1] = monthlyVal
+        return scaled
       }
-      const searchVolume = hasAdVol ? scaleArr(mock.searchVolume, totalMonthly!) : mock.searchVolume
-      const searchVolumePC = hasAdVol ? scaleArr(mock.searchVolumePC, nd.monthlyPcQcCnt!) : mock.searchVolumePC
-      const searchVolumeMobile = hasAdVol ? scaleArr(mock.searchVolumeMobile, nd.monthlyMobileQcCnt!) : mock.searchVolumeMobile
+      const searchVolume = hasAdVol ? scaleToMonthlyAvg(mock.searchVolume, totalMonthly!) : mock.searchVolume
+      const searchVolumePC = hasAdVol ? scaleToMonthlyAvg(mock.searchVolumePC, nd.monthlyPcQcCnt!) : mock.searchVolumePC
+      const searchVolumeMobile = hasAdVol ? scaleToMonthlyAvg(mock.searchVolumeMobile, nd.monthlyMobileQcCnt!) : mock.searchVolumeMobile
+
+      // 연관 키워드 검색량도 실측 비율로 보정
+      const mockAvgSearch = mock.searchVolume.reduce((s, v) => s + v, 0) / 12
+      const relKeywordScale = hasAdVol && mockAvgSearch > 0 ? totalMonthly! / mockAvgSearch : 1
+      const relatedKeywords = mock.relatedKeywords.map((k) => ({
+        ...k,
+        volume: Math.round(k.volume * relKeywordScale),
+      }))
 
       const cp = [
         { name: '블로그', count: nd.contentByPlatform.blog, color: '#03C75A' },
@@ -461,6 +475,7 @@ export default function BlueberryClient() {
         searchVolume,
         searchVolumePC,
         searchVolumeMobile,
+        relatedKeywords,
         contentByPlatform: cp.length ? cp : mock.contentByPlatform,
         platformMentions: cp.length ? cp : mock.platformMentions,
         isReal: true,
@@ -488,14 +503,49 @@ export default function BlueberryClient() {
   // 기간 슬라이스
   const PERIOD_COUNT: Record<Period, number> = { '1y': 12, '3m': 3, '1m': 1 }
   const monthCount = PERIOD_COUNT[period]
-  const visibleMonths = ALL_MONTHS.slice(12 - monthCount)
-  const periodLabel = period === '1y' ? '지난 1년' : period === '3m' ? '지난 3개월' : '지난달'
 
-  const searchSeries: ChartSeries[] = allSeriesData.map(({ keyword: kw, data, color }) => ({
-    keyword: kw, data: data.searchVolume.slice(12 - monthCount), color,
-  }))
+  // custom range 활성 여부 (시작·종료 둘 다 설정됐을 때만)
+  const customActive = showCustom && !!customStart && !!customEnd && customStart <= customEnd
+
+  const visibleMonths = customActive
+    ? ALL_MONTHS.filter(m => m.key >= customStart.slice(0, 7) && m.key <= customEnd.slice(0, 7))
+    : ALL_MONTHS.slice(12 - monthCount)
+
+  // 12-element 데이터 배열에서 실제로 표시할 인덱스
+  const visibleIndices: number[] = visibleMonths
+    .map(m => ALL_MONTHS.findIndex(am => am.key === m.key))
+    .filter(i => i >= 0)
+
+  const periodLabel = customActive && visibleMonths.length > 0
+    ? `${customStart.slice(0, 7)} ~ ${customEnd.slice(0, 7)}`
+    : period === '1y' ? '지난 1년' : period === '3m' ? '지난 3개월' : '지난달'
+
+  // PC/Mobile 분리 가능 조건: Naver 실측 데이터 + 검색광고 API 연동
+  const canSplit = isRealData && hasAdVolume && platform === 'naver'
+  const isSplit = canSplit && pcMobileSplit
+
+  const pickByIndices = (arr: number[]) => visibleIndices.map(i => arr[i] ?? 0)
+
+  const searchSeries: ChartSeries[] = isSplit
+    ? [
+        ...allSeriesData.flatMap(({ keyword: kw, data, color }) => [
+          {
+            keyword: compareKeywords.length > 0 ? `${kw} PC` : 'PC',
+            data: pickByIndices(data.searchVolumePC),
+            color: '#3B82F6',
+          },
+          {
+            keyword: compareKeywords.length > 0 ? `${kw} 모바일` : '모바일',
+            data: pickByIndices(data.searchVolumeMobile),
+            color,
+          },
+        ]),
+      ]
+    : allSeriesData.map(({ keyword: kw, data, color }) => ({
+        keyword: kw, data: pickByIndices(data.searchVolume), color,
+      }))
   const contentSeries: ChartSeries[] = allSeriesData.map(({ keyword: kw, data, color }) => ({
-    keyword: kw, data: data.contentVolume.slice(12 - monthCount), color,
+    keyword: kw, data: pickByIndices(data.contentVolume), color,
   }))
 
   function handleSearch() {
@@ -545,10 +595,10 @@ export default function BlueberryClient() {
 
   // 기간 누적합 계산
   const sum = (arr: number[]) => arr.reduce((s, v) => s + v, 0)
-  const totalSearch  = primaryData ? sum(primaryData.searchVolume.slice(12 - monthCount))  : 0
-  const totalPC      = primaryData ? sum(primaryData.searchVolumePC.slice(12 - monthCount)) : 0
-  const totalMobile  = primaryData ? sum(primaryData.searchVolumeMobile.slice(12 - monthCount)) : 0
-  const totalContent = primaryData ? sum(primaryData.contentVolume.slice(12 - monthCount)) : 0
+  const totalSearch  = primaryData ? sum(pickByIndices(primaryData.searchVolume))  : 0
+  const totalPC      = primaryData ? sum(pickByIndices(primaryData.searchVolumePC)) : 0
+  const totalMobile  = primaryData ? sum(pickByIndices(primaryData.searchVolumeMobile)) : 0
+  const totalContent = primaryData ? sum(pickByIndices(primaryData.contentVolume)) : 0
   const totalMention = primaryData ? sum(primaryData.platformMentions.map((p) => p.count))  : 0
 
   // 실측 데이터는 contentByPlatform이 이미 실측값이므로 그대로 사용
@@ -678,26 +728,51 @@ export default function BlueberryClient() {
               </button>
             </div>
 
-<div className="ml-auto flex items-center gap-1 rounded-xl bg-gray-100 p-1">
-              {(['bar', 'line'] as const).map((t) => (
-                <button key={t} type="button" onClick={() => setChartType(t)}
-                  className={['rounded-lg px-3 py-1.5 text-xs font-medium transition-colors', chartType === t ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'].join(' ')}>
-                  {t === 'bar' ? '막대' : '선형'}
+<div className="ml-auto flex items-center gap-2">
+              {/* PC / Mobile 분리 토글 — Naver 실측 데이터 전용 */}
+              {canSplit && (
+                <button
+                  type="button"
+                  onClick={() => setPcMobileSplit((v) => !v)}
+                  className={[
+                    'flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-colors border',
+                    isSplit
+                      ? 'bg-blue-50 border-blue-200 text-blue-700'
+                      : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50',
+                  ].join(' ')}>
+                  <Monitor className="h-3 w-3" />
+                  PC
+                  <span className="text-gray-300">/</span>
+                  <Smartphone className="h-3 w-3" />
+                  Mobile
                 </button>
-              ))}
+              )}
+              <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1">
+                {(['bar', 'line'] as const).map((t) => (
+                  <button key={t} type="button" onClick={() => setChartType(t)}
+                    className={['rounded-lg px-3 py-1.5 text-xs font-medium transition-colors', chartType === t ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'].join(' ')}>
+                    {t === 'bar' ? '막대' : '선형'}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           {showCustom && (
             <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
               <Calendar className="h-4 w-4 text-gray-400 shrink-0" />
-              <span className="text-sm font-medium text-gray-600">기간 직접 설정</span>
-              <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)}
-                className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-700 focus:border-violet-400 focus:outline-none" />
-              <span className="text-sm text-gray-400">~</span>
-              <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)}
-                className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-700 focus:border-violet-400 focus:outline-none" />
-              <span className="text-xs text-gray-400">※ 현재 목업 데이터 기준으로 표시됩니다.</span>
+              <span className="text-sm font-medium text-gray-600 shrink-0">기간 직접 설정</span>
+              <div className="flex-1 min-w-[240px]">
+                <DateRangePickerInput
+                  from={customStart}
+                  to={customEnd}
+                  onChange={({ from, to }) => { setCustomStart(from); setCustomEnd(to) }}
+                  placeholder="시작일 - 종료일 선택"
+                />
+              </div>
+              {customActive && visibleMonths.length === 0 && (
+                <span className="text-xs text-amber-600">선택한 기간의 데이터가 없습니다 (최근 12개월만 지원)</span>
+              )}
             </div>
           )}
 
@@ -848,9 +923,39 @@ export default function BlueberryClient() {
 
           {/* 검색량 추이 */}
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="mb-4">
-              <p className="text-sm font-semibold text-gray-900">검색량 추이</p>
-              <p className="text-xs text-gray-400">{periodLabel} · {platformLabel} 기준</p>
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">검색량 추이</p>
+                <p className="text-xs text-gray-400">{periodLabel} · {platformLabel} 기준</p>
+              </div>
+              {/* 분리 모드일 때 PC / Mobile 레전드 */}
+              {isSplit && (
+                <div className="flex items-center gap-3 text-xs text-gray-500">
+                  {compareKeywords.length === 0 ? (
+                    <>
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-sm bg-blue-500" />
+                        PC
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: allSeriesData[0]?.color }} />
+                        Mobile
+                      </span>
+                    </>
+                  ) : (
+                    allSeriesData.flatMap(({ keyword: kw, color }) => [
+                      <span key={`${kw}-pc`} className="flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-sm bg-blue-500" />
+                        {kw} PC
+                      </span>,
+                      <span key={`${kw}-mo`} className="flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: color }} />
+                        {kw} 모바일
+                      </span>,
+                    ])
+                  )}
+                </div>
+              )}
             </div>
             {chartType === 'bar'
               ? <MultiBarChart series={searchSeries} labels={visibleMonths.map((m) => m.label)} />

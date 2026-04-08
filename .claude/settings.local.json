@@ -16,7 +16,8 @@
       "Bash(D:/workspace/form-saas-platform/node_modules/.bin/tsc --noEmit)",
       "Bash(taskkill:*)",
       "Bash(cmd.exe:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(xargs grep:*)"
     ]
   }
 }
