@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { ko } from 'date-fns/locale'
-import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { DayPicker, type DateRange } from 'react-day-picker'
 
 function cn(...values: Array<string | false | null | undefined>) {
@@ -45,35 +45,42 @@ function useOutsideClose(open: boolean, onClose: () => void) {
 }
 
 const baseDayPickerClassNames = {
-  root: 'rdp-root',
+  // root에 rdp-root 사용 시 globals.css의 react-day-picker/style.css와 충돌 → 빈 문자열로 격리
+  root: '',
   // months는 relative 필수 — v9에서 nav가 months의 자식으로 렌더링됨
   months: 'relative',
   month: 'space-y-4',
-  // month_caption: captionLayout="dropdown" 시 dropdowns 컨테이너를 포함
+  // month_caption: px-10으로 양쪽 nav 버튼(32px + 패딩) 공간 확보
   month_caption: 'flex h-10 items-center justify-center px-10',
-  caption_label: 'text-base font-semibold text-gray-900',
+  // caption_label: captionLayout="dropdown"에서 각 드롭다운의 visible 레이블로 사용됨
+  // dropdown_root 안에서 aria-hidden으로 렌더링되어 select 위에 표시
+  caption_label: 'inline-flex items-center gap-1 px-2.5 py-1 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg pointer-events-none',
+  chevron: 'h-3.5 w-3.5 opacity-50 flex-shrink-0',
   // nav: months 기준 절대 위치로 좌우 화살표 배치
   nav: 'absolute top-0 inset-x-0 flex h-10 items-center justify-between px-1',
   button_previous: 'flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors',
   button_next: 'flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors',
-  // dropdown 관련 (captionLayout="dropdown" 전용)
-  dropdowns: 'flex items-center gap-1.5',
-  months_dropdown: 'rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-sm font-semibold text-gray-700 cursor-pointer hover:border-gray-300 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 transition-colors',
-  years_dropdown: 'rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-sm font-semibold text-gray-700 cursor-pointer hover:border-gray-300 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 transition-colors',
-  dropdown: 'rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-sm font-semibold text-gray-700 cursor-pointer hover:border-gray-300 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 transition-colors',
+  // dropdown_root: 각 드롭다운(월/년)의 wrapper — relative 필수 (invisible select 절대위치 기준점)
+  dropdown_root: 'relative inline-flex items-center',
+  // dropdown: 실제 <select> 요소 — 투명 오버레이로 사용자 인터랙션 담당, caption_label이 visible 표시
+  dropdown: 'absolute inset-0 w-full opacity-0 cursor-pointer z-10',
+  dropdowns: 'flex items-center gap-2',
+  months_dropdown: '',
+  years_dropdown: '',
   month_grid: 'w-full border-collapse',
   weekdays: 'grid grid-cols-7 gap-1',
   weekday: 'py-2 text-center text-xs font-semibold text-gray-400',
   week: 'mt-1 grid grid-cols-7 gap-1',
+  // day(td)에 modifier 클래스(selected 등)가 적용됨, day_button은 별도 클래스만
   day: 'h-10 w-10 p-0 font-medium',
   day_button: 'h-10 w-10 rounded-full text-sm transition-colors hover:bg-gray-100 hover:text-gray-900',
-  today: 'text-gray-900',
-  outside: 'text-gray-300 opacity-60',
-  disabled: 'text-gray-300 opacity-40',
-  selected: 'bg-blue-600 text-white hover:bg-blue-600 hover:text-white',
-  range_start: 'bg-blue-600 text-white hover:bg-blue-600 hover:text-white',
-  range_end: 'bg-blue-600 text-white hover:bg-blue-600 hover:text-white',
-  range_middle: 'bg-blue-50 text-gray-900 rounded-none hover:bg-blue-50',
+  today: '',
+  outside: 'opacity-30',
+  disabled: 'opacity-30 cursor-not-allowed',
+  selected: '[&>button]:bg-blue-600 [&>button]:text-white [&>button]:hover:bg-blue-700',
+  range_start: '[&>button]:bg-blue-600 [&>button]:text-white [&>button]:rounded-full [&>button]:hover:bg-blue-700',
+  range_end: '[&>button]:bg-blue-600 [&>button]:text-white [&>button]:rounded-full [&>button]:hover:bg-blue-700',
+  range_middle: 'bg-blue-50 [&>button]:rounded-none [&>button]:hover:bg-blue-100',
 }
 
 interface DatePickerInputProps {
@@ -126,15 +133,16 @@ export function DatePickerInput({
               onChange(toValue(date))
               if (date) setOpen(false)
             }}
-            startMonth={min ? toDate(min) : undefined}
-            endMonth={max ? toDate(max) : undefined}
+            captionLayout="dropdown"
+            startMonth={min ? toDate(min) : new Date(new Date().getFullYear() - 10, 0, 1)}
+            endMonth={max ? toDate(max) : new Date(new Date().getFullYear() + 5, 11, 31)}
             disabled={disabledDays}
             classNames={baseDayPickerClassNames}
             components={{
               Chevron: ({ orientation, className: iconClassName }) =>
-                orientation === 'left'
-                  ? <ChevronLeft className={iconClassName} />
-                  : <ChevronRight className={iconClassName} />,
+                orientation === 'left' ? <ChevronLeft className={iconClassName} />
+                : orientation === 'down' ? <ChevronDown className={iconClassName} />
+                : <ChevronRight className={iconClassName} />,
             }}
           />
           <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
@@ -211,13 +219,16 @@ export function DateRangePickerInput({
                 to: toValue(range?.to),
               })
             }}
+            captionLayout="dropdown"
+            startMonth={new Date(new Date().getFullYear() - 10, 0, 1)}
+            endMonth={new Date(new Date().getFullYear() + 5, 11, 31)}
             numberOfMonths={1}
             classNames={baseDayPickerClassNames}
             components={{
               Chevron: ({ orientation, className: iconClassName }) =>
-                orientation === 'left'
-                  ? <ChevronLeft className={iconClassName} />
-                  : <ChevronRight className={iconClassName} />,
+                orientation === 'left' ? <ChevronLeft className={iconClassName} />
+                : orientation === 'down' ? <ChevronDown className={iconClassName} />
+                : <ChevronRight className={iconClassName} />,
             }}
           />
           <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
