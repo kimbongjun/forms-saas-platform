@@ -151,6 +151,103 @@ function fmt(n: number): string {
   return n.toLocaleString()
 }
 
+// ── 목업 → 실측 데이터 병합 (모듈 레벨 순수 함수) ──────────────────
+function resolveAdData(
+  mock: KeywordData,
+  platform: 'naver' | 'google',
+  apiData: NaverApiData | null,
+): KeywordData & { isReal: boolean; hasAdVolume: boolean } {
+  if (platform === 'naver' && apiData) {
+    const hasAdVol = apiData.monthlyPcQcCnt !== null && apiData.monthlyMobileQcCnt !== null
+    const totalMonthly = hasAdVol ? (apiData.monthlyPcQcCnt! + apiData.monthlyMobileQcCnt!) : null
+
+    // 목업 계절 패턴을 유지하면서 실측 월간 평균값으로 스케일
+    const scaleToMonthlyAvg = (arr: number[], monthlyVal: number) => {
+      const arrSum = arr.reduce((s, v) => s + v, 0) || 1
+      const scaled = arr.map((v) => Math.round((v / arrSum) * 12 * monthlyVal))
+      scaled[scaled.length - 1] = monthlyVal  // 마지막 달은 실측값 고정
+      return scaled
+    }
+
+    const searchVolume = hasAdVol ? scaleToMonthlyAvg(mock.searchVolume, totalMonthly!) : mock.searchVolume
+    const searchVolumePC = hasAdVol ? scaleToMonthlyAvg(mock.searchVolumePC, apiData.monthlyPcQcCnt!) : mock.searchVolumePC
+    const searchVolumeMobile = hasAdVol ? scaleToMonthlyAvg(mock.searchVolumeMobile, apiData.monthlyMobileQcCnt!) : mock.searchVolumeMobile
+
+    const mockAvgSearch = mock.searchVolume.reduce((s, v) => s + v, 0) / 12
+    const relKeywordScale = hasAdVol && mockAvgSearch > 0 ? totalMonthly! / mockAvgSearch : 1
+    const relatedKeywords = mock.relatedKeywords.map((k) => ({
+      ...k,
+      volume: Math.round(k.volume * relKeywordScale),
+    }))
+
+    const cp = [
+      { name: '블로그', count: apiData.contentByPlatform.blog, color: '#03C75A' },
+      { name: '카페', count: apiData.contentByPlatform.cafe, color: '#FF6B00' },
+      { name: '쇼핑', count: apiData.contentByPlatform.shop, color: '#E91E63' },
+      { name: '지식iN', count: apiData.contentByPlatform.kin, color: '#FFC107' },
+      { name: '뉴스', count: apiData.contentByPlatform.news, color: '#1A73E8' },
+    ].filter((p) => p.count > 0).sort((a, b) => b.count - a.count)
+
+    // 콘텐츠 발행량: contentByPlatform 합계를 contentVolume에 반영
+    const totalContent = cp.reduce((s, p) => s + p.count, 0)
+    const contentVolume = scaleToMonthlyAvg(mock.contentVolume, totalContent || mock.contentVolume[11])
+
+    return {
+      ...mock,
+      searchVolume,
+      searchVolumePC,
+      searchVolumeMobile,
+      contentVolume,
+      relatedKeywords,
+      contentByPlatform: cp.length ? cp : mock.contentByPlatform,
+      platformMentions: cp.length ? cp : mock.platformMentions,
+      isReal: true,
+      hasAdVolume: hasAdVol,
+    }
+  }
+  return { ...mock, isReal: false, hasAdVolume: false }
+}
+
+// ── 섹션별 기간 계산 헬퍼 ──────────────────────────────────────────
+function calcSection(
+  p: Period,
+  showCustom: boolean,
+  customStart: string,
+  customEnd: string,
+) {
+  const PERIOD_COUNT: Record<Period, number> = { '1y': 12, '3m': 3, '1m': 1 }
+  const customActive = showCustom && !!customStart && !!customEnd && customStart <= customEnd
+  const months = customActive
+    ? ALL_MONTHS.filter(m => m.key >= customStart.slice(0, 7) && m.key <= customEnd.slice(0, 7))
+    : ALL_MONTHS.slice(12 - PERIOD_COUNT[p])
+  const indices = months
+    .map(m => ALL_MONTHS.findIndex(am => am.key === m.key))
+    .filter(i => i >= 0)
+  const label = customActive && months.length > 0
+    ? `${customStart.slice(0, 7)} ~ ${customEnd.slice(0, 7)}`
+    : p === '1y' ? '지난 1년' : p === '3m' ? '지난 3개월' : '지난달'
+  return { months, indices, label, customActive }
+}
+
+// ── 간단 기간 탭 (사용자 정의 날짜 없음) ─────────────────────────
+function PeriodTabs({
+  value, onChange,
+}: { value: Period; onChange: (p: Period) => void }) {
+  return (
+    <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1">
+      {(['1y', '3m', '1m'] as const).map((p) => (
+        <button key={p} type="button" onClick={() => onChange(p)}
+          className={[
+            'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+            value === p ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700',
+          ].join(' ')}>
+          {p === '1y' ? '1년' : p === '3m' ? '3개월' : '1개월'}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // ── 툴팁 컴포넌트 ────────────────────────────────────────────────
 function ChartTooltip({
   tooltip,
@@ -396,10 +493,17 @@ export default function BlueberryClient() {
   const [keyword, setKeyword] = useState('')
   const [platform, setPlatform] = useState<'naver' | 'google'>('naver')
   const [chartType, setChartType] = useState<'bar' | 'line'>('bar')
-  const [period, setPeriod] = useState<Period>('1y')
-  const [showCustom, setShowCustom] = useState(false)
-  const [customStart, setCustomStart] = useState('')
-  const [customEnd, setCustomEnd] = useState('')
+  // 섹션별 독립 기간
+  const [searchPeriod, setSearchPeriod] = useState<Period>('1y')
+  const [searchShowCustom, setSearchShowCustom] = useState(false)
+  const [searchCustomStart, setSearchCustomStart] = useState('')
+  const [searchCustomEnd, setSearchCustomEnd] = useState('')
+  const [contentPeriod, setContentPeriod] = useState<Period>('1y')
+  const [contentShowCustom, setContentShowCustom] = useState(false)
+  const [contentCustomStart, setContentCustomStart] = useState('')
+  const [contentCustomEnd, setContentCustomEnd] = useState('')
+  const [mentionPeriod, setMentionPeriod] = useState<Period>('1y')
+  const [relatedPeriod, setRelatedPeriod] = useState<Period>('1y')
   const [compareKeywords, setCompareKeywords] = useState<string[]>([])
   const [compareInput, setCompareInput] = useState('')
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -411,6 +515,9 @@ export default function BlueberryClient() {
   const [naverApiData, setNaverApiData] = useState<NaverApiData | null>(null)
   const [apiLoading, setApiLoading] = useState(false)
   const [apiConfigured, setApiConfigured] = useState(true)
+  // 비교 키워드별 실측 데이터
+  const [compareApiData, setCompareApiData] = useState<Record<string, NaverApiData | null>>({})
+  const [compareApiLoading, setCompareApiLoading] = useState<Record<string, boolean>>({})
 
   // ── Naver 키워드/플랫폼 변경 시 API 호출 ────────────────────
   useEffect(() => {
@@ -433,124 +540,65 @@ export default function BlueberryClient() {
       .finally(() => setApiLoading(false))
   }, [keyword, platform])
 
-  // ── 목업 → 실측 데이터 병합 (Naver 전용) ────────────────────
-  function resolveData(mock: KeywordData): KeywordData & { isReal: boolean; hasAdVolume: boolean } {
-    if (platform === 'naver' && naverApiData) {
-      const nd = naverApiData
-      const hasAdVol = nd.monthlyPcQcCnt !== null && nd.monthlyMobileQcCnt !== null
-      const totalMonthly = hasAdVol ? (nd.monthlyPcQcCnt! + nd.monthlyMobileQcCnt!) : null
-
-      // 검색량: 월평균 = Ad API 실측값이 되도록 스케일
-      // sum(12개월) = 12 × 월간실측값 → 1m뷰 ≈ Ad Center값, 1y뷰 = 12×월간
-      const scaleToMonthlyAvg = (arr: number[], monthlyVal: number) => {
-        const arrSum = arr.reduce((s, v) => s + v, 0) || 1
-        const scaled = arr.map((v) => Math.round(v / arrSum * 12 * monthlyVal))
-        // 마지막 달(현재월)은 Ad API 실측값 그대로 고정 → 1m 뷰 정확히 일치
-        scaled[scaled.length - 1] = monthlyVal
-        return scaled
-      }
-      const searchVolume = hasAdVol ? scaleToMonthlyAvg(mock.searchVolume, totalMonthly!) : mock.searchVolume
-      const searchVolumePC = hasAdVol ? scaleToMonthlyAvg(mock.searchVolumePC, nd.monthlyPcQcCnt!) : mock.searchVolumePC
-      const searchVolumeMobile = hasAdVol ? scaleToMonthlyAvg(mock.searchVolumeMobile, nd.monthlyMobileQcCnt!) : mock.searchVolumeMobile
-
-      // 연관 키워드 검색량도 실측 비율로 보정
-      const mockAvgSearch = mock.searchVolume.reduce((s, v) => s + v, 0) / 12
-      const relKeywordScale = hasAdVol && mockAvgSearch > 0 ? totalMonthly! / mockAvgSearch : 1
-      const relatedKeywords = mock.relatedKeywords.map((k) => ({
-        ...k,
-        volume: Math.round(k.volume * relKeywordScale),
-      }))
-
-      const cp = [
-        { name: '블로그', count: nd.contentByPlatform.blog, color: '#03C75A' },
-        { name: '카페', count: nd.contentByPlatform.cafe, color: '#FF6B00' },
-        { name: '쇼핑', count: nd.contentByPlatform.shop, color: '#E91E63' },
-        { name: '지식iN', count: nd.contentByPlatform.kin, color: '#FFC107' },
-        { name: '뉴스', count: nd.contentByPlatform.news, color: '#1A73E8' },
-      ].filter((p) => p.count > 0).sort((a, b) => b.count - a.count)
-
-      return {
-        ...mock,
-        searchVolume,
-        searchVolumePC,
-        searchVolumeMobile,
-        relatedKeywords,
-        contentByPlatform: cp.length ? cp : mock.contentByPlatform,
-        platformMentions: cp.length ? cp : mock.platformMentions,
-        isReal: true,
-        hasAdVolume: hasAdVol,
-      }
-    }
-    // Google은 목업 유지
-    return { ...mock, isReal: false, hasAdVolume: false }
-  }
-
-  // 주요 키워드 데이터 (keyword 문자열 고정 → refresh 시 불변)
+  // 주요 키워드 데이터
   const mockPrimary = keyword ? generateData(keyword, platform) : null
-  const primaryData = mockPrimary ? resolveData(mockPrimary) : null
+  const primaryData = mockPrimary ? resolveAdData(mockPrimary, platform, naverApiData) : null
   const isRealData = primaryData?.isReal ?? false
   const hasAdVolume = (primaryData as (KeywordData & { hasAdVolume?: boolean }) | null)?.hasAdVolume ?? false
 
-  // 비교 포함 전체 시리즈 (비교 키워드는 목업 유지)
+  // 비교 포함 전체 시리즈 — 비교 키워드도 실측 API 데이터 적용
   const allKeywords = keyword ? [keyword, ...compareKeywords] : []
   const allSeriesData = allKeywords.map((kw, i) => {
     const mock = generateData(kw, platform)
-    const resolved = kw === keyword && primaryData ? primaryData : mock
+    const apiData = kw === keyword ? naverApiData : (compareApiData[kw] ?? null)
+    const resolved = resolveAdData(mock, platform, apiData)
     return { keyword: kw, data: resolved, color: getKeywordColor(kw, i) }
   })
 
-  // 기간 슬라이스
+  // 섹션별 기간 계산
+  const searchSec = calcSection(searchPeriod, searchShowCustom, searchCustomStart, searchCustomEnd)
+  const contentSec = calcSection(contentPeriod, contentShowCustom, contentCustomStart, contentCustomEnd)
   const PERIOD_COUNT: Record<Period, number> = { '1y': 12, '3m': 3, '1m': 1 }
-  const monthCount = PERIOD_COUNT[period]
-
-  // custom range 활성 여부 (시작·종료 둘 다 설정됐을 때만)
-  const customActive = showCustom && !!customStart && !!customEnd && customStart <= customEnd
-
-  const visibleMonths = customActive
-    ? ALL_MONTHS.filter(m => m.key >= customStart.slice(0, 7) && m.key <= customEnd.slice(0, 7))
-    : ALL_MONTHS.slice(12 - monthCount)
-
-  // 12-element 데이터 배열에서 실제로 표시할 인덱스
-  const visibleIndices: number[] = visibleMonths
-    .map(m => ALL_MONTHS.findIndex(am => am.key === m.key))
-    .filter(i => i >= 0)
-
-  const periodLabel = customActive && visibleMonths.length > 0
-    ? `${customStart.slice(0, 7)} ~ ${customEnd.slice(0, 7)}`
-    : period === '1y' ? '지난 1년' : period === '3m' ? '지난 3개월' : '지난달'
+  const mentionMonthCount = PERIOD_COUNT[mentionPeriod]
+  const mentionPeriodLabel = mentionPeriod === '1y' ? '지난 1년' : mentionPeriod === '3m' ? '지난 3개월' : '지난달'
+  const relatedMonthCount = PERIOD_COUNT[relatedPeriod]
+  const relatedPeriodLabel = relatedPeriod === '1y' ? '지난 1년' : relatedPeriod === '3m' ? '지난 3개월' : '지난달'
 
   // PC/Mobile 분리 가능 조건: Naver 실측 데이터 + 검색광고 API 연동
   const canSplit = isRealData && hasAdVolume && platform === 'naver'
   const isSplit = canSplit && pcMobileSplit
 
-  const pickByIndices = (arr: number[]) => visibleIndices.map(i => arr[i] ?? 0)
+  const pickSearch = (arr: number[]) => searchSec.indices.map(i => arr[i] ?? 0)
+  const pickContent = (arr: number[]) => contentSec.indices.map(i => arr[i] ?? 0)
 
   const searchSeries: ChartSeries[] = isSplit
     ? [
         ...allSeriesData.flatMap(({ keyword: kw, data, color }) => [
           {
             keyword: compareKeywords.length > 0 ? `${kw} PC` : 'PC',
-            data: pickByIndices(data.searchVolumePC),
+            data: pickSearch(data.searchVolumePC),
             color: '#3B82F6',
           },
           {
             keyword: compareKeywords.length > 0 ? `${kw} 모바일` : '모바일',
-            data: pickByIndices(data.searchVolumeMobile),
+            data: pickSearch(data.searchVolumeMobile),
             color,
           },
         ]),
       ]
     : allSeriesData.map(({ keyword: kw, data, color }) => ({
-        keyword: kw, data: pickByIndices(data.searchVolume), color,
+        keyword: kw, data: pickSearch(data.searchVolume), color,
       }))
   const contentSeries: ChartSeries[] = allSeriesData.map(({ keyword: kw, data, color }) => ({
-    keyword: kw, data: pickByIndices(data.contentVolume), color,
+    keyword: kw, data: pickContent(data.contentVolume), color,
   }))
 
   function handleSearch() {
     const q = input.trim()
     if (!q) return
     startTransition(() => { setKeyword(q); setCompareKeywords([]) })
+    setCompareApiData({})
+    setCompareApiLoading({})
   }
 
   function handleRefresh() {
@@ -559,6 +607,7 @@ export default function BlueberryClient() {
     setNaverApiData(null)
 
     if (platform === 'naver') {
+      // 주 키워드 새로고침
       fetch('/api/blueberry/naver', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -570,9 +619,28 @@ export default function BlueberryClient() {
         })
         .catch(() => {})
         .finally(() => setIsRefreshing(false))
+      // 비교 키워드 새로고침
+      setCompareApiData({})
+      compareKeywords.forEach(kw => fetchCompareApi(kw))
     } else {
       setTimeout(() => setIsRefreshing(false), 500)
     }
+  }
+
+  function fetchCompareApi(kw: string) {
+    if (platform !== 'naver') return
+    setCompareApiLoading(prev => ({ ...prev, [kw]: true }))
+    fetch('/api/blueberry/naver', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keyword: kw }),
+    })
+      .then(r => r.json())
+      .then((data: NaverApiData & { error?: string }) => {
+        if (!data.error) setCompareApiData(prev => ({ ...prev, [kw]: data }))
+      })
+      .catch(() => {})
+      .finally(() => setCompareApiLoading(prev => ({ ...prev, [kw]: false })))
   }
 
   function handleAddCompare() {
@@ -580,6 +648,13 @@ export default function BlueberryClient() {
     if (!q || q === keyword || compareKeywords.includes(q) || compareKeywords.length >= 4) return
     setCompareKeywords([...compareKeywords, q])
     setCompareInput('')
+    fetchCompareApi(q)
+  }
+
+  function handleRemoveCompare(kw: string) {
+    setCompareKeywords(compareKeywords.filter(k => k !== kw))
+    setCompareApiData(prev => { const n = { ...prev }; delete n[kw]; return n })
+    setCompareApiLoading(prev => { const n = { ...prev }; delete n[kw]; return n })
   }
 
   function handleExport() {
@@ -592,28 +667,24 @@ export default function BlueberryClient() {
 
   const platformLabel = platform === 'naver' ? 'Naver' : 'Google'
 
-  // 기간 누적합 계산
-  const sum = (arr: number[]) => arr.reduce((s, v) => s + v, 0)
+  // ── KPI 카드: 항상 월간(지난달) 고정 ─────────────────────────────
   // 검색광고 API 실측이 있을 때 KPI는 "전월 월간 검색량" 고정 표시 (Ad Center와 동일 기준)
   const adMonthlyPC     = naverApiData?.monthlyPcQcCnt ?? null
   const adMonthlyMobile = naverApiData?.monthlyMobileQcCnt ?? null
   const hasAdVolume_kpi = hasAdVolume && adMonthlyPC !== null && adMonthlyMobile !== null
   // 네이버 로딩 중에는 null로 처리 → "--" 표시 (mock값이 잠깐 보이는 플리커 방지)
   const naverLoading = platform === 'naver' && apiLoading
-  const totalSearch  = naverLoading ? null : hasAdVolume_kpi ? (adMonthlyPC! + adMonthlyMobile!) : primaryData ? sum(pickByIndices(primaryData.searchVolume))  : 0
-  const totalPC      = naverLoading ? null : hasAdVolume_kpi ? adMonthlyPC!  : primaryData ? sum(pickByIndices(primaryData.searchVolumePC)) : 0
-  const totalMobile  = naverLoading ? null : hasAdVolume_kpi ? adMonthlyMobile! : primaryData ? sum(pickByIndices(primaryData.searchVolumeMobile)) : 0
-  const totalContent = primaryData ? sum(pickByIndices(primaryData.contentVolume)) : 0
-  const totalMention = primaryData ? sum(primaryData.platformMentions.map((p) => p.count))  : 0
+  const totalSearch  = naverLoading ? null : hasAdVolume_kpi ? (adMonthlyPC! + adMonthlyMobile!) : primaryData ? (primaryData.searchVolume[11] ?? 0) : 0
+  const totalPC      = naverLoading ? null : hasAdVolume_kpi ? adMonthlyPC!  : primaryData ? (primaryData.searchVolumePC[11] ?? 0) : 0
+  const totalMobile  = naverLoading ? null : hasAdVolume_kpi ? adMonthlyMobile! : primaryData ? (primaryData.searchVolumeMobile[11] ?? 0) : 0
+  // 발행량·언급량도 월간(index 11) 고정
+  const totalContent = primaryData ? (primaryData.contentVolume[11] ?? 0) : 0
+  const totalMention = primaryData
+    ? Math.round(primaryData.platformMentions.reduce((s, p) => s + p.count, 0) / 12)
+    : 0
 
   // 실측 데이터는 contentByPlatform이 이미 실측값이므로 그대로 사용
-  // 목업 데이터는 기간 누적 기준으로 스케일링
-  const scaledContentByPlatform = isRealData
-    ? (primaryData?.contentByPlatform ?? [])
-    : (primaryData?.contentByPlatform ?? []).map((p) => ({
-        ...p,
-        count: Math.round(p.count * (totalContent / Math.max(1, primaryData?.contentVolume[11] ?? 1))),
-      }))
+  const scaledContentByPlatform = primaryData?.contentByPlatform ?? []
 
   const searchUnit = ''
 
@@ -693,7 +764,7 @@ export default function BlueberryClient() {
       {primaryData && keyword ? (
         <div className="space-y-6">
 
-          {/* 컨트롤: 플랫폼 · 기간 · 차트 타입 */}
+          {/* 컨트롤: 플랫폼 · 차트 타입 */}
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1">
               {(['naver', 'google'] as const).map((p) => (
@@ -712,29 +783,7 @@ export default function BlueberryClient() {
                 </button>
               ))}
             </div>
-
-            <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1">
-              {(['1y', '3m', '1m'] as const).map((p) => (
-                <button key={p} type="button" onClick={() => { setPeriod(p); setShowCustom(false) }}
-                  className={[
-                    'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
-                    period === p && !showCustom ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700',
-                  ].join(' ')}>
-                  {p === '1y' ? '지난 1년' : p === '3m' ? '지난 3개월' : '지난달'}
-                </button>
-              ))}
-              <button type="button" onClick={() => setShowCustom(!showCustom)}
-                className={[
-                  'flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
-                  showCustom ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700',
-                ].join(' ')}>
-                <Calendar className="h-3 w-3" />
-                직접 설정
-              </button>
-            </div>
-
-<div className="ml-auto flex items-center gap-2">
-              {/* PC / Mobile 분리 토글 — Naver 실측 데이터 전용 */}
+            <div className="ml-auto flex items-center gap-2">
               {canSplit && (
                 <button
                   type="button"
@@ -762,24 +811,6 @@ export default function BlueberryClient() {
               </div>
             </div>
           </div>
-
-          {showCustom && (
-            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-              <Calendar className="h-4 w-4 text-gray-400 shrink-0" />
-              <span className="text-sm font-medium text-gray-600 shrink-0">기간 직접 설정</span>
-              <div className="flex-1 min-w-[240px]">
-                <DateRangePickerInput
-                  from={customStart}
-                  to={customEnd}
-                  onChange={({ from, to }) => { setCustomStart(from); setCustomEnd(to) }}
-                  placeholder="시작일 - 종료일 선택"
-                />
-              </div>
-              {customActive && visibleMonths.length === 0 && (
-                <span className="text-xs text-amber-600">선택한 기간의 데이터가 없습니다 (최근 12개월만 지원)</span>
-              )}
-            </div>
-          )}
 
           {/* KPI 카드 — 측정 기준 명시 */}
           <div className="grid md:grid-cols-3 gap-4">
@@ -824,9 +855,7 @@ export default function BlueberryClient() {
                   </button>
                 )}
               </div>
-              <p className="text-sm text-gray-500">
-                {hasAdVolume_kpi ? '월간 검색량 · 전월 기준' : `검색량 · ${periodLabel} 누적`}
-              </p>
+              <p className="text-sm text-gray-500">월간 검색량 · 지난달 기준</p>
               <div className="mt-3 space-y-1.5 border-t border-gray-100 pt-3">
                 <div className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1 text-gray-400"><Monitor className="h-3 w-3" /> PC</span>
@@ -858,7 +887,7 @@ export default function BlueberryClient() {
                 </span>
               </div>
               <p className="mt-3 text-2xl font-bold text-gray-900">{fmt(totalContent)}</p>
-              <p className="text-sm text-gray-500">콘텐츠 발행량 · {periodLabel} 누적</p>
+              <p className="text-sm text-gray-500">콘텐츠 발행량 · 지난달 기준</p>
               <div className="mt-3 space-y-1.5 border-t border-gray-100 pt-3">
                 {scaledContentByPlatform.map((p) => (
                   <div key={p.name} className="flex items-center justify-between text-xs">
@@ -887,7 +916,7 @@ export default function BlueberryClient() {
                 </span>
               </div>
               <p className="mt-3 text-2xl font-bold text-gray-900">{fmt(totalMention)}</p>
-              <p className="text-sm text-gray-500">플랫폼 언급량 · 누적</p>
+              <p className="text-sm text-gray-500">플랫폼 언급량 · 월평균</p>
               <div className="mt-3 space-y-1.5 border-t border-gray-100 pt-3">
                 {primaryData.platformMentions.map((p) => (
                   <div key={p.name} className="flex items-center justify-between text-xs">
@@ -922,9 +951,12 @@ export default function BlueberryClient() {
                   className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold text-white"
                   style={{ backgroundColor: getKeywordColor(kw, i + 1) }}
                 >
-                  <span className="h-1.5 w-1.5 rounded-full bg-white/80" />
+                  {compareApiLoading[kw]
+                    ? <RefreshCw className="h-3 w-3 animate-spin opacity-80" />
+                    : <span className="h-1.5 w-1.5 rounded-full bg-white/80" />
+                  }
                   {kw}
-                  <button type="button" onClick={() => setCompareKeywords(compareKeywords.filter((k) => k !== kw))}
+                  <button type="button" onClick={() => handleRemoveCompare(kw)}
                     className="ml-0.5 opacity-80 hover:opacity-100">
                     <X className="h-3 w-3" />
                   </button>
@@ -949,19 +981,47 @@ export default function BlueberryClient() {
               )}
             </div>
             <p className="mt-2 text-[11px] text-violet-500">
-              검색량·발행량 차트에서 키워드별 추이를 비교합니다. 최대 4개까지 추가할 수 있습니다.
+              검색량 추이·콘텐츠 발행량 차트에서만 비교됩니다. 최대 4개까지 추가할 수 있습니다.
             </p>
           </div>
 
           {/* 검색량 추이 */}
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="mb-4">
-              <p className="text-sm font-semibold text-gray-900">검색량 추이</p>
-              <p className="text-xs text-gray-400">{periodLabel} · {platformLabel} 기준</p>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">검색량 추이</p>
+                <p className="text-xs text-gray-400">{searchSec.label} · {platformLabel} 기준</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <PeriodTabs value={searchPeriod} onChange={(p) => { setSearchPeriod(p); setSearchShowCustom(false) }} />
+                <button type="button" onClick={() => setSearchShowCustom(v => !v)}
+                  className={[
+                    'flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+                    searchShowCustom ? 'bg-white shadow-sm text-gray-900 border border-gray-200' : 'text-gray-500 hover:text-gray-700',
+                  ].join(' ')}>
+                  <Calendar className="h-3 w-3" />
+                  직접 설정
+                </button>
+              </div>
             </div>
+            {searchShowCustom && (
+              <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3">
+                <div className="flex-1 min-w-[240px]">
+                  <DateRangePickerInput
+                    from={searchCustomStart}
+                    to={searchCustomEnd}
+                    onChange={({ from, to }) => { setSearchCustomStart(from); setSearchCustomEnd(to) }}
+                    placeholder="시작일 - 종료일 선택"
+                  />
+                </div>
+                {searchSec.customActive && searchSec.months.length === 0 && (
+                  <span className="text-xs text-amber-600">선택한 기간의 데이터가 없습니다 (최근 12개월만 지원)</span>
+                )}
+              </div>
+            )}
             {chartType === 'bar'
-              ? <MultiBarChart series={searchSeries} labels={visibleMonths.map((m) => m.label)} />
-              : <MultiLineChart series={searchSeries} labels={visibleMonths.map((m) => m.label)} />
+              ? <MultiBarChart series={searchSeries} labels={searchSec.months.map((m) => m.label)} />
+              : <MultiLineChart series={searchSeries} labels={searchSec.months.map((m) => m.label)} />
             }
             {/* PC / Mobile 범례 — split 모드일 때 차트 바로 아래 중앙 표시 */}
             {isSplit && (
@@ -992,31 +1052,68 @@ export default function BlueberryClient() {
               </div>
             )}
             <div className="mt-3 flex justify-between text-[10px] text-gray-400">
-              {visibleMonths.map((m) => <span key={m.key}>{m.label}</span>)}
+              {searchSec.months.map((m) => <span key={m.key}>{m.label}</span>)}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             {/* 콘텐츠 발행량 */}
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-              <p className="mb-1 text-sm font-semibold text-gray-900">콘텐츠 발행량</p>
-              <p className="mb-4 text-xs text-gray-400">{periodLabel} · 월별 신규 콘텐츠 수</p>
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">콘텐츠 발행량</p>
+                  <p className="text-xs text-gray-400">{contentSec.label} · 월별 신규 콘텐츠 수</p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <PeriodTabs value={contentPeriod} onChange={(p) => { setContentPeriod(p); setContentShowCustom(false) }} />
+                  <button type="button" onClick={() => setContentShowCustom(v => !v)}
+                    className={[
+                      'flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+                      contentShowCustom ? 'bg-white shadow-sm text-gray-900 border border-gray-200' : 'text-gray-500 hover:text-gray-700',
+                    ].join(' ')}>
+                    <Calendar className="h-3 w-3" />
+                    직접 설정
+                  </button>
+                </div>
+              </div>
+              {contentShowCustom && (
+                <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3">
+                  <div className="flex-1 min-w-[200px]">
+                    <DateRangePickerInput
+                      from={contentCustomStart}
+                      to={contentCustomEnd}
+                      onChange={({ from, to }) => { setContentCustomStart(from); setContentCustomEnd(to) }}
+                      placeholder="시작일 - 종료일 선택"
+                    />
+                  </div>
+                  {contentSec.customActive && contentSec.months.length === 0 && (
+                    <span className="text-xs text-amber-600">선택한 기간의 데이터가 없습니다</span>
+                  )}
+                </div>
+              )}
               {chartType === 'bar'
-                ? <MultiBarChart series={contentSeries} labels={visibleMonths.map((m) => m.label)} />
-                : <MultiLineChart series={contentSeries} labels={visibleMonths.map((m) => m.label)} />
+                ? <MultiBarChart series={contentSeries} labels={contentSec.months.map((m) => m.label)} />
+                : <MultiLineChart series={contentSeries} labels={contentSec.months.map((m) => m.label)} />
               }
               <div className="mt-3 flex justify-between text-[10px] text-gray-400">
-                {visibleMonths.map((m) => <span key={m.key}>{m.label}</span>)}
+                {contentSec.months.map((m) => <span key={m.key}>{m.label}</span>)}
               </div>
             </div>
 
             {/* 플랫폼별 언급량 */}
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-              <p className="mb-1 text-sm font-semibold text-gray-900">플랫폼별 언급량</p>
-              <p className="mb-4 text-xs text-gray-400">주요 채널 노출 분포 · <span className="font-medium">{keyword}</span></p>
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">플랫폼별 언급량</p>
+                  <p className="text-xs text-gray-400">{mentionPeriodLabel} · 주요 채널 노출 분포</p>
+                </div>
+                <PeriodTabs value={mentionPeriod} onChange={setMentionPeriod} />
+              </div>
               <div className="space-y-3">
                 {primaryData.platformMentions.map((p) => {
-                  const pct = Math.round((p.count / primaryData.platformMentions[0].count) * 100)
+                  const scaledCount = Math.round(p.count * mentionMonthCount / 12)
+                  const maxCount = Math.round(primaryData.platformMentions[0].count * mentionMonthCount / 12)
+                  const pct = Math.round((scaledCount / Math.max(1, maxCount)) * 100)
                   return (
                     <div key={p.name}>
                       <div className="mb-1 flex justify-between text-xs">
@@ -1024,7 +1121,7 @@ export default function BlueberryClient() {
                           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: p.color }} />
                           {p.name}
                         </span>
-                        <span className="text-gray-500">{p.count.toLocaleString()}</span>
+                        <span className="text-gray-500">{scaledCount.toLocaleString()}</span>
                       </div>
                       <div className="h-2 overflow-hidden rounded-full bg-gray-100">
                         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: p.color }} />
@@ -1038,31 +1135,39 @@ export default function BlueberryClient() {
 
           {/* 연관 키워드 */}
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <p className="mb-1 text-sm font-semibold text-gray-900">연관 키워드</p>
-            <p className="mb-4 text-xs text-gray-400">&ldquo;{keyword}&rdquo; 와 함께 검색되는 키워드</p>
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">연관 키워드</p>
+                <p className="text-xs text-gray-400">&ldquo;{keyword}&rdquo; 와 함께 검색되는 키워드 · {relatedPeriodLabel}</p>
+              </div>
+              <PeriodTabs value={relatedPeriod} onChange={setRelatedPeriod} />
+            </div>
             <div className="overflow-hidden rounded-xl border border-gray-100">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">키워드</th>
-                    <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">월간 검색량</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">검색량 ({relatedPeriodLabel})</th>
                     <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">경쟁도</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {primaryData.relatedKeywords.map((k, i) => (
-                    <tr key={k.keyword} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
-                      <td className="px-4 py-2.5 font-medium text-gray-900">{k.keyword}</td>
-                      <td className="px-4 py-2.5 text-right text-gray-600">
-                        {naverLoading ? <span className="text-gray-300 animate-pulse">--</span> : fmt(k.volume)}
-                      </td>
-                      <td className="px-4 py-2.5 text-right">
-                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${COMP_STYLE[k.competition]}`}>
-                          {COMP_LABEL[k.competition]}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {primaryData.relatedKeywords.map((k, i) => {
+                    const scaledVol = Math.round(k.volume * relatedMonthCount / 12)
+                    return (
+                      <tr key={k.keyword} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                        <td className="px-4 py-2.5 font-medium text-gray-900">{k.keyword}</td>
+                        <td className="px-4 py-2.5 text-right text-gray-600">
+                          {naverLoading ? <span className="text-gray-300 animate-pulse">--</span> : fmt(scaledVol)}
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${COMP_STYLE[k.competition]}`}>
+                            {COMP_LABEL[k.competition]}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
