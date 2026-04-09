@@ -59,8 +59,21 @@
 | POST | `/api/projects/[id]/deliverables/parse` | 소셜미디어 데이터 파싱 | 소유자 |
 | POST | `/api/projects/[id]/deliverables/search` | 결과물 검색 | 소유자 |
 | POST | `/api/projects/[id]/deliverables/bulk` | 대량 결과물 추가 | 소유자 |
+| POST | `/api/projects/[id]/deliverables/sync` | YouTube Data API 지표 동기화 | 소유자 |
 | PUT | `/api/projects/[id]/deliverables/[deliverableId]` | 결과물 수정 | 소유자 |
 | DELETE | `/api/projects/[id]/deliverables/[deliverableId]` | 결과물 삭제 | 소유자 |
+
+### 목표/KPI 관리
+| 메서드 | 경로 | 설명 | 인증 |
+|---|---|---|---|
+| GET | `/api/projects/[id]/goals` | KPI 계획 조회 | 소유자 |
+| PUT | `/api/projects/[id]/goals` | KPI 계획 저장 (upsert) | 소유자 |
+
+### 블루베리 키워드 인사이트
+| 메서드 | 경로 | 설명 | 인증 |
+|---|---|---|---|
+| GET/POST | `/api/blueberry/datalab` | Naver DataLab 검색 트렌드 API 연동 | 로그인 |
+| GET/POST | `/api/blueberry/naver` | Naver 검색광고 API (실측 검색량) | 로그인 |
 
 ### 마일스톤 & 이슈
 | 메서드 | 경로 | 설명 | 인증 |
@@ -135,6 +148,12 @@
 - 실행: 칸반 태스크(KanbanBoard), 폼/서베이 관리, 라이브 응답
 - 이슈 트래커 (IssueTracker): 유형(bug/suggestion/question) + 긴급도
 
+### 목표/KPI 관리 (GoalPlanner — `/projects/[id]/goals/`)
+- 목표 항목 추가/편집 (항목명, 지표, 평가방법 정량/정성, 단위)
+- 목표치(target), 실적(actual), 차이(gap), 최종평가, 가중치(%) 입력
+- `project_goal_plans` 테이블 저장/로드 (upsert)
+- 가중치 합계 자동 계산, 인사이트 페이지 KPI 달성률 연동
+
 ### 예산 관리 (BudgetPlanner)
 - 예산 항목 추가/편집 (미디어, 제작, 운영, 인력, 장소 등 카테고리)
 - 항목별 최소/최대 금액, 가중치 설정
@@ -160,6 +179,22 @@
 - 목표 달성률 시각화
 - 주요 보도자료 및 클리핑 목록
 - deliverables + clippings 데이터 집계
+
+### 블루베리 — 키워드 인사이트 (`/blueberry/`)
+- 키워드 입력 → Naver/Google 탭 분리 시각화
+- 기간 필터 (1·3·6·12개월), 복수 키워드 비교 (최대 5개)
+- KPI 카드: 월간 검색량·콘텐츠 발행량·플랫폼 언급량 + MoM 변화율
+- 검색량 추이 SVG 차트 (막대/선형 전환)
+- 연관 키워드 테이블 (검색량·경쟁도)
+- CSV Export, 브랜드별 지정 색상 팔레트
+- Naver 탭: Naver 검색광고 API 실 연동 (`/api/blueberry/naver`) + Mock 폴백
+- Google 탭: 결정론적 Mock 데이터 (해시 시드 기반)
+
+### 블루베리 — DataLab (`/blueberry/datalab/`)
+- Naver DataLab 검색 트렌드 API 실 연동 (`/api/blueberry/datalab`)
+- 키워드 그룹 설정, 기간·디바이스·성별·연령 필터
+- 결과 시각화: 상대 검색 지수 추이 차트 (DatalabResultClient)
+- 환경변수: `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`
 
 ### 관리자
 - 사용자 관리: 역할 변경, 비밀번호 초기화, 삭제

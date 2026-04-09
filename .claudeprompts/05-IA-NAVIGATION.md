@@ -26,12 +26,15 @@
 │       ├── announcements       공지사항 관리
 │       └── release-notes       릴리즈노트 관리
 │
+├── /blueberry                  키워드 인사이트 도구 (인증 필수)
+│   └── /blueberry/datalab      Naver DataLab API 연동 (검색 트렌드)
 └── /projects                   프로젝트 워크스페이스 (인증 필수)
     ├── /projects               프로젝트 목록
     ├── /projects/new           위자드 Step 1 (카테고리 선택)
     │   └── /projects/new/build 위자드 Step 2+
     └── /projects/[id]          프로젝트 상세 (WorkspaceShell)
         ├── (기본)              Overview (개요)
+        ├── /goals              목표/KPI 설정 (GoalPlanner)
         ├── /budget             예산 계획 (BudgetPlanner)
         ├── /schedule           일정 – 간트 차트
         ├── /execution/

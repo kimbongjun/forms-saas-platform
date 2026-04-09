@@ -92,9 +92,9 @@ export default function DatalabForm() {
 
   function updateGroup(id: string, field: 'groupName' | 'keywords', raw: string) {
     if (field === 'keywords') {
-      // 키워드 20개 초과 시 자동 잘라냄
-      const parts = raw.split(',')
-      if (parts.length > 20) raw = parts.slice(0, 20).join(',')
+      // 공백·빈 토큰 제외한 실제 키워드가 20개 초과 시 자동 잘라냄
+      const tokens = raw.split(',').map(k => k.trim()).filter(Boolean)
+      if (tokens.length > 20) raw = tokens.slice(0, 20).join(', ')
     }
     setGroups(prev => prev.map(g => g.id === id ? { ...g, [field]: raw } : g))
   }
@@ -136,8 +136,9 @@ export default function DatalabForm() {
       ageLabel: ageGroup === 'all' ? '전체' : ageGroup === '1020' ? '10~20대' : ageGroup === '2030' ? '20~30대' : ageGroup === '3040' ? '30~40대' : ageGroup === '4050' ? '40~50대' : '60대~',
     }
 
-    // base64 인코딩으로 URL 파라미터 전달
+    // base64 → URL-safe 인코딩 (+, /, = 이 URLSearchParams에서 깨지는 것 방지)
     const q = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
     router.push(`/blueberry/datalab?q=${q}`)
   }
 
@@ -179,21 +180,23 @@ export default function DatalabForm() {
                 onPaste={e => {
                   e.preventDefault()
                   const pasted = e.clipboardData.getData('text')
-                  // 공백(스페이스·탭·줄바꿈)을 쉼표로 변환, 연속 쉼표 정리
+                  // 공백(스페이스·탭·줄바꿈)을 쉼표로 변환
                   const converted = pasted
-                    .replace(/[\t\n\r]+/g, ',')   // 탭·줄바꿈 → 쉼표
-                    .replace(/ +/g, ',')            // 스페이스 → 쉼표
-                    .replace(/,{2,}/g, ',')         // 연속 쉼표 → 단일 쉼표
-                    .replace(/^,|,$/g, '')          // 앞뒤 쉼표 제거
+                    .replace(/[\t\n\r]+/g, ',')
+                    .replace(/ +/g, ',')
                   const el = e.currentTarget
-                  const start = el.selectionStart ?? 0
-                  const end = el.selectionEnd ?? 0
-                  const next = group.keywords.slice(0, start) + converted + group.keywords.slice(end)
-                  updateGroup(group.id, 'keywords', next)
-                  // 커서 위치 복원 (비동기)
-                  requestAnimationFrame(() => {
-                    el.setSelectionRange(start + converted.length, start + converted.length)
-                  })
+                  const selStart = el.selectionStart ?? 0
+                  const selEnd = el.selectionEnd ?? 0
+                  // 앞/뒤 구간을 쉼표로 이어붙인 뒤 전체를 정규화
+                  // (공백 제거, 빈 토큰 제거, 20개 초과 잘라냄)
+                  const raw = group.keywords.slice(0, selStart) + ',' + converted + ',' + group.keywords.slice(selEnd)
+                  const normalized = raw
+                    .split(',')
+                    .map(k => k.trim())
+                    .filter(Boolean)
+                    .slice(0, 20)
+                    .join(', ')
+                  updateGroup(group.id, 'keywords', normalized)
                 }}
                 placeholder="검색어를 쉼표로 구분 입력 (최대 20개) — 볼뉴머, 볼뉴머 후기, 볼뉴머 가격, ..."
                 className="w-full rounded-xl border border-gray-200 px-3 py-2 pr-14 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#1a3f7e] focus:outline-none focus:ring-2 focus:ring-[#e8eef7]"

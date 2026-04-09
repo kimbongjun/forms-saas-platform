@@ -62,44 +62,47 @@ src/
 
 ## 데이터 처리 방식
 
-현재는 **결정론적 Mock 데이터** 방식.  
-`hashStr(keyword + platform)` 시드 기반으로 동일 키워드 → 동일 수치 보장.
+### Naver 탭
+- **실 API 연동**: Naver 검색광고 API (`/api/blueberry/naver`) → 실측 월간 검색량(PC+모바일)
+- **Mock 폴백**: API 미설정 시 `hashStr(keyword)` 시드 기반 결정론적 Mock 데이터
+- 플랫폼 분류: 블로그·카페·뉴스·지식iN·쇼핑
 
-### 플랫폼별 차이
+### Google 탭
+- **결정론적 Mock 데이터**: `hashStr(keyword + 'google')` 시드 기반
+- 플랫폼 분류: 웹사이트·뉴스·유튜브·이미지·Reddit
+- 연관 키워드 접미어: review·best·price·how to 등
 
-| 지표 | Naver | Google |
-|---|---|---|
-| 기준 검색량 | 2만~10만 | 5천~3.5만 |
-| 플랫폼 분류 | 블로그·카페·뉴스·지식iN·쇼핑 | 웹사이트·뉴스·유튜브·이미지·Reddit |
-| 연관 키워드 접미어 | 후기·추천·가격·방법·비교 등 | review·best·price·how to 등 |
+### Naver DataLab (`/blueberry/datalab/`)
+- **실 API 연동**: Naver DataLab 검색 트렌드 API
+- 키워드 그룹, 기간·디바이스·성별·연령 필터 설정 가능
 
 ---
 
-## 향후 개선 계획
+## 구현 완료 기능 (2026-04-09 기준)
 
-### API 연동 (우선순위 높음)
+| 기능 | 상태 |
+|---|:---:|
+| 복수 키워드 비교 차트 (최대 5개) | ✅ |
+| 기간 필터 (1/3/6/12개월) | ✅ |
+| CSV Export | ✅ |
+| 브랜드별 지정 색상 팔레트 | ✅ |
+| Naver 검색광고 API 실 연동 | ✅ |
+| DataLab API 연동 (`/datalab`) | ✅ |
+| 검색량 계절성 분석 (YoY) | ⬜ |
+| 키워드 저장 / 모아보기 | ✅ |
+| PDF/PNG 리포트 내보내기 | ✅ |
+| Google Trends 실 연동 | ✅ |
 
-| API | 제공 데이터 | 비고 |
-|---|---|---|
-| Naver DataLab API | 네이버 검색 트렌드 (상대 지수) | `NAVER_CLIENT_ID` / `NAVER_CLIENT_SECRET` 필요 |
-| Google Trends (비공식) | 구글 관심도 트렌드 | `google-trends-api` npm 패키지 |
-| Naver 광고 API | 실제 월간 검색량 수치 | `NAVER_AD_API_KEY` / `NAVER_AD_SECRET` 필요 |
+---
 
-### 추가 분석 지표
-
-- [ ] 검색량 계절성 패턴 분석 (YoY 비교)
-- [ ] 키워드 저장 / 모아보기 기능
-- [ ] 복수 키워드 비교 차트 (최대 3개)
-- [ ] PDF/PNG 리포트 내보내기
-
-### 환경변수 (API 연동 시 추가)
+## 환경변수
 
 ```bash
-# Naver DataLab
+# Naver DataLab (검색 트렌드)
 NAVER_CLIENT_ID=
 NAVER_CLIENT_SECRET=
 
-# Naver 광고 API (실검색량)
+# Naver 검색광고 API (실측 검색량)
 NAVER_AD_API_KEY=
 NAVER_AD_SECRET=
 NAVER_AD_CUSTOMER_ID=
@@ -124,8 +127,9 @@ NAVER_AD_CUSTOMER_ID=
 활성 상태 감지: `/blueberry` 또는 `/blueberry/*` 경로에서 자동 하이라이트.
 
 
-## 개선 플랜
+## 향후 개선 계획
 
-1. 기간 설정에 대한 개선 - 기간에 대한 데이터 추이는 "검색량 추이", "연관 키워드", "콘텐츠 발행량", "언급량 등" 각 섹션에서 독립적으로 기간별 결과를 알 수 있게 개선하자.
-2. 키워드 비교 분석 - 이 기능은 "검색량 추이", "콘텐츠 발행량" 에서만 활용할 수 있게 수정하자.
-3. 즉 상단의 검색량, 발행량, 언급량 섹션들은 월간(지난 30일)이라는 기준을 고정값으로 데이터 출력해주고, 기간에 대한 조회는 하단의 상세 섹션에서 조회하는 형식이야
+- 검색량 계절성 분석 (YoY)
+- ~~키워드 저장 / 모아보기 기능~~ ✅ (localStorage, 검색창 아래 칩 UI)
+- ~~PDF/PNG 리포트 내보내기~~ ✅ (html2canvas, PNG 다운로드)
+- ~~Google Trends 비공식 API 연동~~ ✅ (`/api/blueberry/google`, `google-trends-api` npm)

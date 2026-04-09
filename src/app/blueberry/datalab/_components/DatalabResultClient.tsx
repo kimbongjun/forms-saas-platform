@@ -190,7 +190,9 @@ export default function DatalabResultClient() {
     const q = params.get('q')
     if (!q) return
     try {
-      const decoded = JSON.parse(decodeURIComponent(escape(atob(q)))) as DatalabPayload
+      // URL-safe base64 (-→+, _→/) 복원 후 디코딩
+      const standard = q.replace(/-/g, '+').replace(/_/g, '/')
+      const decoded = JSON.parse(decodeURIComponent(escape(atob(standard)))) as DatalabPayload
       setPayload(decoded)
     } catch {
       setError({ message: '잘못된 요청 파라미터입니다.' })

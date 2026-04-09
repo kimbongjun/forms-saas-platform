@@ -34,6 +34,9 @@ src/
 │   │   │   ├── settings/route.ts                   GET/PUT (site_settings)
 │   │   │   ├── update-role/route.ts                PUT
 │   │   │   └── users/route.ts                      GET (admin API)
+│   │   ├── blueberry/
+│   │   │   ├── datalab/route.ts                    GET/POST (Naver DataLab API 연동)
+│   │   │   └── naver/route.ts                      GET/POST (Naver 검색광고 API 연동)
 │   │   ├── duplicate/route.ts                      POST (프로젝트 복제)
 │   │   ├── projects/
 │   │   │   ├── route.ts                            POST (신규 생성)
@@ -49,7 +52,9 @@ src/
 │   │   │       ├── deliverables/parse/route.ts     POST (소셜미디어 데이터 파싱)
 │   │   │       ├── deliverables/search/route.ts    POST (결과물 검색)
 │   │   │       ├── deliverables/bulk/route.ts      POST (대량 결과물)
+│   │   │       ├── deliverables/sync/route.ts      POST (YouTube Data API 지표 동기화)
 │   │   │       ├── deliverables/[deliverableId]/route.ts PUT/DELETE
+│   │   │       ├── goals/route.ts                  GET/PUT (목표/KPI 계획)
 │   │   │       ├── issues/route.ts                 GET/POST/PUT/DELETE
 │   │   │       └── milestones/route.ts             GET/POST/PUT/DELETE
 │   │   ├── submit/route.ts                         POST (공개 폼 제출)
@@ -76,6 +81,16 @@ src/
 │   │       ├── page.tsx
 │   │       ├── export/route.ts                     CSV 내보내기
 │   │       └── stats/page.tsx                      필드별 상세 통계
+│   ├── blueberry/
+│   │   ├── layout.tsx                              WorkspaceShell 래퍼
+│   │   ├── page.tsx                                메타데이터 + BlueberryClient 마운트
+│   │   ├── _components/
+│   │   │   ├── BlueberryClient.tsx                 키워드 분석 메인 UI (Mock+Naver API 혼합)
+│   │   │   └── DatalabForm.tsx                     DataLab API 입력 폼
+│   │   └── datalab/
+│   │       ├── page.tsx                            DataLab 결과 페이지
+│   │       └── _components/
+│   │           └── DatalabResultClient.tsx         DataLab 결과 시각화 (Client)
 │   ├── engagement/
 │   │   ├── leads/page.tsx
 │   │   └── templates/page.tsx
@@ -102,6 +117,7 @@ src/
 │   │       │   ├── forms/[formId]/export/
 │   │       │   ├── live-responses/                 응답 확인 + export
 │   │       │   └── tasks/page.tsx                  칸반 (KanbanBoard)
+│   │       ├── goals/page.tsx                      목표/KPI 설정 (GoalPlanner)
 │   │       ├── insights/page.tsx                   인사이트 대시보드 (SNS 합산, KPI)
 │   │       ├── issues/                             이슈 트래커 (IssueTracker)
 │   │       ├── outputs/                            산출물 & 인게이지먼트
@@ -146,6 +162,7 @@ src/
 │   ├── form/PublicForm.tsx                         공개 폼 렌더 + 제출 (Client)
 │   └── workspace/
 │       ├── BudgetPlanner.tsx                       예산 계획 도구 (항목별 금액/가중치)
+│       ├── GoalPlanner.tsx                         목표/KPI 관리 테이블 (정량/정성 평가)
 │       ├── KanbanBoard.tsx                         칸반 보드 (Task 관리)
 │       ├── ProjectSectionNav.tsx
 │       ├── ProjectWizard.tsx                       프로젝트 생성 위자드

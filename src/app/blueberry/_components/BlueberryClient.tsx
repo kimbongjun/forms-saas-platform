@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useTransition } from 'react'
 import {
   Search, TrendingUp, FileText, MessageSquare, RefreshCw, Grape,
   Download, Monitor, Smartphone, Calendar, Plus, X, Info, Wifi, WifiOff, Copy, Check,
+  Bookmark, BookmarkCheck, Image as ImageIcon,
 } from 'lucide-react'
 import { DateRangePickerInput } from '@/components/common/DatePickerInput'
 import DatalabForm from './DatalabForm'
@@ -14,6 +15,13 @@ interface NaverApiData {
   monthlyPcQcCnt: number | null
   monthlyMobileQcCnt: number | null
   contentByPlatform: { blog: number; cafe: number; news: number; kin: number; shop: number }
+  fetchedAt: string
+}
+
+// ── Google Trends API 응답 타입 ──────────────────────────────────
+interface GoogleTrendsData {
+  interestOverTime: { month: string; value: number }[]
+  relatedQueries: { query: string; value: number }[]
   fetchedAt: string
 }
 
@@ -207,6 +215,58 @@ function resolveAdData(
     }
   }
   return { ...mock, isReal: false, hasAdVolume: false }
+}
+
+// ── Google Trends 데이터 병합 ──────────────────────────────────────
+function resolveGoogleData(
+  mock: KeywordData,
+  googleData: GoogleTrendsData | null,
+  monthLabels: { key: string; label: string }[],
+): KeywordData & { isGoogleReal: boolean } {
+  if (!googleData || googleData.interestOverTime.length === 0) {
+    return { ...mock, isGoogleReal: false }
+  }
+
+  // ALL_MONTHS의 각 인덱스에 Google Trends 값을 매핑
+  const trendMap = new Map<string, number>()
+  for (const pt of googleData.interestOverTime) {
+    trendMap.set(pt.month, pt.value)
+  }
+
+  const trendValues = monthLabels.map(m => trendMap.get(m.key) ?? null)
+  const validTrend = trendValues.filter((v): v is number => v !== null)
+
+  if (validTrend.length === 0) return { ...mock, isGoogleReal: false }
+
+  const avgTrend = validTrend.reduce((s, v) => s + v, 0) / validTrend.length
+  const mockAvg = mock.searchVolume.reduce((s, v) => s + v, 0) / 12
+
+  // 트렌드 상대값으로 검색량 스케일 조정
+  const searchVolume = monthLabels.map((m, i) => {
+    const trend = trendMap.get(m.key)
+    if (trend === undefined || avgTrend === 0) return mock.searchVolume[i] ?? 0
+    return Math.max(0, Math.round((trend / avgTrend) * mockAvg))
+  })
+
+  const pcRatio = mock.searchVolumePC.map((v, i) => (mock.searchVolume[i] > 0 ? v / mock.searchVolume[i] : 0.4))
+  const searchVolumePC = searchVolume.map((v, i) => Math.round(v * (pcRatio[i] ?? 0.4)))
+  const searchVolumeMobile = searchVolume.map((v, i) => v - searchVolumePC[i])
+
+  // 연관 키워드를 Google 실측 데이터로 교체
+  const relatedKeywords: RelatedKeyword[] = googleData.relatedQueries.slice(0, 5).map((q) => {
+    const vol = Math.max(100, Math.round(mockAvg * (q.value / 100) * 0.8))
+    const competition: RelatedKeyword['competition'] = vol > mockAvg * 0.5 ? 'high' : vol > mockAvg * 0.2 ? 'mid' : 'low'
+    return { keyword: q.query, volume: vol, competition }
+  })
+
+  return {
+    ...mock,
+    searchVolume,
+    searchVolumePC,
+    searchVolumeMobile,
+    relatedKeywords: relatedKeywords.length > 0 ? relatedKeywords : mock.relatedKeywords,
+    isGoogleReal: true,
+  }
 }
 
 // ── 섹션별 기간 계산 헬퍼 ──────────────────────────────────────────
@@ -520,6 +580,26 @@ export default function BlueberryClient() {
   const [compareApiData, setCompareApiData] = useState<Record<string, NaverApiData | null>>({})
   const [compareApiLoading, setCompareApiLoading] = useState<Record<string, boolean>>({})
 
+  // ── Google Trends API 상태 ───────────────────────────────────
+  const [googleApiData, setGoogleApiData] = useState<GoogleTrendsData | null>(null)
+  const [googleApiLoading, setGoogleApiLoading] = useState(false)
+  const [googleApiError, setGoogleApiError] = useState(false)
+
+  // ── 키워드 저장 ───────────────────────────────────────────────
+  const [savedKeywords, setSavedKeywords] = useState<string[]>([])
+
+  // ── PNG 내보내기 ─────────────────────────────────────────────
+  const resultsRef = useRef<HTMLDivElement>(null)
+  const [isExportingPng, setIsExportingPng] = useState(false)
+
+  // ── localStorage 저장 키워드 로드 ───────────────────────────
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('blueberry-saved-keywords')
+      if (raw) setSavedKeywords(JSON.parse(raw) as string[])
+    } catch { /* ignore */ }
+  }, [])
+
   // ── Naver 키워드/플랫폼 변경 시 API 호출 ────────────────────
   useEffect(() => {
     if (!keyword || platform !== 'naver') return
@@ -541,10 +621,39 @@ export default function BlueberryClient() {
       .finally(() => setApiLoading(false))
   }, [keyword, platform])
 
+  // ── Google Trends API 호출 ───────────────────────────────────
+  useEffect(() => {
+    if (!keyword || platform !== 'google') return
+    setGoogleApiLoading(true)
+    setGoogleApiData(null)
+    setGoogleApiError(false)
+
+    fetch('/api/blueberry/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keyword }),
+    })
+      .then((r) => r.json())
+      .then((data: GoogleTrendsData & { error?: string }) => {
+        if (data.error) { setGoogleApiError(true); return }
+        setGoogleApiData(data)
+      })
+      .catch(() => setGoogleApiError(true))
+      .finally(() => setGoogleApiLoading(false))
+  }, [keyword, platform])
+
   // 주요 키워드 데이터
   const mockPrimary = keyword ? generateData(keyword, platform) : null
-  const primaryData = mockPrimary ? resolveAdData(mockPrimary, platform, naverApiData) : null
-  const isRealData = primaryData?.isReal ?? false
+  const naverResolved = mockPrimary ? resolveAdData(mockPrimary, platform, naverApiData) : null
+  const googleResolved = (mockPrimary && platform === 'google')
+    ? resolveGoogleData(mockPrimary, googleApiData, ALL_MONTHS)
+    : null
+  const primaryData = platform === 'google'
+    ? (googleResolved ? { ...naverResolved ?? mockPrimary!, ...googleResolved } : naverResolved)
+    : naverResolved
+  const isRealData = platform === 'naver'
+    ? (primaryData as (KeywordData & { isReal?: boolean }) | null)?.isReal ?? false
+    : googleResolved?.isGoogleReal ?? false
   const hasAdVolume = (primaryData as (KeywordData & { hasAdVolume?: boolean }) | null)?.hasAdVolume ?? false
 
   // 비교 포함 전체 시리즈 — 비교 키워드도 실측 API 데이터 적용
@@ -666,6 +775,52 @@ export default function BlueberryClient() {
     )
   }
 
+  async function handleExportPng() {
+    if (!resultsRef.current || !keyword || isExportingPng) return
+    setIsExportingPng(true)
+    try {
+      const { default: html2canvas } = await import('html2canvas')
+      const canvas = await html2canvas(resultsRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#f9fafb',
+        logging: false,
+      })
+      const url = canvas.toDataURL('image/png')
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `blueberry_${keyword}_${platform}_${new Date().toISOString().slice(0, 10)}.png`
+      a.click()
+    } catch (e) {
+      console.error('[Blueberry] PNG export error:', e)
+    } finally {
+      setIsExportingPng(false)
+    }
+  }
+
+  function handleToggleSave() {
+    if (!keyword) return
+    const next = savedKeywords.includes(keyword)
+      ? savedKeywords.filter(k => k !== keyword)
+      : [...savedKeywords, keyword]
+    setSavedKeywords(next)
+    try { localStorage.setItem('blueberry-saved-keywords', JSON.stringify(next)) } catch { /* ignore */ }
+  }
+
+  function handleRemoveSaved(kw: string) {
+    const next = savedKeywords.filter(k => k !== kw)
+    setSavedKeywords(next)
+    try { localStorage.setItem('blueberry-saved-keywords', JSON.stringify(next)) } catch { /* ignore */ }
+  }
+
+  function handleLoadSaved(kw: string) {
+    setInput(kw)
+    startTransition(() => { setKeyword(kw); setCompareKeywords([]) })
+    setCompareApiData({})
+    setCompareApiLoading({})
+    setGoogleApiData(null)
+  }
+
   const platformLabel = platform === 'naver' ? 'Naver' : 'Google'
 
   // ── KPI 카드: 항상 월간(지난달) 고정 ─────────────────────────────
@@ -703,36 +858,78 @@ export default function BlueberryClient() {
           <p className="mt-1 text-sm text-gray-500">
             키워드를 입력하면 검색량·콘텐츠 발행량·플랫폼 언급량을 분석합니다.
           </p>
-          {/* API 연동 상태 표시 (Naver 전용) */}
-          {platform === 'naver' && (
-            <div className="mt-2 flex items-center gap-1.5">
-              {!apiConfigured ? (
-                <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">
-                  <WifiOff className="h-3 w-3" />
-                  Naver API 미설정 — 추정 데이터
-                </span>
-              ) : apiLoading ? (
-                <span className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-500">
-                  <RefreshCw className="h-3 w-3 animate-spin" />
-                  Naver 실측 데이터 로딩 중…
-                </span>
-              ) : isRealData ? (
-                <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
-                  <Wifi className="h-3 w-3" />
-                  {hasAdVolume
-                    ? 'Naver 검색광고 · 검색 API 연동됨'
-                    : 'Naver 검색 API 연동됨'}
-                </span>
-              ) : null}
-            </div>
-          )}
+          {/* API 연동 상태 표시 */}
+          <div className="mt-2 flex items-center gap-1.5">
+            {platform === 'naver' && (
+              <>
+                {!apiConfigured ? (
+                  <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">
+                    <WifiOff className="h-3 w-3" />
+                    Naver API 미설정 — 추정 데이터
+                  </span>
+                ) : apiLoading ? (
+                  <span className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-500">
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                    Naver 실측 데이터 로딩 중…
+                  </span>
+                ) : isRealData ? (
+                  <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
+                    <Wifi className="h-3 w-3" />
+                    {hasAdVolume
+                      ? 'Naver 검색광고 · 검색 API 연동됨'
+                      : 'Naver 검색 API 연동됨'}
+                  </span>
+                ) : null}
+              </>
+            )}
+            {platform === 'google' && keyword && (
+              <>
+                {googleApiLoading ? (
+                  <span className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-500">
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                    Google Trends 로딩 중…
+                  </span>
+                ) : googleApiError ? (
+                  <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">
+                    <WifiOff className="h-3 w-3" />
+                    Google Trends 연동 불가 — 추정 데이터
+                  </span>
+                ) : googleApiData ? (
+                  <span className="flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700">
+                    <Wifi className="h-3 w-3" />
+                    Google Trends 실 연동됨
+                  </span>
+                ) : null}
+              </>
+            )}
+          </div>
         </div>
         {keyword && (
           <div className="flex items-center gap-2">
+            <button type="button" onClick={handleToggleSave}
+              title={savedKeywords.includes(keyword) ? '저장 해제' : '키워드 저장'}
+              className={[
+                'flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm transition-colors',
+                savedKeywords.includes(keyword)
+                  ? 'border-[#1a3f7e] bg-[#e8eef7] text-[#1a3f7e]'
+                  : 'border-gray-200 text-gray-500 hover:bg-gray-50',
+              ].join(' ')}>
+              {savedKeywords.includes(keyword)
+                ? <BookmarkCheck className="h-3.5 w-3.5" />
+                : <Bookmark className="h-3.5 w-3.5" />}
+              {savedKeywords.includes(keyword) ? '저장됨' : '저장'}
+            </button>
+            <button type="button" onClick={handleExportPng} disabled={isExportingPng}
+              className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors">
+              {isExportingPng
+                ? <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                : <ImageIcon className="h-3.5 w-3.5" />}
+              PNG
+            </button>
             <button type="button" onClick={handleExport}
               className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 transition-colors">
               <Download className="h-3.5 w-3.5" />
-              CSV 내보내기
+              CSV
             </button>
             <button type="button" onClick={handleRefresh} disabled={isRefreshing}
               className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors">
@@ -761,9 +958,32 @@ export default function BlueberryClient() {
         </button>
       </div>
 
+      {/* 저장된 키워드 */}
+      {savedKeywords.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="flex items-center gap-1 text-xs font-semibold text-gray-400">
+            <Bookmark className="h-3 w-3" />
+            저장된 키워드
+          </span>
+          {savedKeywords.map((kw) => (
+            <span key={kw}
+              className="flex items-center gap-1 rounded-full border border-[#b3c2dc] bg-[#e8eef7] px-3 py-1 text-xs font-medium text-[#1a3f7e]">
+              <button type="button" onClick={() => handleLoadSaved(kw)}
+                className="hover:underline">
+                {kw}
+              </button>
+              <button type="button" onClick={() => handleRemoveSaved(kw)}
+                className="ml-0.5 text-[#1a3f7e]/60 hover:text-[#1a3f7e] transition-colors">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* 결과 */}
       {primaryData && keyword ? (
-        <div className="space-y-6">
+        <div ref={resultsRef} className="space-y-6">
 
           {/* 컨트롤: 플랫폼 · 차트 타입 */}
           <div className="flex flex-wrap items-center gap-2">
@@ -1194,8 +1414,8 @@ export default function BlueberryClient() {
         </div>
       )}
 
-      {/* 검색어 트렌드 — Naver Datalab */}
-      <DatalabForm />
+      {/* 검색어 트렌드 — 인트로 상태에서만 표시 */}
+      {!keyword && <DatalabForm />}
 
     </div>
   )

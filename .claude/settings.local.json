@@ -17,7 +17,12 @@
       "Bash(taskkill:*)",
       "Bash(cmd.exe:*)",
       "Bash(powershell:*)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(sort -t: -k2 -rn)",
+      "Bash(grep -rn \"const \\\\[\" /d/workspace/form-saas-platform/src/app/projects/[id]/execution/live-responses/_components/LiveFeed.tsx)",
+      "Bash(grep:*)",
+      "Bash(cd \"D:\\\\\\\\workspace\\\\\\\\form-saas-platform\")",
+      "Bash(npm install:*)"
     ]
   }
 }

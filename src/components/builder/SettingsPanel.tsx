@@ -4,50 +4,18 @@ import { useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import { ChevronDown, Copy, Globe, Loader2, Upload, X } from 'lucide-react'
+import { useShallow } from 'zustand/react/shallow'
 import { PRESET_COLORS, TEMPLATE_VARS, INPUT_CLASS } from '@/constants/builder'
 import { ALL_LOCALES, DEFAULT_LOCALE_STRINGS, LOCALE_LABELS } from '@/constants/locale'
 import type { Locale, LocaleStrings } from '@/constants/locale'
 import type { LocaleSettings } from '@/types/database'
 import { createClient } from '@/utils/supabase/client'
 import { uploadThumbnail } from '@/utils/supabase/storage'
+import { useFormBuilderStore } from '@/stores/form-builder-store'
 
 const RichTextEditor = dynamic(() => import('./RichTextEditor'), { ssr: false })
 
-type Settings = {
-  customSlug: string
-  isPublished: boolean
-  themeColor: string
-  notificationEmail: string
-  deadline: string
-  maxSubmissions: string
-  webhookUrl: string
-  submissionMessage: string
-  adminEmailTemplate: string
-  userEmailTemplate: string
-  thumbnailUrl: string
-  localeSettings: LocaleSettings
-  seoTitle: string
-  seoDescription: string
-  seoOgImage: string
-  setCustomSlug: (value: string) => void
-  setIsPublished: (value: boolean) => void
-  setThemeColor: (value: string) => void
-  setNotificationEmail: (value: string) => void
-  setDeadline: (value: string) => void
-  setMaxSubmissions: (value: string) => void
-  setWebhookUrl: (value: string) => void
-  setSubmissionMessage: (value: string) => void
-  setAdminEmailTemplate: (value: string) => void
-  setUserEmailTemplate: (value: string) => void
-  setThumbnailUrl: (value: string) => void
-  setLocaleSettings: (value: LocaleSettings) => void
-  setSeoTitle: (value: string) => void
-  setSeoDescription: (value: string) => void
-  setSeoOgImage: (value: string) => void
-}
-
 interface SettingsPanelProps {
-  settings: Settings
   slug?: string
 }
 
@@ -74,20 +42,43 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-export default function SettingsPanel({ settings, slug }: SettingsPanelProps) {
+export default function SettingsPanel({ slug }: SettingsPanelProps) {
   const [slugCopied, setSlugCopied] = useState(false)
   const [thumbnailLoading, setThumbnailLoading] = useState(false)
   const [expandedLocale, setExpandedLocale] = useState<Locale | null>(null)
   const thumbnailRef = useRef<HTMLInputElement>(null)
 
-  const localeSettings = settings.localeSettings
+  const {
+    customSlug, isPublished, themeColor, notificationEmail, deadline,
+    maxSubmissions, webhookUrl, submissionMessage, adminEmailTemplate,
+    userEmailTemplate, thumbnailUrl, localeSettings,
+    seoTitle, seoDescription, seoOgImage,
+    updateMeta,
+  } = useFormBuilderStore(useShallow((s) => ({
+    customSlug: s.customSlug,
+    isPublished: s.isPublished,
+    themeColor: s.themeColor,
+    notificationEmail: s.notificationEmail,
+    deadline: s.deadline,
+    maxSubmissions: s.maxSubmissions,
+    webhookUrl: s.webhookUrl,
+    submissionMessage: s.submissionMessage,
+    adminEmailTemplate: s.adminEmailTemplate,
+    userEmailTemplate: s.userEmailTemplate,
+    thumbnailUrl: s.thumbnailUrl,
+    localeSettings: s.localeSettings,
+    seoTitle: s.seoTitle,
+    seoDescription: s.seoDescription,
+    seoOgImage: s.seoOgImage,
+    updateMeta: s.updateMeta,
+  })))
 
   async function handleThumbnailFile(file: File) {
     setThumbnailLoading(true)
     try {
       const supabase = createClient()
       const url = await uploadThumbnail(supabase, file)
-      settings.setThumbnailUrl(url)
+      updateMeta({ thumbnailUrl: url })
     } catch (error) {
       console.error('[SettingsPanel] thumbnail upload failed:', error)
     } finally {
@@ -109,27 +100,28 @@ export default function SettingsPanel({ settings, slug }: SettingsPanelProps) {
 
     if (nextLocales.length === 0) return
 
-    settings.setLocaleSettings({
-      ...localeSettings,
-      available_locales: nextLocales,
-      default_locale: nextLocales.includes(localeSettings.default_locale)
-        ? localeSettings.default_locale
-        : nextLocales[0],
+    updateMeta({
+      localeSettings: {
+        ...localeSettings,
+        available_locales: nextLocales,
+        default_locale: nextLocales.includes(localeSettings.default_locale)
+          ? localeSettings.default_locale
+          : nextLocales[0],
+      },
     })
   }
 
   function setDefaultLocale(locale: Locale) {
-    settings.setLocaleSettings({ ...localeSettings, default_locale: locale })
+    updateMeta({ localeSettings: { ...localeSettings, default_locale: locale } })
   }
 
   function updateOverride(locale: Locale, key: keyof LocaleStrings, value: string) {
-    settings.setLocaleSettings({
-      ...localeSettings,
-      overrides: {
-        ...localeSettings.overrides,
-        [locale]: {
-          ...(localeSettings.overrides[locale] ?? {}),
-          [key]: value,
+    updateMeta({
+      localeSettings: {
+        ...localeSettings,
+        overrides: {
+          ...localeSettings.overrides,
+          [locale]: { ...(localeSettings.overrides[locale] ?? {}), [key]: value },
         },
       },
     })
@@ -145,10 +137,10 @@ export default function SettingsPanel({ settings, slug }: SettingsPanelProps) {
                 <button
                   key={color}
                   type="button"
-                  onClick={() => settings.setThemeColor(color)}
+                  onClick={() => updateMeta({ themeColor: color })}
                   style={{ backgroundColor: color }}
                   className={`h-8 w-full rounded-lg transition-all ${
-                    settings.themeColor === color ? 'ring-2 ring-offset-2 ring-gray-400' : ''
+                    themeColor === color ? 'ring-2 ring-offset-2 ring-gray-400' : ''
                   }`}
                 />
               ))}
@@ -156,19 +148,19 @@ export default function SettingsPanel({ settings, slug }: SettingsPanelProps) {
             <div className="flex items-center gap-3">
               <input
                 type="color"
-                value={settings.themeColor}
-                onChange={(event) => settings.setThemeColor(event.target.value)}
+                value={themeColor}
+                onChange={(event) => updateMeta({ themeColor: event.target.value })}
                 className="h-9 w-24 cursor-pointer rounded-lg border border-gray-200"
               />
-              <span className="text-xs text-gray-500">{settings.themeColor}</span>
+              <span className="text-xs text-gray-500">{themeColor}</span>
             </div>
           </Section>
 
           <Section title="썸네일">
-            {settings.thumbnailUrl ? (
+            {thumbnailUrl ? (
               <div className="relative">
                 <Image
-                  src={settings.thumbnailUrl}
+                  src={thumbnailUrl}
                   alt="thumbnail preview"
                   width={1200}
                   height={630}
@@ -177,7 +169,7 @@ export default function SettingsPanel({ settings, slug }: SettingsPanelProps) {
                 />
                 <button
                   type="button"
-                  onClick={() => settings.setThumbnailUrl('')}
+                  onClick={() => updateMeta({ thumbnailUrl: '' })}
                   className="absolute right-2 top-2 rounded-full bg-black/50 p-1 text-white transition-colors hover:bg-black/70"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -223,8 +215,8 @@ export default function SettingsPanel({ settings, slug }: SettingsPanelProps) {
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Slug</p>
                 <input
                   type="text"
-                  value={settings.customSlug}
-                  onChange={(event) => settings.setCustomSlug(event.target.value.replace(/[^a-z0-9-]/g, ''))}
+                  value={customSlug}
+                  onChange={(event) => updateMeta({ customSlug: event.target.value.replace(/[^a-z0-9-]/g, '') })}
                   placeholder="비워두면 자동 생성"
                   className={INPUT_CLASS}
                 />
@@ -236,33 +228,33 @@ export default function SettingsPanel({ settings, slug }: SettingsPanelProps) {
                 <p className="text-sm font-medium text-gray-900">공개 상태</p>
                 <p className="text-xs text-gray-400">폼 접근 가능 여부를 제어합니다.</p>
               </div>
-              <input type="checkbox" checked={settings.isPublished} onChange={(event) => settings.setIsPublished(event.target.checked)} />
+              <input type="checkbox" checked={isPublished} onChange={(event) => updateMeta({ isPublished: event.target.checked })} />
             </label>
 
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">알림 이메일</p>
-              <input type="email" value={settings.notificationEmail} onChange={(event) => settings.setNotificationEmail(event.target.value)} className={INPUT_CLASS} placeholder="alerts@example.com" />
+              <input type="email" value={notificationEmail} onChange={(event) => updateMeta({ notificationEmail: event.target.value })} className={INPUT_CLASS} placeholder="alerts@example.com" />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">마감일</p>
-                <input type="datetime-local" value={settings.deadline} onChange={(event) => settings.setDeadline(event.target.value)} className={INPUT_CLASS} />
+                <input type="datetime-local" value={deadline} onChange={(event) => updateMeta({ deadline: event.target.value })} className={INPUT_CLASS} />
               </div>
               <div>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">최대 응답 수</p>
-                <input type="number" min="1" value={settings.maxSubmissions} onChange={(event) => settings.setMaxSubmissions(event.target.value)} className={INPUT_CLASS} placeholder="제한 없음" />
+                <input type="number" min="1" value={maxSubmissions} onChange={(event) => updateMeta({ maxSubmissions: event.target.value })} className={INPUT_CLASS} placeholder="제한 없음" />
               </div>
             </div>
 
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Webhook URL</p>
-              <input type="url" value={settings.webhookUrl} onChange={(event) => settings.setWebhookUrl(event.target.value)} className={INPUT_CLASS} placeholder="https://..." />
+              <input type="url" value={webhookUrl} onChange={(event) => updateMeta({ webhookUrl: event.target.value })} className={INPUT_CLASS} placeholder="https://..." />
             </div>
 
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">제출 완료 메시지</p>
-              <textarea rows={4} value={settings.submissionMessage} onChange={(event) => settings.setSubmissionMessage(event.target.value)} className={`${INPUT_CLASS} resize-y`} />
+              <textarea rows={4} value={submissionMessage} onChange={(event) => updateMeta({ submissionMessage: event.target.value })} className={`${INPUT_CLASS} resize-y`} />
             </div>
           </Section>
         </div>
@@ -271,15 +263,15 @@ export default function SettingsPanel({ settings, slug }: SettingsPanelProps) {
           <Section title="SEO 설정">
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">SEO Title</p>
-              <input type="text" value={settings.seoTitle} onChange={(event) => settings.setSeoTitle(event.target.value)} className={INPUT_CLASS} />
+              <input type="text" value={seoTitle} onChange={(event) => updateMeta({ seoTitle: event.target.value })} className={INPUT_CLASS} />
             </div>
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">SEO Description</p>
-              <textarea rows={4} value={settings.seoDescription} onChange={(event) => settings.setSeoDescription(event.target.value)} className={`${INPUT_CLASS} resize-y`} />
+              <textarea rows={4} value={seoDescription} onChange={(event) => updateMeta({ seoDescription: event.target.value })} className={`${INPUT_CLASS} resize-y`} />
             </div>
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">OG Image URL</p>
-              <input type="url" value={settings.seoOgImage} onChange={(event) => settings.setSeoOgImage(event.target.value)} className={INPUT_CLASS} placeholder="https://..." />
+              <input type="url" value={seoOgImage} onChange={(event) => updateMeta({ seoOgImage: event.target.value })} className={INPUT_CLASS} placeholder="https://..." />
             </div>
           </Section>
 
@@ -289,11 +281,11 @@ export default function SettingsPanel({ settings, slug }: SettingsPanelProps) {
             </div>
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">관리자 알림 메일</p>
-              <RichTextEditor content={settings.adminEmailTemplate} onChange={settings.setAdminEmailTemplate} height="260px" />
+              <RichTextEditor content={adminEmailTemplate} onChange={(v: string) => updateMeta({ adminEmailTemplate: v })} height="260px" />
             </div>
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">사용자 발송 메일</p>
-              <RichTextEditor content={settings.userEmailTemplate} onChange={settings.setUserEmailTemplate} height="260px" />
+              <RichTextEditor content={userEmailTemplate} onChange={(v: string) => updateMeta({ userEmailTemplate: v })} height="260px" />
             </div>
           </Section>
 
@@ -306,7 +298,7 @@ export default function SettingsPanel({ settings, slug }: SettingsPanelProps) {
               <input
                 type="checkbox"
                 checked={localeSettings.enabled}
-                onChange={(event) => settings.setLocaleSettings({ ...localeSettings, enabled: event.target.checked })}
+                onChange={(event) => updateMeta({ localeSettings: { ...localeSettings, enabled: event.target.checked } })}
               />
             </label>
 

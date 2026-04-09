@@ -156,6 +156,22 @@
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 
+### project_goal_plans (목표/KPI 계획)
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| id | uuid PK | gen_random_uuid() |
+| project_id | uuid FK | → projects ON DELETE CASCADE |
+| items | jsonb | ProjectGoalItem 배열 (id, item, metric, evaluation_method, unit, target, actual, gap, final_evaluation, weight_percent) |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
+
+**ProjectGoalItem 타입** (`src/types/database.ts`):
+- `evaluation_method`: `'정량' | '정성'`
+- `weight_percent`: 0~100 (항목별 가중치)
+- `target`, `actual`, `gap`, `final_evaluation`: 텍스트
+
+---
+
 ### project_deliverables (산출물 — 소셜미디어 콘텐츠)
 | 컬럼 | 타입 | 비고 |
 |---|---|---|
@@ -241,6 +257,7 @@ RESEND_FROM_EMAIL=onboarding@resend.dev
 | 20 | project_budget_plans 테이블 (예산 계획) |
 | 21 | project_clippings 테이블 (보도자료 아카이빙) |
 | 22 | project_deliverables 테이블 (산출물 소셜 지표) |
+| 23 | project_goal_plans 테이블 (목표/KPI 계획) |
 
 ```sql
 -- 마이그레이션 20: 예산 계획
@@ -264,6 +281,15 @@ CREATE TABLE IF NOT EXISTS project_clippings (
   thumbnail_url text,
   source text,
   published_at timestamptz,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- 마이그레이션 23: 목표/KPI 계획
+CREATE TABLE IF NOT EXISTS project_goal_plans (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  items jsonb DEFAULT '[]',
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );

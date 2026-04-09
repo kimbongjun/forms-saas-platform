@@ -42,48 +42,17 @@ export default function EditFormBuilder({
   const [saved, setSaved] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const initialize = useFormBuilderStore((state) => state.initialize)
-  const title = useFormBuilderStore((state) => state.title)
-  const fields = useFormBuilderStore((state) => state.fields)
-  const setTitle = useFormBuilderStore((state) => state.setTitle)
-  const addField = useFormBuilderStore((state) => state.addField)
-  const updateField = useFormBuilderStore((state) => state.updateField)
-  const removeField = useFormBuilderStore((state) => state.removeField)
-  const handleDragEnd = useFormBuilderStore((state) => state.handleDragEnd)
-  const settings = useFormBuilderStore(useShallow((state) => ({
-    title: state.title,
-    customSlug: state.customSlug,
-    isPublished: state.isPublished,
-    themeColor: state.themeColor,
-    notificationEmail: state.notificationEmail,
-    deadline: state.deadline,
-    maxSubmissions: state.maxSubmissions,
-    webhookUrl: state.webhookUrl,
-    submissionMessage: state.submissionMessage,
-    adminEmailTemplate: state.adminEmailTemplate,
-    userEmailTemplate: state.userEmailTemplate,
-    thumbnailUrl: state.thumbnailUrl,
-    localeSettings: state.localeSettings,
-    seoTitle: state.seoTitle,
-    seoDescription: state.seoDescription,
-    seoOgImage: state.seoOgImage,
-    setTitle: state.setTitle,
-    setCustomSlug: state.setCustomSlug,
-    setIsPublished: state.setIsPublished,
-    setThemeColor: state.setThemeColor,
-    setNotificationEmail: state.setNotificationEmail,
-    setDeadline: state.setDeadline,
-    setMaxSubmissions: state.setMaxSubmissions,
-    setWebhookUrl: state.setWebhookUrl,
-    setSubmissionMessage: state.setSubmissionMessage,
-    setAdminEmailTemplate: state.setAdminEmailTemplate,
-    setUserEmailTemplate: state.setUserEmailTemplate,
-    setThumbnailUrl: state.setThumbnailUrl,
-    setLocaleSettings: state.setLocaleSettings,
-    setSeoTitle: state.setSeoTitle,
-    setSeoDescription: state.setSeoDescription,
-    setSeoOgImage: state.setSeoOgImage,
-  })))
+  const { title, fields, initialize, addField, updateField, removeField, handleDragEnd, updateMeta } =
+    useFormBuilderStore(useShallow((s) => ({
+      title: s.title,
+      fields: s.fields,
+      initialize: s.initialize,
+      addField: s.addField,
+      updateField: s.updateField,
+      removeField: s.removeField,
+      handleDragEnd: s.handleDragEnd,
+      updateMeta: s.updateMeta,
+    })))
 
   useEffect(() => {
     initialize({ ...project, initialDeadline }, initialFields)
@@ -220,7 +189,7 @@ export default function EditFormBuilder({
               <BuilderCanvas
                 title={title}
                 onTitleChange={(value) => {
-                  setTitle(value)
+                  updateMeta({ title: value })
                   setError('')
                 }}
                 fields={fields}
@@ -233,7 +202,7 @@ export default function EditFormBuilder({
           </div>
         )}
 
-        {activeTab === 'settings' && <SettingsPanel settings={settings} slug={project.slug} />}
+        {activeTab === 'settings' && <SettingsPanel slug={project.slug} />}
         {activeTab === 'responses' && (
           <ResponsesTab
             workspaceId={workspaceId ?? project.id}
@@ -321,7 +290,7 @@ export default function EditFormBuilder({
             <BuilderCanvas
               title={title}
               onTitleChange={(value) => {
-                setTitle(value)
+                updateMeta({ title: value })
                 setError('')
               }}
               fields={fields}
@@ -334,7 +303,7 @@ export default function EditFormBuilder({
         </div>
       )}
 
-      {activeTab === 'settings' && <SettingsPanel settings={settings} slug={project.slug} />}
+      {activeTab === 'settings' && <SettingsPanel slug={project.slug} />}
       {activeTab === 'responses' && (
         <ResponsesTab
           workspaceId={workspaceId ?? project.id}

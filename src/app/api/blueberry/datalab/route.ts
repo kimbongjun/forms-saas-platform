@@ -28,12 +28,27 @@ export async function POST(req: NextRequest) {
 
   const body: DatalabRequestBody = await req.json()
 
+  // 키워드 정규화: 공백 제거, 빈 키워드 제거, 20자 초과 자르기, 그룹당 20개 초과 자르기
+  const normalizedGroups = body.keywordGroups
+    .map(g => ({
+      groupName: g.groupName.trim(),
+      keywords: g.keywords
+        .map(k => k.trim().slice(0, 20))
+        .filter(Boolean)
+        .slice(0, 20),
+    }))
+    .filter(g => g.groupName && g.keywords.length > 0)
+
+  if (normalizedGroups.length === 0) {
+    return NextResponse.json({ error: '유효한 주제어 그룹이 없습니다.' }, { status: 400 })
+  }
+
   // Naver Datalab API에 보낼 body 구성
   const naverBody: Record<string, unknown> = {
     startDate: body.startDate,
     endDate: body.endDate,
     timeUnit: body.timeUnit,
-    keywordGroups: body.keywordGroups,
+    keywordGroups: normalizedGroups,
   }
   if (body.device) naverBody.device = body.device
   if (body.gender) naverBody.gender = body.gender
