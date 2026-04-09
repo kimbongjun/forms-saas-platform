@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useTransition } from 'react'
 import {
   Search, TrendingUp, FileText, MessageSquare, RefreshCw, Grape,
-  Download, Monitor, Smartphone, Calendar, Plus, X, Info, Wifi, WifiOff,
+  Download, Monitor, Smartphone, Calendar, Plus, X, Info, Wifi, WifiOff, Copy, Check,
 } from 'lucide-react'
 import { DateRangePickerInput } from '@/components/common/DatePickerInput'
 
@@ -148,8 +148,6 @@ function generateData(keyword: string, platform: 'naver' | 'google'): KeywordDat
 }
 
 function fmt(n: number): string {
-  if (n >= 10000) return `${(n / 10000).toFixed(1)}만`
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}천`
   return n.toLocaleString()
 }
 
@@ -406,6 +404,7 @@ export default function BlueberryClient() {
   const [compareInput, setCompareInput] = useState('')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [pcMobileSplit, setPcMobileSplit] = useState(false)
+  const [copiedSearch, setCopiedSearch] = useState(false)
   const [, startTransition] = useTransition()
 
   // ── API 상태 (Naver 전용) ────────────────────────────────────
@@ -595,9 +594,15 @@ export default function BlueberryClient() {
 
   // 기간 누적합 계산
   const sum = (arr: number[]) => arr.reduce((s, v) => s + v, 0)
-  const totalSearch  = primaryData ? sum(pickByIndices(primaryData.searchVolume))  : 0
-  const totalPC      = primaryData ? sum(pickByIndices(primaryData.searchVolumePC)) : 0
-  const totalMobile  = primaryData ? sum(pickByIndices(primaryData.searchVolumeMobile)) : 0
+  // 검색광고 API 실측이 있을 때 KPI는 "전월 월간 검색량" 고정 표시 (Ad Center와 동일 기준)
+  const adMonthlyPC     = naverApiData?.monthlyPcQcCnt ?? null
+  const adMonthlyMobile = naverApiData?.monthlyMobileQcCnt ?? null
+  const hasAdVolume_kpi = hasAdVolume && adMonthlyPC !== null && adMonthlyMobile !== null
+  // 네이버 로딩 중에는 null로 처리 → "--" 표시 (mock값이 잠깐 보이는 플리커 방지)
+  const naverLoading = platform === 'naver' && apiLoading
+  const totalSearch  = naverLoading ? null : hasAdVolume_kpi ? (adMonthlyPC! + adMonthlyMobile!) : primaryData ? sum(pickByIndices(primaryData.searchVolume))  : 0
+  const totalPC      = naverLoading ? null : hasAdVolume_kpi ? adMonthlyPC!  : primaryData ? sum(pickByIndices(primaryData.searchVolumePC)) : 0
+  const totalMobile  = naverLoading ? null : hasAdVolume_kpi ? adMonthlyMobile! : primaryData ? sum(pickByIndices(primaryData.searchVolumeMobile)) : 0
   const totalContent = primaryData ? sum(pickByIndices(primaryData.contentVolume)) : 0
   const totalMention = primaryData ? sum(primaryData.platformMentions.map((p) => p.count))  : 0
 
@@ -795,18 +800,45 @@ export default function BlueberryClient() {
                     : '추정값'}
                 </span>
               </div>
-              <p className="mt-3 text-2xl font-bold text-gray-900">
-                {fmt(totalSearch)}{searchUnit && <span className="ml-1 text-sm font-normal text-gray-400">{searchUnit}</span>}
+              <div className="mt-3 flex items-center gap-2">
+                <p className="text-2xl font-bold text-gray-900">
+                  {naverLoading
+                    ? <span className="text-gray-300 animate-pulse">--</span>
+                    : <>{totalSearch !== null ? fmt(totalSearch) : '--'}{searchUnit && <span className="ml-1 text-sm font-normal text-gray-400">{searchUnit}</span>}</>
+                  }
+                </p>
+                {!naverLoading && totalSearch !== null && (
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(String(totalSearch))
+                      setCopiedSearch(true)
+                      setTimeout(() => setCopiedSearch(false), 1500)
+                    }}
+                    className="text-gray-300 hover:text-gray-500 transition-colors"
+                    title="클립보드에 복사"
+                  >
+                    {copiedSearch
+                      ? <Check className="h-3.5 w-3.5 text-emerald-500" />
+                      : <Copy className="h-3.5 w-3.5" />
+                    }
+                  </button>
+                )}
+              </div>
+              <p className="text-sm text-gray-500">
+                {hasAdVolume_kpi ? '월간 검색량 · 전월 기준' : `검색량 · ${periodLabel} 누적`}
               </p>
-              <p className="text-sm text-gray-500">검색량 · {periodLabel} 누적</p>
               <div className="mt-3 space-y-1.5 border-t border-gray-100 pt-3">
                 <div className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1 text-gray-400"><Monitor className="h-3 w-3" /> PC</span>
-                  <span className="font-semibold text-gray-700">{fmt(totalPC)}</span>
+                  <span className="font-semibold text-gray-700">
+                    {naverLoading ? <span className="text-gray-300 animate-pulse">--</span> : (totalPC !== null ? fmt(totalPC) : '--')}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1 text-gray-400"><Smartphone className="h-3 w-3" /> Mobile</span>
-                  <span className="font-semibold text-gray-700">{fmt(totalMobile)}</span>
+                  <span className="font-semibold text-gray-700">
+                    {naverLoading ? <span className="text-gray-300 animate-pulse">--</span> : (totalMobile !== null ? fmt(totalMobile) : '--')}
+                  </span>
                 </div>
               </div>
             </div>
@@ -923,44 +955,42 @@ export default function BlueberryClient() {
 
           {/* 검색량 추이 */}
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">검색량 추이</p>
-                <p className="text-xs text-gray-400">{periodLabel} · {platformLabel} 기준</p>
-              </div>
-              {/* 분리 모드일 때 PC / Mobile 레전드 */}
-              {isSplit && (
-                <div className="flex items-center gap-3 text-xs text-gray-500">
-                  {compareKeywords.length === 0 ? (
-                    <>
-                      <span className="flex items-center gap-1.5">
-                        <span className="h-2.5 w-2.5 rounded-sm bg-blue-500" />
-                        PC
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: allSeriesData[0]?.color }} />
-                        Mobile
-                      </span>
-                    </>
-                  ) : (
-                    allSeriesData.flatMap(({ keyword: kw, color }) => [
-                      <span key={`${kw}-pc`} className="flex items-center gap-1.5">
-                        <span className="h-2.5 w-2.5 rounded-sm bg-blue-500" />
-                        {kw} PC
-                      </span>,
-                      <span key={`${kw}-mo`} className="flex items-center gap-1.5">
-                        <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: color }} />
-                        {kw} 모바일
-                      </span>,
-                    ])
-                  )}
-                </div>
-              )}
+            <div className="mb-4">
+              <p className="text-sm font-semibold text-gray-900">검색량 추이</p>
+              <p className="text-xs text-gray-400">{periodLabel} · {platformLabel} 기준</p>
             </div>
             {chartType === 'bar'
               ? <MultiBarChart series={searchSeries} labels={visibleMonths.map((m) => m.label)} />
               : <MultiLineChart series={searchSeries} labels={visibleMonths.map((m) => m.label)} />
             }
+            {/* PC / Mobile 범례 — split 모드일 때 차트 바로 아래 중앙 표시 */}
+            {isSplit && (
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 border-t border-gray-100 pt-3">
+                {compareKeywords.length === 0 ? (
+                  <>
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-gray-600">
+                      <span className="h-2.5 w-5 rounded-sm bg-blue-500 shrink-0" />
+                      PC
+                    </span>
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-gray-600">
+                      <span className="h-2.5 w-5 rounded-sm shrink-0" style={{ backgroundColor: allSeriesData[0]?.color }} />
+                      Mobile
+                    </span>
+                  </>
+                ) : (
+                  allSeriesData.flatMap(({ keyword: kw, color }) => [
+                    <span key={`${kw}-pc`} className="flex items-center gap-1.5 text-xs font-medium text-gray-600">
+                      <span className="h-2.5 w-5 rounded-sm bg-blue-500 shrink-0" />
+                      {kw} PC
+                    </span>,
+                    <span key={`${kw}-mo`} className="flex items-center gap-1.5 text-xs font-medium text-gray-600">
+                      <span className="h-2.5 w-5 rounded-sm shrink-0" style={{ backgroundColor: color }} />
+                      {kw} Mobile
+                    </span>,
+                  ])
+                )}
+              </div>
+            )}
             <div className="mt-3 flex justify-between text-[10px] text-gray-400">
               {visibleMonths.map((m) => <span key={m.key}>{m.label}</span>)}
             </div>
@@ -1023,7 +1053,9 @@ export default function BlueberryClient() {
                   {primaryData.relatedKeywords.map((k, i) => (
                     <tr key={k.keyword} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
                       <td className="px-4 py-2.5 font-medium text-gray-900">{k.keyword}</td>
-                      <td className="px-4 py-2.5 text-right text-gray-600">{fmt(k.volume)}</td>
+                      <td className="px-4 py-2.5 text-right text-gray-600">
+                        {naverLoading ? <span className="text-gray-300 animate-pulse">--</span> : fmt(k.volume)}
+                      </td>
                       <td className="px-4 py-2.5 text-right">
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${COMP_STYLE[k.competition]}`}>
                           {COMP_LABEL[k.competition]}

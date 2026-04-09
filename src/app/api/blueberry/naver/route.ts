@@ -83,9 +83,9 @@ async function fetchAdSearchVolume(
       })).slice(0, 5)),
     )
 
-    const trimmed = keyword.trim()
+    const trimmed = keyword.trim().normalize('NFC')
     const row = json.keywordList?.find(
-      (k) => k.relKeyword.trim() === trimmed,
+      (k) => k.relKeyword.trim().normalize('NFC') === trimmed,
     )
     if (!row) {
       console.warn(
@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'keyword 파라미터가 필요합니다.' }, { status: 400 })
   }
 
-  const cacheKey = keyword.trim()
+  const cacheKey = keyword.trim().normalize('NFC')
   const cached = CACHE.get(cacheKey)
   if (cached && Date.now() - cached.ts < CACHE_TTL) {
     return NextResponse.json({ ...cached.data, fromCache: true })
