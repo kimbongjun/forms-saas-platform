@@ -25,6 +25,12 @@ interface GoogleTrendsData {
   fetchedAt: string
 }
 
+// ── Naver DataLab 트렌드 타입 ────────────────────────────────────
+interface DatalabTrendData {
+  /** 'YYYY-MM' → ratio (0-100, 기간 내 상대값) */
+  monthlyRatios: Record<string, number>
+}
+
 // ── 해시 유틸 ────────────────────────────────────────────────────
 function hashStr(s: string): number {
   let h = 2166136261
@@ -53,7 +59,7 @@ function getMonthLabels(count: number): { key: string; label: string }[] {
   return result
 }
 
-const ALL_MONTHS = getMonthLabels(12)
+const ALL_MONTHS = getMonthLabels(60) // 최근 5년
 
 // 키워드 비교 기본 팔레트 (브랜드 색이 없을 때 폴백)
 const KEYWORD_COLORS = ['#8B5CF6', '#10B981', '#3B82F6', '#F59E0B', '#EF4444']
@@ -73,7 +79,7 @@ function getKeywordColor(kw: string, fallbackIdx: number): string {
   return BRAND_COLORS[kw.trim()] ?? KEYWORD_COLORS[fallbackIdx % KEYWORD_COLORS.length]
 }
 
-type Period = '1y' | '3m' | '1m'
+type Period = '5y' | '3y' | '2y' | '1y' | '3m' | '1m'
 
 interface PlatformItem { name: string; count: number; color: string }
 interface RelatedKeyword { keyword: string; volume: number; competition: 'high' | 'mid' | 'low' }
@@ -93,14 +99,20 @@ interface TooltipInfo {
 }
 
 // ── 데이터 생성 (keyword 문자열만 seed로 사용 — refresh 시 불변) ─
+const DATA_MONTHS = 60 // 5년치 데이터
+
 function generateData(keyword: string, platform: 'naver' | 'google'): KeywordData {
   const seed = hashStr(keyword + platform) // keyword 고정 → 항상 동일 결과
 
+  // 장기 트렌드 방향 (-0.3 ~ +0.5 성장/감소)
+  const longTrend = (seededRand(seed, 99) - 0.4) * 0.8
+
   const baseSearch = platform === 'naver' ? 20000 + (seed % 80000) : 5000 + (seed % 30000)
-  const searchVolume = Array.from({ length: 12 }, (_, i) => {
+  const searchVolume = Array.from({ length: DATA_MONTHS }, (_, i) => {
     const seasonal = Math.sin((i / 12) * Math.PI * 2) * 0.25
+    const trend = 1 + longTrend * (i / DATA_MONTHS)
     const noise = seededRand(seed, i) * 0.4 - 0.2
-    return Math.max(500, Math.round(baseSearch * (1 + seasonal + noise)))
+    return Math.max(500, Math.round(baseSearch * trend * (1 + seasonal + noise)))
   })
 
   const pcRatio = 0.38 + seededRand(seed, 20) * 0.24
@@ -111,9 +123,10 @@ function generateData(keyword: string, platform: 'naver' | 'google'): KeywordDat
   const searchVolumeMobile = searchVolume.map((v, i) => v - searchVolumePC[i])
 
   const baseContent = platform === 'naver' ? 1000 + (seed % 8000) : 300 + (seed % 3000)
-  const contentVolume = Array.from({ length: 12 }, (_, i) => {
+  const contentVolume = Array.from({ length: DATA_MONTHS }, (_, i) => {
+    const trend = 1 + longTrend * (i / DATA_MONTHS)
     const noise = seededRand(seed + 1, i) * 0.5 - 0.2
-    return Math.max(50, Math.round(baseContent * (1 + noise)))
+    return Math.max(50, Math.round(baseContent * trend * (1 + noise)))
   })
 
   const contentPlatformDefs = platform === 'naver'
@@ -122,7 +135,7 @@ function generateData(keyword: string, platform: 'naver' | 'google'): KeywordDat
     : [{ name: '웹사이트', color: '#1A73E8' }, { name: '뉴스', color: '#EA4335' },
        { name: '유튜브', color: '#FF0000' }, { name: '이미지', color: '#34A853' }]
 
-  const latestContent = contentVolume[11]
+  const latestContent = contentVolume[DATA_MONTHS - 1]
   const rawCP = contentPlatformDefs.map((p, i) => ({
     ...p, count: Math.max(10, Math.round(latestContent * seededRand(seed + 10, i) * 1.5)),
   }))
@@ -170,10 +183,11 @@ function resolveAdData(
     const hasAdVol = apiData.monthlyPcQcCnt !== null && apiData.monthlyMobileQcCnt !== null
     const totalMonthly = hasAdVol ? (apiData.monthlyPcQcCnt! + apiData.monthlyMobileQcCnt!) : null
 
-    // 목업 계절 패턴을 유지하면서 실측 월간 평균값으로 스케일
+    // 목업 계절 패턴을 유지하면서 마지막 달 실측값을 앵커로 전체 스케일
     const scaleToMonthlyAvg = (arr: number[], monthlyVal: number) => {
-      const arrSum = arr.reduce((s, v) => s + v, 0) || 1
-      const scaled = arr.map((v) => Math.round((v / arrSum) * 12 * monthlyVal))
+      const lastVal = arr[arr.length - 1] || 1
+      const scale = monthlyVal / lastVal
+      const scaled = arr.map((v) => Math.max(0, Math.round(v * scale)))
       scaled[scaled.length - 1] = monthlyVal  // 마지막 달은 실측값 고정
       return scaled
     }
@@ -199,7 +213,7 @@ function resolveAdData(
 
     // 콘텐츠 발행량: contentByPlatform 합계를 contentVolume에 반영
     const totalContent = cp.reduce((s, p) => s + p.count, 0)
-    const contentVolume = scaleToMonthlyAvg(mock.contentVolume, totalContent || mock.contentVolume[11])
+    const contentVolume = scaleToMonthlyAvg(mock.contentVolume, totalContent || mock.contentVolume[mock.contentVolume.length - 1])
 
     return {
       ...mock,
@@ -269,42 +283,436 @@ function resolveGoogleData(
   }
 }
 
+// ── DataLab 실측 트렌드 병합 ──────────────────────────────────────
+// DataLab ratio(0-100)를 실제 검색량으로 환산
+// adLastMonth: 검색광고 API 실측 최신 월간 값 (없으면 mock 마지막 값 사용)
+function resolveWithDatalab(
+  data: KeywordData & { isReal: boolean; hasAdVolume: boolean },
+  datalabData: DatalabTrendData,
+  adLastMonth: number | null,
+): KeywordData & { isReal: boolean; hasAdVolume: boolean } {
+  const { monthlyRatios } = datalabData
+  if (Object.keys(monthlyRatios).length === 0) return data
+
+  const ratios = ALL_MONTHS.map(m => monthlyRatios[m.key] ?? null)
+
+  // 마지막 유효 ratio 찾기
+  let lastRatio: number | null = null
+  for (let i = ratios.length - 1; i >= 0; i--) {
+    if (ratios[i] !== null) { lastRatio = ratios[i]; break }
+  }
+  if (!lastRatio) return data
+
+  // 앵커: Ad API 절대값 우선, 없으면 기존 마지막 달 값
+  const anchorValue = adLastMonth ?? data.searchVolume[data.searchVolume.length - 1]
+
+  const searchVolume = ratios.map((ratio, i) => {
+    if (ratio === null) return data.searchVolume[i] ?? 0
+    return Math.max(0, Math.round((ratio / lastRatio!) * anchorValue))
+  })
+
+  // PC/Mobile 비율은 기존 데이터 유지
+  const pcRatios = data.searchVolumePC.map((v, i) =>
+    data.searchVolume[i] > 0 ? v / data.searchVolume[i] : 0.4
+  )
+  const searchVolumePC = searchVolume.map((v, i) => Math.round(v * (pcRatios[i] ?? 0.4)))
+  const searchVolumeMobile = searchVolume.map((v, i) => Math.max(0, v - searchVolumePC[i]))
+
+  return { ...data, searchVolume, searchVolumePC, searchVolumeMobile }
+}
+
+// ── 차트 로딩 skeleton ────────────────────────────────────────────
+const SKELETON_HEIGHTS = [55, 72, 48, 88, 62, 95, 50, 78, 66, 83, 57, 74,
+                          60, 70, 45, 85, 58, 92, 52, 76, 63, 80, 55, 71]
+
+function ChartSkeleton({ count = 12 }: { count?: number }) {
+  const bars = SKELETON_HEIGHTS.slice(0, Math.min(count, SKELETON_HEIGHTS.length))
+  return (
+    <div className="space-y-2">
+      <div className="flex items-end gap-[3px] h-[160px]">
+        {bars.map((h, i) => (
+          <div
+            key={i}
+            className="flex-1 rounded-t bg-gray-200 animate-pulse"
+            style={{ height: `${h}%`, animationDelay: `${i * 40}ms` }}
+          />
+        ))}
+      </div>
+      <div className="flex justify-between px-1">
+        {bars.map((_, i) => (
+          <div key={i} className="h-2.5 w-5 rounded bg-gray-200 animate-pulse"
+            style={{ animationDelay: `${i * 40}ms` }} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── 연간 집계 (5y / 3y 구간에서 월별 → 연별 평균) ─────────────────
+function aggregateToYearly(
+  series: ChartSeries[],
+  monthIndices: number[],
+): { series: ChartSeries[]; labels: string[] } {
+  // monthIndices 의 각 위치를 연도별로 그룹화
+  const yearGroups = new Map<string, number[]>() // 'YYYY' → positions
+  monthIndices.forEach((monthIdx, pos) => {
+    const m = ALL_MONTHS[monthIdx]
+    if (!m) return
+    const year = m.key.slice(0, 4)
+    if (!yearGroups.has(year)) yearGroups.set(year, [])
+    yearGroups.get(year)!.push(pos)
+  })
+
+  const labels = Array.from(yearGroups.keys()).sort()
+  const aggregated = series.map(s => ({
+    ...s,
+    data: labels.map(year => {
+      const positions = yearGroups.get(year) ?? []
+      if (!positions.length) return 0
+      return Math.round(positions.reduce((sum, pos) => sum + (s.data[pos] ?? 0), 0) / positions.length)
+    }),
+  }))
+  return { series: aggregated, labels }
+}
+
+const YEARLY_AGG_PERIODS = new Set<Period>(['5y', '3y', '2y'])
+
+// ── Y축 nice-tick 헬퍼 ────────────────────────────────────────────
+function buildYTicks(maxVal: number): number[] {
+  if (maxVal <= 0) return [0, 1]
+  const rawStep = maxVal / 4
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)))
+  const norm = rawStep / mag
+  const niceNorm = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10
+  const step = niceNorm * mag
+  const niceMax = Math.ceil(maxVal / step) * step
+  const ticks: number[] = []
+  for (let v = 0; v <= niceMax + step * 0.001; v += step) ticks.push(Math.round(v))
+  return ticks
+}
+
+function fmtY(v: number): string {
+  if (v === 0) return '0'
+  if (v >= 10000) { const m = v / 10000; return `${Number.isInteger(m) ? m : parseFloat(m.toFixed(1))}만` }
+  if (v >= 1000)  { const k = v / 1000;  return `${Number.isInteger(k) ? k : parseFloat(k.toFixed(1))}천` }
+  return String(v)
+}
+
+// ── 검색량 추이 전용 차트 (ResizeObserver + 단일 SVG) ─────────────
+function SearchTrendChart({
+  series,
+  labels,
+  isYearly,
+  chartType,
+}: {
+  series: ChartSeries[]
+  labels: string[]
+  isYearly: boolean
+  chartType: 'bar' | 'line'
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [cw, setCw] = useState(0)
+  const [tooltip, setTooltip] = useState<TooltipInfo | null>(null)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const obs = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect.width ?? 0
+      if (w > 0) setCw(w)
+    })
+    obs.observe(el)
+    const initial = el.getBoundingClientRect().width
+    if (initial > 0) setCw(initial)
+    return () => obs.disconnect()
+  }, [])
+
+  const W = cw || 600
+  const H = 200
+  const PAD = { t: 16, b: 34, l: 56, r: 16 }
+  const cW = Math.max(1, W - PAD.l - PAD.r)
+  const cH = H - PAD.t - PAD.b
+
+  const count = labels.length
+  const allVals = series.flatMap(s => s.data)
+  const maxVal  = Math.max(...allVals, 1)
+  const yTicks  = buildYTicks(maxVal)
+  const yMax    = yTicks[yTicks.length - 1]
+
+  function toY(v: number) {
+    return PAD.t + (1 - v / yMax) * cH
+  }
+
+  // Bar layout
+  const slotW      = cW / Math.max(count, 1)
+  const nSeries    = series.length
+  const innerRatio = count === 1 ? 0.5 : 0.72
+  const groupW     = slotW * innerRatio
+  const gap        = nSeries > 1 ? Math.min(3, (groupW / nSeries) * 0.15) : 0
+  const barW       = Math.max(2, (groupW - gap * (nSeries - 1)) / nSeries)
+  const groupOff   = (slotW - groupW) / 2
+
+  function barCenterX(slotIdx: number) {
+    return PAD.l + (slotIdx + 0.5) * slotW
+  }
+  function barX(slotIdx: number, seriesIdx: number) {
+    return PAD.l + slotIdx * slotW + groupOff + seriesIdx * (barW + gap)
+  }
+
+  // Line layout
+  function ptX(i: number) {
+    return PAD.l + (count > 1 ? (i / (count - 1)) * cW : cW / 2)
+  }
+
+  // X-label skip for dense monthly
+  const skipFactor = count > 24 ? 4 : count > 12 ? 2 : 1
+
+  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    const svgRect = e.currentTarget.getBoundingClientRect()
+    const containerRect = containerRef.current?.getBoundingClientRect()
+    if (!containerRect) return
+    const svgX = ((e.clientX - svgRect.left) / svgRect.width) * W
+    let idx: number
+    if (chartType === 'bar') {
+      idx = Math.min(count - 1, Math.max(0, Math.floor((svgX - PAD.l) / slotW)))
+    } else {
+      idx = Math.min(count - 1, Math.max(0, Math.round(((svgX - PAD.l) / cW) * (count - 1))))
+    }
+    setTooltip({
+      x: e.clientX - containerRect.left,
+      y: e.clientY - containerRect.top,
+      label: labels[idx] ?? '',
+      values: series.map(s => ({ keyword: s.keyword, value: s.data[idx] ?? 0, color: s.color })),
+    })
+  }
+
+  const hoveredIdx = tooltip ? labels.indexOf(tooltip.label) : -1
+
+  if (cw === 0) {
+    return <div ref={containerRef} className="h-[200px]" />
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <svg
+        width={W} height={H}
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full cursor-crosshair overflow-visible"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setTooltip(null)}
+      >
+        {/* Y축 눈금선 + 레이블 */}
+        {yTicks.map(tick => {
+          const y = toY(tick)
+          return (
+            <g key={tick}>
+              <line
+                x1={PAD.l} y1={y} x2={W - PAD.r} y2={y}
+                stroke={tick === 0 ? '#cbd5e1' : '#f1f5f9'}
+                strokeWidth={tick === 0 ? 1 : 1}
+              />
+              <text
+                x={PAD.l - 6} y={y}
+                textAnchor="end" dominantBaseline="middle"
+                fontSize={10} fill="#94a3b8"
+              >
+                {fmtY(tick)}
+              </text>
+            </g>
+          )
+        })}
+
+        {/* hover 수직선 */}
+        {hoveredIdx >= 0 && (
+          <line
+            x1={chartType === 'bar' ? barCenterX(hoveredIdx) : ptX(hoveredIdx)}
+            y1={PAD.t}
+            x2={chartType === 'bar' ? barCenterX(hoveredIdx) : ptX(hoveredIdx)}
+            y2={H - PAD.b}
+            stroke="#94a3b8" strokeWidth={1} strokeDasharray="4 3"
+          />
+        )}
+
+        {chartType === 'bar' ? (
+          /* ── 막대 차트 ─────────────────────────────────────── */
+          <>
+            {labels.map((_, i) => {
+              const isHovered = hoveredIdx === i
+              return (
+                <g key={i}>
+                  <rect
+                    x={PAD.l + i * slotW} y={PAD.t}
+                    width={slotW} height={cH}
+                    fill={isHovered ? 'rgba(0,0,0,0.04)' : 'transparent'}
+                  />
+                  {series.map((s, j) => {
+                    const val = s.data[i] ?? 0
+                    const bH  = Math.max(val > 0 ? 2 : 0, (val / yMax) * cH)
+                    const bX  = barX(i, j)
+                    const bY  = toY(val)
+                    const rx  = Math.min(3, barW / 3)
+                    return (
+                      <rect key={j} x={bX} y={bY} width={barW} height={bH} rx={rx} ry={rx}
+                        fill={s.color} opacity={isHovered ? 1 : 0.85} />
+                    )
+                  })}
+                </g>
+              )
+            })}
+          </>
+        ) : (
+          /* ── 선형 차트 ─────────────────────────────────────── */
+          <>
+            <defs>
+              {series.map((s, si) => {
+                const id = `stg-${si}`
+                return (
+                  <linearGradient key={id} id={id} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%"   stopColor={s.color} stopOpacity="0.20" />
+                    <stop offset="100%" stopColor={s.color} stopOpacity="0.01" />
+                  </linearGradient>
+                )
+              })}
+            </defs>
+            {series.map((s, si) => {
+              const pts    = s.data.map((v, i) => ({ x: ptX(i), y: toY(v) }))
+              const lineD  = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
+              const areaD  = pts.length > 0
+                ? `M${pts[0].x.toFixed(1)},${H - PAD.b} ` +
+                  pts.map(p => `L${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ') +
+                  ` L${pts.at(-1)!.x.toFixed(1)},${H - PAD.b} Z`
+                : ''
+              return (
+                <g key={si}>
+                  {areaD && <path d={areaD} fill={`url(#stg-${si})`} />}
+                  <path d={lineD} fill="none" stroke={s.color} strokeWidth={2.5}
+                    strokeLinejoin="round" strokeLinecap="round" />
+                  {pts.map((p, i) => (
+                    <circle key={i} cx={p.x} cy={p.y}
+                      r={hoveredIdx === i ? 5 : count <= 6 ? 3.5 : 2.5}
+                      fill={s.color} />
+                  ))}
+                </g>
+              )
+            })}
+          </>
+        )}
+
+        {/* X축 레이블 — SVG 내부에서 정확하게 정렬 */}
+        {labels.map((lbl, i) => {
+          const show = isYearly || i % skipFactor === 0 || i === count - 1
+          if (!show) return null
+          const lx = chartType === 'bar' ? barCenterX(i) : ptX(i)
+          return (
+            <text key={i} x={lx} y={H - 8}
+              textAnchor="middle"
+              fontSize={isYearly ? 11 : 10}
+              fontWeight={isYearly ? 600 : 400}
+              fill={isYearly ? '#475569' : '#94a3b8'}
+            >
+              {lbl}
+            </text>
+          )
+        })}
+      </svg>
+      {tooltip && <ChartTooltip tooltip={tooltip} containerWidth={cw} />}
+    </div>
+  )
+}
+
 // ── 섹션별 기간 계산 헬퍼 ──────────────────────────────────────────
+const PERIOD_COUNT: Record<Period, number> = { '5y': 60, '3y': 36, '2y': 24, '1y': 12, '3m': 3, '1m': 1 }
+const PERIOD_LABEL: Record<Period, string> = {
+  '5y': '지난 5년', '3y': '지난 3년', '2y': '지난 2년',
+  '1y': '지난 1년', '3m': '지난 3개월', '1m': '지난달',
+}
+
 function calcSection(
   p: Period,
   showCustom: boolean,
   customStart: string,
   customEnd: string,
 ) {
-  const PERIOD_COUNT: Record<Period, number> = { '1y': 12, '3m': 3, '1m': 1 }
   const customActive = showCustom && !!customStart && !!customEnd && customStart <= customEnd
   const months = customActive
     ? ALL_MONTHS.filter(m => m.key >= customStart.slice(0, 7) && m.key <= customEnd.slice(0, 7))
-    : ALL_MONTHS.slice(12 - PERIOD_COUNT[p])
+    : ALL_MONTHS.slice(ALL_MONTHS.length - PERIOD_COUNT[p])
   const indices = months
     .map(m => ALL_MONTHS.findIndex(am => am.key === m.key))
     .filter(i => i >= 0)
   const label = customActive && months.length > 0
     ? `${customStart.slice(0, 7)} ~ ${customEnd.slice(0, 7)}`
-    : p === '1y' ? '지난 1년' : p === '3m' ? '지난 3개월' : '지난달'
+    : PERIOD_LABEL[p]
   return { months, indices, label, customActive }
 }
 
 // ── 간단 기간 탭 (사용자 정의 날짜 없음) ─────────────────────────
+const PERIOD_TAB_OPTIONS: { value: Period; label: string }[] = [
+  { value: '5y', label: '5년' },
+  { value: '3y', label: '3년' },
+  { value: '2y', label: '2년' },
+  { value: '1y', label: '1년' },
+  { value: '3m', label: '3개월' },
+  { value: '1m', label: '1개월' },
+]
+
 function PeriodTabs({
   value, onChange,
 }: { value: Period; onChange: (p: Period) => void }) {
   return (
     <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1">
-      {(['1y', '3m', '1m'] as const).map((p) => (
-        <button key={p} type="button" onClick={() => onChange(p)}
+      {PERIOD_TAB_OPTIONS.map((opt) => (
+        <button key={opt.value} type="button" onClick={() => onChange(opt.value)}
           className={[
-            'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
-            value === p ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700',
+            'rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors',
+            value === opt.value ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700',
           ].join(' ')}>
-          {p === '1y' ? '1년' : p === '3m' ? '3개월' : '1개월'}
+          {opt.label}
         </button>
       ))}
+    </div>
+  )
+}
+
+// ── X축 레이블 (SVG preserveAspectRatio="none" 와 정확히 정렬) ────
+// SVG 좌표계를 퍼센트로 변환해 absolute 포지셔닝 → 막대/점 중앙에 정확히 위치
+function XAxisLabels({
+  labels,
+  chartType,
+}: {
+  labels: string[]
+  chartType: 'bar' | 'line'
+}) {
+  const count = labels.length
+  if (count === 0) return null
+
+  // 너무 많을 때 레이블 간격 조정 (최대 ~12개 표시, 항상 첫·마지막 포함)
+  const skipFactor = Math.max(1, Math.ceil(count / 12))
+
+  const getLeftPct = (i: number): number => {
+    if (chartType === 'bar') {
+      // 막대 슬롯 중앙: (i + 0.5) / count
+      return ((i + 0.5) / count) * 100
+    }
+    // 라인 차트: ptX(i) = pad.l + (i / (len-1)) * gW  (pad.l=12, gW=576, W=600)
+    const x = 12 + (count > 1 ? (i / (count - 1)) * 576 : 288)
+    return (x / 600) * 100
+  }
+
+  return (
+    <div className="relative mt-1 h-5 select-none">
+      {labels.map((label, i) => {
+        if (i % skipFactor !== 0 && i !== count - 1) return null
+        return (
+          <span
+            key={i}
+            className="absolute -translate-x-1/2 whitespace-nowrap text-[10px] text-gray-400"
+            style={{ left: `${getLeftPct(i)}%` }}
+          >
+            {label}
+          </span>
+        )
+      })}
     </div>
   )
 }
@@ -378,6 +786,15 @@ function MultiBarChart({ series, labels }: { series: ChartSeries[]; labels: stri
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setTooltip(null)}
       >
+        {/* Y축 기준선 (25 / 50 / 75%) */}
+        {[0.25, 0.5, 0.75].map((pct) => (
+          <line
+            key={pct}
+            x1={0} y1={4 + (1 - pct) * (H - 8)}
+            x2={W} y2={4 + (1 - pct) * (H - 8)}
+            stroke="#f0f0f0" strokeWidth="1"
+          />
+        ))}
         {labels.map((lbl, i) => {
           const slotX = i * slotW
           const isHovered = tooltip?.label === lbl
@@ -468,6 +885,16 @@ function MultiLineChart({ series, labels }: { series: ChartSeries[]; labels: str
             )
           })}
         </defs>
+
+        {/* Y축 기준선 (25 / 50 / 75%) */}
+        {[0.25, 0.5, 0.75].map((pct) => (
+          <line
+            key={pct}
+            x1={0} y1={pad.t + (1 - pct) * gH}
+            x2={W} y2={pad.t + (1 - pct) * gH}
+            stroke="#f0f0f0" strokeWidth="1"
+          />
+        ))}
 
         {/* hover 수직선 */}
         {hoveredIdx >= 0 && (
@@ -585,6 +1012,10 @@ export default function BlueberryClient() {
   const [googleApiLoading, setGoogleApiLoading] = useState(false)
   const [googleApiError, setGoogleApiError] = useState(false)
 
+  // ── Naver DataLab 트렌드 상태 ────────────────────────────────
+  const [datalabTrendData, setDatalabTrendData] = useState<DatalabTrendData | null>(null)
+  const [datalabLoading, setDatalabLoading] = useState(false)
+
   // ── 키워드 저장 ───────────────────────────────────────────────
   const [savedKeywords, setSavedKeywords] = useState<string[]>([])
 
@@ -642,19 +1073,68 @@ export default function BlueberryClient() {
       .finally(() => setGoogleApiLoading(false))
   }, [keyword, platform])
 
+  // ── Naver DataLab 트렌드 호출 (최근 5년 월별) ──────────────
+  function fetchDatalabTrend(kw: string) {
+    setDatalabLoading(true)
+    setDatalabTrendData(null)
+
+    const now = new Date()
+    const startDate = new Date(now)
+    startDate.setFullYear(startDate.getFullYear() - 5)
+
+    fetch('/api/blueberry/datalab', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        startDate: startDate.toISOString().slice(0, 10),
+        endDate: now.toISOString().slice(0, 10),
+        timeUnit: 'month',
+        keywordGroups: [{ groupName: kw, keywords: [kw] }],
+      }),
+    })
+      .then(r => r.json())
+      .then((res: { results?: { data: { period: string; ratio: number }[] }[]; error?: string }) => {
+        if (res.error) return
+        const points = res.results?.[0]?.data ?? []
+        const monthlyRatios: Record<string, number> = {}
+        for (const pt of points) {
+          monthlyRatios[pt.period.slice(0, 7)] = pt.ratio
+        }
+        setDatalabTrendData({ monthlyRatios })
+      })
+      .catch(() => {})
+      .finally(() => setDatalabLoading(false))
+  }
+
+  useEffect(() => {
+    if (!keyword || platform !== 'naver') return
+    fetchDatalabTrend(keyword)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keyword, platform])
+
   // 주요 키워드 데이터
   const mockPrimary = keyword ? generateData(keyword, platform) : null
   const naverResolved = mockPrimary ? resolveAdData(mockPrimary, platform, naverApiData) : null
   const googleResolved = (mockPrimary && platform === 'google')
     ? resolveGoogleData(mockPrimary, googleApiData, ALL_MONTHS)
     : null
+
+  // Ad API 절대값 (DataLab 스케일 앵커로 사용)
+  const adAbsoluteLastMonth = (
+    naverApiData?.monthlyPcQcCnt !== null &&
+    naverApiData?.monthlyMobileQcCnt !== null
+  ) ? ((naverApiData?.monthlyPcQcCnt ?? 0) + (naverApiData?.monthlyMobileQcCnt ?? 0)) || null
+    : null
+
   const primaryData = platform === 'google'
     ? (googleResolved ? { ...naverResolved ?? mockPrimary!, ...googleResolved } : naverResolved)
-    : naverResolved
+    : (naverResolved && datalabTrendData
+      ? resolveWithDatalab(naverResolved, datalabTrendData, adAbsoluteLastMonth)
+      : naverResolved)
   const isRealData = platform === 'naver'
-    ? (primaryData as (KeywordData & { isReal?: boolean }) | null)?.isReal ?? false
+    ? (naverResolved as (KeywordData & { isReal?: boolean }) | null)?.isReal ?? false
     : googleResolved?.isGoogleReal ?? false
-  const hasAdVolume = (primaryData as (KeywordData & { hasAdVolume?: boolean }) | null)?.hasAdVolume ?? false
+  const hasAdVolume = (naverResolved as (KeywordData & { hasAdVolume?: boolean }) | null)?.hasAdVolume ?? false
 
   // 비교 포함 전체 시리즈 — 비교 키워드도 실측 API 데이터 적용
   const allKeywords = keyword ? [keyword, ...compareKeywords] : []
@@ -668,11 +1148,14 @@ export default function BlueberryClient() {
   // 섹션별 기간 계산
   const searchSec = calcSection(searchPeriod, searchShowCustom, searchCustomStart, searchCustomEnd)
   const contentSec = calcSection(contentPeriod, contentShowCustom, contentCustomStart, contentCustomEnd)
-  const PERIOD_COUNT: Record<Period, number> = { '1y': 12, '3m': 3, '1m': 1 }
   const mentionMonthCount = PERIOD_COUNT[mentionPeriod]
-  const mentionPeriodLabel = mentionPeriod === '1y' ? '지난 1년' : mentionPeriod === '3m' ? '지난 3개월' : '지난달'
+  const mentionPeriodLabel = PERIOD_LABEL[mentionPeriod]
   const relatedMonthCount = PERIOD_COUNT[relatedPeriod]
-  const relatedPeriodLabel = relatedPeriod === '1y' ? '지난 1년' : relatedPeriod === '3m' ? '지난 3개월' : '지난달'
+  const relatedPeriodLabel = PERIOD_LABEL[relatedPeriod]
+
+  // 차트 로딩 상태: DataLab(Naver) 또는 Google Trends(Google) 대기 중
+  const isChartLoading = (platform === 'naver' && datalabLoading) ||
+                         (platform === 'google' && googleApiLoading)
 
   // PC/Mobile 분리 가능 조건: Naver 실측 데이터 + 검색광고 API 연동
   const canSplit = isRealData && hasAdVolume && platform === 'naver'
@@ -703,6 +1186,18 @@ export default function BlueberryClient() {
     keyword: kw, data: pickContent(data.contentVolume), color,
   }))
 
+  // 5y / 3y 는 연간 평균으로 집계해 차트에 표시
+  const searchIsYearly = YEARLY_AGG_PERIODS.has(searchPeriod) && !searchSec.customActive
+  const contentIsYearly = YEARLY_AGG_PERIODS.has(contentPeriod) && !contentSec.customActive
+
+  const searchDisplay = searchIsYearly
+    ? aggregateToYearly(searchSeries, searchSec.indices)
+    : { series: searchSeries, labels: searchSec.months.map(m => m.label) }
+
+  const contentDisplay = contentIsYearly
+    ? aggregateToYearly(contentSeries, contentSec.indices)
+    : { series: contentSeries, labels: contentSec.months.map(m => m.label) }
+
   function handleSearch() {
     const q = input.trim()
     if (!q) return
@@ -717,6 +1212,8 @@ export default function BlueberryClient() {
     setNaverApiData(null)
 
     if (platform === 'naver') {
+      // DataLab 트렌드 재호출
+      fetchDatalabTrend(keyword)
       // 주 키워드 새로고침
       fetch('/api/blueberry/naver', {
         method: 'POST',
@@ -779,16 +1276,14 @@ export default function BlueberryClient() {
     if (!resultsRef.current || !keyword || isExportingPng) return
     setIsExportingPng(true)
     try {
-      const { default: html2canvas } = await import('html2canvas')
-      const canvas = await html2canvas(resultsRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#f9fafb',
-        logging: false,
-      })
-      const url = canvas.toDataURL('image/png')
+      const { toPng } = await import('html-to-image')
+      const el = resultsRef.current
+      const opts = { pixelRatio: 2, backgroundColor: '#f9fafb' }
+      // 첫 호출로 폰트·이미지 캐시 워밍업, 두 번째 호출에서 실제 캡처
+      await toPng(el, opts)
+      const dataUrl = await toPng(el, opts)
       const a = document.createElement('a')
-      a.href = url
+      a.href = dataUrl
       a.download = `blueberry_${keyword}_${platform}_${new Date().toISOString().slice(0, 10)}.png`
       a.click()
     } catch (e) {
@@ -830,11 +1325,12 @@ export default function BlueberryClient() {
   const hasAdVolume_kpi = hasAdVolume && adMonthlyPC !== null && adMonthlyMobile !== null
   // 네이버 로딩 중에는 null로 처리 → "--" 표시 (mock값이 잠깐 보이는 플리커 방지)
   const naverLoading = platform === 'naver' && apiLoading
-  const totalSearch  = naverLoading ? null : hasAdVolume_kpi ? (adMonthlyPC! + adMonthlyMobile!) : primaryData ? (primaryData.searchVolume[11] ?? 0) : 0
-  const totalPC      = naverLoading ? null : hasAdVolume_kpi ? adMonthlyPC!  : primaryData ? (primaryData.searchVolumePC[11] ?? 0) : 0
-  const totalMobile  = naverLoading ? null : hasAdVolume_kpi ? adMonthlyMobile! : primaryData ? (primaryData.searchVolumeMobile[11] ?? 0) : 0
-  // 발행량·언급량도 월간(index 11) 고정
-  const totalContent = primaryData ? (primaryData.contentVolume[11] ?? 0) : 0
+  const lastIdx = ALL_MONTHS.length - 1
+  const totalSearch  = naverLoading ? null : hasAdVolume_kpi ? (adMonthlyPC! + adMonthlyMobile!) : primaryData ? (primaryData.searchVolume[lastIdx] ?? 0) : 0
+  const totalPC      = naverLoading ? null : hasAdVolume_kpi ? adMonthlyPC!  : primaryData ? (primaryData.searchVolumePC[lastIdx] ?? 0) : 0
+  const totalMobile  = naverLoading ? null : hasAdVolume_kpi ? adMonthlyMobile! : primaryData ? (primaryData.searchVolumeMobile[lastIdx] ?? 0) : 0
+  // 발행량·언급량도 최신달(lastIdx) 고정
+  const totalContent = primaryData ? (primaryData.contentVolume[lastIdx] ?? 0) : 0
   const totalMention = primaryData
     ? Math.round(primaryData.platformMentions.reduce((s, p) => s + p.count, 0) / 12)
     : 0
@@ -870,16 +1366,26 @@ export default function BlueberryClient() {
                 ) : apiLoading ? (
                   <span className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-500">
                     <RefreshCw className="h-3 w-3 animate-spin" />
-                    Naver 실측 데이터 로딩 중…
+                    검색량 로딩 중…
                   </span>
                 ) : isRealData ? (
                   <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
                     <Wifi className="h-3 w-3" />
-                    {hasAdVolume
-                      ? 'Naver 검색광고 · 검색 API 연동됨'
-                      : 'Naver 검색 API 연동됨'}
+                    {hasAdVolume ? 'Naver 검색광고 · 검색 API 연동됨' : 'Naver 검색 API 연동됨'}
                   </span>
                 ) : null}
+                {apiConfigured && datalabLoading && (
+                  <span className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-500">
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                    검색 트렌드 로딩 중…
+                  </span>
+                )}
+                {apiConfigured && !datalabLoading && datalabTrendData && (
+                  <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
+                    <Wifi className="h-3 w-3" />
+                    DataLab 트렌드 연동됨
+                  </span>
+                )}
               </>
             )}
             {platform === 'google' && keyword && (
@@ -1210,7 +1716,14 @@ export default function BlueberryClient() {
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-sm font-semibold text-gray-900">검색량 추이</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-gray-900">검색량 추이</p>
+                  {searchIsYearly && (
+                    <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-600">
+                      연간 평균
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-gray-400">{searchSec.label} · {platformLabel} 기준</p>
               </div>
               <div className="flex items-center gap-1.5">
@@ -1236,15 +1749,20 @@ export default function BlueberryClient() {
                   />
                 </div>
                 {searchSec.customActive && searchSec.months.length === 0 && (
-                  <span className="text-xs text-amber-600">선택한 기간의 데이터가 없습니다 (최근 12개월만 지원)</span>
+                  <span className="text-xs text-amber-600">선택한 기간의 데이터가 없습니다 (최근 5년만 지원)</span>
                 )}
               </div>
             )}
-            {chartType === 'bar'
-              ? <MultiBarChart series={searchSeries} labels={searchSec.months.map((m) => m.label)} />
-              : <MultiLineChart series={searchSeries} labels={searchSec.months.map((m) => m.label)} />
+            {isChartLoading
+              ? <ChartSkeleton count={searchIsYearly ? PERIOD_COUNT[searchPeriod] / 12 : searchSec.months.length} />
+              : <SearchTrendChart
+                  series={searchDisplay.series}
+                  labels={searchDisplay.labels}
+                  isYearly={searchIsYearly}
+                  chartType={chartType}
+                />
             }
-            {/* PC / Mobile 범례 — split 모드일 때 차트 바로 아래 중앙 표시 */}
+            {/* PC / Mobile 범례 */}
             {isSplit && (
               <div className="mt-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 border-t border-gray-100 pt-3">
                 {compareKeywords.length === 0 ? (
@@ -1272,9 +1790,6 @@ export default function BlueberryClient() {
                 )}
               </div>
             )}
-            <div className="mt-3 flex justify-between text-[10px] text-gray-400">
-              {searchSec.months.map((m) => <span key={m.key}>{m.label}</span>)}
-            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -1282,8 +1797,17 @@ export default function BlueberryClient() {
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
               <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">콘텐츠 발행량</p>
-                  <p className="text-xs text-gray-400">{contentSec.label} · 월별 신규 콘텐츠 수</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-gray-900">콘텐츠 발행량</p>
+                    {contentIsYearly && (
+                      <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-600">
+                        연간 평균
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400">
+                    {contentSec.label} · {contentIsYearly ? '연간 평균 콘텐츠 수' : '월별 신규 콘텐츠 수'}
+                  </p>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <PeriodTabs value={contentPeriod} onChange={(p) => { setContentPeriod(p); setContentShowCustom(false) }} />
@@ -1312,13 +1836,16 @@ export default function BlueberryClient() {
                   )}
                 </div>
               )}
-              {chartType === 'bar'
-                ? <MultiBarChart series={contentSeries} labels={contentSec.months.map((m) => m.label)} />
-                : <MultiLineChart series={contentSeries} labels={contentSec.months.map((m) => m.label)} />
+              {isChartLoading
+                ? <ChartSkeleton count={contentIsYearly ? PERIOD_COUNT[contentPeriod] / 12 : contentSec.months.length} />
+                : <>
+                    {chartType === 'bar'
+                      ? <MultiBarChart series={contentDisplay.series} labels={contentDisplay.labels} />
+                      : <MultiLineChart series={contentDisplay.series} labels={contentDisplay.labels} />
+                    }
+                    <XAxisLabels labels={contentDisplay.labels} chartType={chartType} />
+                  </>
               }
-              <div className="mt-3 flex justify-between text-[10px] text-gray-400">
-                {contentSec.months.map((m) => <span key={m.key}>{m.label}</span>)}
-              </div>
             </div>
 
             {/* 플랫폼별 언급량 */}
