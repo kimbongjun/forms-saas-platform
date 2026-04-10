@@ -1,0 +1,28 @@
+name: Monitoring Cron
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # 매 정시 실행 (1시간마다)
+  workflow_dispatch:       # GitHub Actions UI에서 수동 실행 가능
+
+jobs:
+  run-monitoring:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Run monitoring check
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/monitoring/cron")
+
+          echo "Response status: $response"
+
+          if [ "$response" != "200" ]; then
+            echo "Monitoring cron failed with status $response"
+            exit 1
+          fi
+
+          echo "Monitoring cron completed successfully"
