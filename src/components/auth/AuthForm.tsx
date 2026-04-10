@@ -133,7 +133,7 @@ export default function AuthForm() {
           </div>
           <h2 className="mb-2 text-lg font-bold text-gray-900">이메일 인증을 완료해주세요</h2>
           <p className="mb-1 text-sm text-gray-500">아래 주소로 인증 링크를 발송했습니다.</p>
-          <p className="mb-6 text-sm font-semibold text-gray-800">{signupEmail}</p>
+          <p className="mb-6 text-sm font-semibold text-gray-800">{signupEmail}</p>          
 
           <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 p-4 text-left space-y-2">
             <div className="flex items-start gap-2.5">
@@ -245,6 +245,7 @@ export default function AuthForm() {
               @{ALLOWED_DOMAIN}
             </span>
           </div>
+          <small className="block mt-2 text-center text-gray-400 text-xs">가입 완료를 위해 이메일 인증이 필요합니다.</small>
         </div>
 
         {/* 비밀번호 */}
