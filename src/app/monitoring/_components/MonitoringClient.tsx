@@ -164,8 +164,11 @@ function VitalsPanel({ siteId, initial }: { siteId: string; initial: VitalsData 
     setErr('')
     try {
       const res = await fetch(`/api/monitoring/vitals/${siteId}`, { method: 'POST' })
-      const json = await res.json() as VitalsData
-      if (json.error) { setErr(json.error); return }
+      const json = await res.json() as VitalsData & { error?: string }
+      if (!res.ok || json.error) {
+        setErr(json.error ?? `서버 오류 (HTTP ${res.status})`)
+        return
+      }
       setData(json)
     } catch {
       setErr('측정 중 네트워크 오류가 발생했습니다.')

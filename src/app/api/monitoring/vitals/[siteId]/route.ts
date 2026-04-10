@@ -39,7 +39,7 @@ async function fetchPageSpeed(url: string): Promise<{
   try {
     const res = await fetch(endpoint.toString(), {
       signal: AbortSignal.timeout(60_000),  // PageSpeed는 최대 60초 소요
-      next: { revalidate: 0 },
+      cache: 'no-store',
     })
 
     if (!res.ok) {

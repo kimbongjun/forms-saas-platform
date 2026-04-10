@@ -141,6 +141,18 @@ async function processSite(site: {
     error_message: result.error_message,
   })
 
+  // 최근 5개만 유지 — 초과분 삭제
+  const { data: allChecks } = await supabase
+    .from('monitor_checks')
+    .select('id')
+    .eq('site_id', site.id)
+    .order('checked_at', { ascending: false })
+
+  if (allChecks && allChecks.length > 5) {
+    const deleteIds = allChecks.slice(5).map((c) => c.id)
+    await supabase.from('monitor_checks').delete().in('id', deleteIds)
+  }
+
   // 상태 변화 감지 시 이메일 알림
   if (site.notify_email) {
     const prev = site.last_status as MonitorStatus | null

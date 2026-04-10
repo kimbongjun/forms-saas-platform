@@ -23,7 +23,8 @@
       "Bash(grep:*)",
       "Bash(cd \"D:\\\\\\\\workspace\\\\\\\\form-saas-platform\")",
       "Bash(npm install:*)",
-      "Bash(git remote:*)"
+      "Bash(git remote:*)",
+      "Bash(ls:*)"
     ]
   }
 }

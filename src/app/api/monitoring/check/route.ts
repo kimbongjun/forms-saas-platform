@@ -48,5 +48,17 @@ export async function POST(req: NextRequest) {
     error_message: result.error_message,
   })
 
+  // 최근 5개만 유지 — 초과분 삭제
+  const { data: allChecks } = await supabase
+    .from('monitor_checks')
+    .select('id')
+    .eq('site_id', siteId)
+    .order('checked_at', { ascending: false })
+
+  if (allChecks && allChecks.length > 5) {
+    const deleteIds = allChecks.slice(5).map((c) => c.id)
+    await supabase.from('monitor_checks').delete().in('id', deleteIds)
+  }
+
   return NextResponse.json({ siteId, ...result, checked_at: now })
 }
