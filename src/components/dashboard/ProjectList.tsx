@@ -209,18 +209,27 @@ export default function ProjectList({ projects }: ProjectListProps) {
       <div className="theme-panel rounded-2xl border p-3 shadow-sm sm:p-4">
         <div className="mb-3 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="theme-subtle text-[11px] font-semibold uppercase tracking-[0.2em]">Project Search</p>          
+            <p className="theme-subtle text-[11px] font-semibold uppercase tracking-[0.2em]">Project Search</p>
           </div>
-          {hasFilter && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="theme-btn-secondary inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium"
+          <div className="flex items-center gap-2">
+            {hasFilter && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="theme-btn-secondary inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium"
+              >
+                <X className="h-3.5 w-3.5" />
+                초기화
+              </button>
+            )}
+            <Link
+              href="/projects/new"
+              className="brand-btn inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium"
             >
-              <X className="h-3.5 w-3.5" />
-              초기화
-            </button>
-          )}
+              <Plus className="h-3.5 w-3.5" />
+              새 프로젝트
+            </Link>
+          </div>
         </div>
 
         {/* Row 1: 프로젝트명 + 카테고리 + 국가 */}
