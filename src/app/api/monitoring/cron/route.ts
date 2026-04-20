@@ -4,7 +4,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { checkUrl } from '@/lib/monitoring/check-url'
 import type { MonitorStatus } from '@/types/database'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const getResend = () => new Resend(process.env.RESEND_API_KEY)
 
 // ── 인증 ─────────────────────────────────────────────────────────
 // GitHub Actions가 호출 시 Authorization: Bearer {CRON_SECRET} 헤더 전달
@@ -29,7 +29,7 @@ async function sendDownAlert(opts: {
   const statusLabel = status === 'down' ? '오프라인' : status === 'slow' ? '응답 지연' : '오류'
   const color = status === 'slow' ? '#d97706' : '#dc2626'
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: 'Monitor Alert <noreply@blueberry.marketing>',
     to,
     subject: `[모니터링 경보] ${siteName} — ${statusLabel} 감지`,
@@ -74,7 +74,7 @@ async function sendRecoveryAlert(opts: {
   checkedAt: string
 }) {
   const { to, siteName, siteUrl, checkedAt } = opts
-  await resend.emails.send({
+  await getResend().emails.send({
     from: 'Monitor Alert <noreply@blueberry.marketing>',
     to,
     subject: `[모니터링] ${siteName} — 정상 회복`,

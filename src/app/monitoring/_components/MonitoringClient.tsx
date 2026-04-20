@@ -239,7 +239,7 @@ function VitalsPanel({ siteId, initial }: { siteId: string; initial: VitalsData 
 
       {/* Vitals 카드 4개 */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {vitals.map(({ key, label, unit, value, desc }) => {
+        {vitals.map(({ key, label, value, desc }) => {
           const grade = vitalGrade(key, value)
           const style = GRADE_STYLE[grade]
           const display = value === null

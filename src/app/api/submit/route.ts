@@ -4,7 +4,7 @@ import { createServerClient } from '@/utils/supabase/server'
 import type { FormField } from '@/types/database'
 import { stripHtml } from '@/utils/rich-text'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const getResend = () => new Resend(process.env.RESEND_API_KEY)
 
 interface SubmitBody {
   projectId: string
@@ -175,7 +175,7 @@ export async function POST(req: NextRequest) {
         : defaultAdminTemplate(project.title, submittedAt, answersTable)
 
       emailPromises.push(
-        resend.emails.send({
+        getResend().emails.send({
           from,
           to: project.notification_email,
           subject: `[폼 응답] ${project.title}`,
@@ -194,7 +194,7 @@ export async function POST(req: NextRequest) {
         const bodyHtml = renderTemplate(project.user_email_template, templateVars)
 
         emailPromises.push(
-          resend.emails.send({
+          getResend().emails.send({
             from,
             to: userEmail,
             subject: `[확인] ${project.title} 응답이 접수되었습니다`,
