@@ -808,7 +808,21 @@ function ChartTooltip({
 // ── 다중 막대 차트 (hover tooltip) ──────────────────────────────
 function MultiBarChart({ series, labels }: { series: ChartSeries[]; labels: string[] }) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [containerWidth, setContainerWidth] = useState(0)
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const obs = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect.width ?? 0
+      if (w > 0) setContainerWidth(w)
+    })
+    obs.observe(el)
+    const initial = el.getBoundingClientRect().width
+    if (initial > 0) setContainerWidth(initial)
+    return () => obs.disconnect()
+  }, [])
 
   const W = 600
   const H = 160
@@ -878,7 +892,7 @@ function MultiBarChart({ series, labels }: { series: ChartSeries[]; labels: stri
         })}
       </svg>
       {tooltip && (
-        <ChartTooltip tooltip={tooltip} containerWidth={containerRef.current?.offsetWidth ?? 0} />
+        <ChartTooltip tooltip={tooltip} containerWidth={containerWidth} />
       )}
     </div>
   )
@@ -887,7 +901,21 @@ function MultiBarChart({ series, labels }: { series: ChartSeries[]; labels: stri
 // ── 다중 라인 차트 (hover tooltip + 수직선) ─────────────────────
 function MultiLineChart({ series, labels }: { series: ChartSeries[]; labels: string[] }) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [containerWidth, setContainerWidth] = useState(0)
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const obs = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect.width ?? 0
+      if (w > 0) setContainerWidth(w)
+    })
+    obs.observe(el)
+    const initial = el.getBoundingClientRect().width
+    if (initial > 0) setContainerWidth(initial)
+    return () => obs.disconnect()
+  }, [])
 
   const W = 600
   const H = 160
@@ -983,7 +1011,7 @@ function MultiLineChart({ series, labels }: { series: ChartSeries[]; labels: str
         })}
       </svg>
       {tooltip && (
-        <ChartTooltip tooltip={tooltip} containerWidth={containerRef.current?.offsetWidth ?? 0} />
+        <ChartTooltip tooltip={tooltip} containerWidth={containerWidth} />
       )}
     </div>
   )
@@ -1184,7 +1212,6 @@ export default function BlueberryClient() {
   useEffect(() => {
     if (!keyword || platform !== 'naver') return
     fetchDatalabTrend(keyword)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keyword, platform])
 
   // 주요 키워드 데이터

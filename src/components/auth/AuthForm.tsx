@@ -22,7 +22,6 @@ export default function AuthForm() {
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
   const [agreedPrivacy, setAgreedPrivacy] = useState(false)
   const [agreedTerms, setAgreedTerms] = useState(false)
   const [agreedService, setAgreedService] = useState(false)
@@ -49,7 +48,6 @@ export default function AuthForm() {
     setName('')
     setTeam('')
     setError('')
-    setMessage('')
     setAgreedPrivacy(false)
     setAgreedTerms(false)
     setAgreedService(false)
@@ -71,7 +69,6 @@ export default function AuthForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    setMessage('')
 
     if (!username.trim()) {
       setError('이메일 아이디를 입력해주세요.')

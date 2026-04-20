@@ -4,6 +4,9 @@ import KpiCharts from './_components/KpiCharts'
 
 export default async function DashboardKpiPage() {
   const supabase = await createServerClient()
+  const sixMonthsCutoff = new Date()
+  sixMonthsCutoff.setMonth(sixMonthsCutoff.getMonth() - 6)
+  const sixMonthsAgo = sixMonthsCutoff.toISOString()
 
   const { data: rootProjects } = await supabase
     .from('projects')
@@ -42,7 +45,7 @@ export default async function DashboardKpiPage() {
           .from('submissions')
           .select('created_at')
           .in('project_id', metricProjectIds)
-          .gte('created_at', new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString())
+          .gte('created_at', sixMonthsAgo)
           .order('created_at', { ascending: true })
       : Promise.resolve({ data: [] as { created_at: string }[] }),
   ])
