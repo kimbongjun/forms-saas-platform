@@ -29,7 +29,8 @@
       "Bash(brew install:*)",
       "Bash(export PATH=\"/opt/homebrew/bin:$PATH\")",
       "Bash(npm run:*)",
-      "Bash(gh pr:*)"
+      "Bash(gh pr:*)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(k,v\\) for k,v in {**d.get\\('dependencies',{}\\), **d.get\\('devDependencies',{}\\)}.items\\(\\)]\")"
     ]
   }
 }
