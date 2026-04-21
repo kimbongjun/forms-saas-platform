@@ -99,7 +99,7 @@ export default function KeywordMindMap({ centerKeyword }: MindMapProps) {
   // 타원형 배치, 노드 크기는 검색량 비례
   const nodeData = nodes.map((node, i) => {
     const angle = (i / nodes.length) * 2 * Math.PI - Math.PI / 2
-    const r = 28 + (node.total / maxVol) * 32  // 28–60
+    const r = 50 + (node.total / maxVol) * 50  // 28–60
     const lw = 1 + (node.total / maxVol) * 4.5  // 1–5.5
     return {
       ...node,
@@ -265,8 +265,8 @@ export default function KeywordMindMap({ centerKeyword }: MindMapProps) {
           const isHov = hovered === n.keyword
           const labelLen = isHov ? n.keyword.length : Math.min(n.keyword.length, 7)
           const labelFs = isHov
-            ? (n.keyword.length > 8 ? 11 : n.keyword.length > 5 ? 13 : 15)
-            : (labelLen > 7 ? 10 : labelLen > 5 ? 11 : 12)
+            ? (n.keyword.length > 8 ? 11 : n.keyword.length > 5 ? 13 : 20)
+            : (labelLen > 7 ? 10 : labelLen > 5 ? 11 : 18)
           return (
             <g
               key={`n-${i}`}
@@ -314,17 +314,7 @@ export default function KeywordMindMap({ centerKeyword }: MindMapProps) {
                 {isHov ? n.keyword : truncate(n.keyword, 7)}
               </text>
               {/* 검색량 서브라벨 */}
-              <text
-                x={n.x}
-                y={n.y + (isHov ? n.r + 10 : n.r) + 16}
-                textAnchor="middle"
-                fill={isHov ? '#6B7280' : '#9CA3AF'}
-                fontSize={isHov ? '11' : '9.5'}
-                fontWeight={isHov ? '600' : '500'}
-                style={{ pointerEvents: 'none' }}
-              >
-                {fmt(n.total)}
-              </text>
+              
             </g>
           )
         })}
@@ -342,7 +332,7 @@ export default function KeywordMindMap({ centerKeyword }: MindMapProps) {
             textAnchor="middle"
             dominantBaseline="middle"
             fill="white"
-            fontSize={center.length > 6 ? 14 : 16}
+            fontSize={center.length > 6 ? 14 : 18}
             fontWeight="800"
             letterSpacing="-0.5"
             style={{ pointerEvents: 'none' }}
@@ -352,8 +342,8 @@ export default function KeywordMindMap({ centerKeyword }: MindMapProps) {
           <text
             x={CX} y={CY + 12}
             textAnchor="middle"
-            fill="#9CA3AF"
-            fontSize="10"
+            fill="#ddd"
+            fontSize="12"
             fontWeight="500"
             style={{ pointerEvents: 'none' }}
           >
@@ -367,12 +357,12 @@ export default function KeywordMindMap({ centerKeyword }: MindMapProps) {
           const ty = Math.max(tooltipPos.svgY - 52, 4)
           return (
             <g style={{ pointerEvents: 'none' }}>
-              <rect x={tx} y={ty} width={150} height={68} rx={10} ry={10} fill="#111827" fillOpacity={0.97} />
+              <rect x={tx} y={ty} width={200} height={68} rx={10} ry={10} fill="#111827" fillOpacity={0.97} />
               <text x={tx + 12} y={ty + 20} fill="white" fontSize="13" fontWeight="700">{hovered}</text>
-              <text x={tx + 12} y={ty + 37} fill="#9CA3AF" fontSize="10">
+              <text x={tx + 12} y={ty + 37} fill="#ffffff" fontSize="13">
                 PC {fmt(hoveredNode.pc)} · 모바일 {fmt(hoveredNode.mobile)}
               </text>
-              <text x={tx + 12} y={ty + 52} fill="#6B7280" fontSize="9.5">
+              <text x={tx + 12} y={ty + 52} fill="#ffffff" fontSize="13">
                 총 {fmt(hoveredNode.total)} · 클릭해서 탐색
               </text>
             </g>
