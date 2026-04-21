@@ -6,6 +6,8 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const channel = searchParams.get('channel')
   const keyword_id = searchParams.get('keyword_id')
+  const from = searchParams.get('from')
+  const to = searchParams.get('to')
 
   let query = supabase
     .from('sc_posts')
@@ -15,6 +17,8 @@ export async function GET(req: NextRequest) {
 
   if (channel && channel !== 'all') query = query.eq('channel', channel)
   if (keyword_id && keyword_id !== 'all') query = query.eq('keyword_id', keyword_id)
+  if (from) query = query.gte('published_at', from)
+  if (to) query = query.lte('published_at', to + 'T23:59:59')
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

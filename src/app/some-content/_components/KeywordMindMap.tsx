@@ -21,11 +21,11 @@ const PALETTE = [
   '#84CC16', '#F43F5E',
 ]
 
-const W = 880
-const H = 540
+const W = 1000
+const H = 600
 const CX = W / 2
 const CY = H / 2
-const ORBIT_R = 230
+const ORBIT_R = 260
 
 function fmt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
@@ -99,7 +99,7 @@ export default function KeywordMindMap({ centerKeyword }: MindMapProps) {
   // 타원형 배치, 노드 크기는 검색량 비례
   const nodeData = nodes.map((node, i) => {
     const angle = (i / nodes.length) * 2 * Math.PI - Math.PI / 2
-    const r = 24 + (node.total / maxVol) * 28  // 24–52
+    const r = 28 + (node.total / maxVol) * 32  // 28–60
     const lw = 1 + (node.total / maxVol) * 4.5  // 1–5.5
     return {
       ...node,
@@ -172,7 +172,7 @@ export default function KeywordMindMap({ centerKeyword }: MindMapProps) {
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
         className="w-full select-none"
-        style={{ height: fullscreen ? 'calc(100% - 52px)' : '480px' }}
+        style={{ height: fullscreen ? 'calc(100% - 52px)' : '540px' }}
         onMouseMove={(e) => {
           if (hovered) setTooltipPos(clientToSvg(e.clientX, e.clientY))
         }}
@@ -263,8 +263,10 @@ export default function KeywordMindMap({ centerKeyword }: MindMapProps) {
         {/* 위성 노드 */}
         {nodeData.map((n, i) => {
           const isHov = hovered === n.keyword
-          const labelLen = n.keyword.length
-          const labelFs = labelLen > 7 ? 10 : labelLen > 5 ? 11 : 12
+          const labelLen = isHov ? n.keyword.length : Math.min(n.keyword.length, 7)
+          const labelFs = isHov
+            ? (n.keyword.length > 8 ? 11 : n.keyword.length > 5 ? 13 : 15)
+            : (labelLen > 7 ? 10 : labelLen > 5 ? 11 : 12)
           return (
             <g
               key={`n-${i}`}
@@ -285,14 +287,17 @@ export default function KeywordMindMap({ centerKeyword }: MindMapProps) {
             >
               {/* 호버 오라 링 */}
               {isHov && (
-                <circle cx={n.x} cy={n.y} r={n.r + 12} fill={n.color} fillOpacity={0.12} />
+                <circle cx={n.x} cy={n.y} r={n.r + 20} fill={n.color} fillOpacity={0.18} />
+              )}
+              {isHov && (
+                <circle cx={n.x} cy={n.y} r={n.r + 10} fill={n.color} fillOpacity={0.1} />
               )}
               {/* 메인 노드 */}
               <circle
                 cx={n.x} cy={n.y}
-                r={isHov ? n.r + 4 : n.r}
+                r={isHov ? n.r + 10 : n.r}
                 fill={`url(#ng-${i})`}
-                filter="url(#ds)"
+                filter={isHov ? 'url(#glow)' : 'url(#ds)'}
                 style={{ transition: 'r 0.18s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
               />
               {/* 키워드 텍스트 */}
@@ -302,20 +307,20 @@ export default function KeywordMindMap({ centerKeyword }: MindMapProps) {
                 dominantBaseline="middle"
                 fill="white"
                 fontSize={labelFs}
-                fontWeight="700"
+                fontWeight="800"
                 letterSpacing="-0.3"
                 style={{ pointerEvents: 'none' }}
               >
-                {truncate(n.keyword, 7)}
+                {isHov ? n.keyword : truncate(n.keyword, 7)}
               </text>
               {/* 검색량 서브라벨 */}
               <text
                 x={n.x}
-                y={n.y + n.r + 15}
+                y={n.y + (isHov ? n.r + 10 : n.r) + 16}
                 textAnchor="middle"
-                fill="#9CA3AF"
-                fontSize="9.5"
-                fontWeight="500"
+                fill={isHov ? '#6B7280' : '#9CA3AF'}
+                fontSize={isHov ? '11' : '9.5'}
+                fontWeight={isHov ? '600' : '500'}
                 style={{ pointerEvents: 'none' }}
               >
                 {fmt(n.total)}

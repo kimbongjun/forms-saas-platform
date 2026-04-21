@@ -1,9 +1,16 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/utils/supabase/server'
 import type { ScMentionSummary } from '@/types/database'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const supabase = await createServerClient()
+  const { searchParams } = req.nextUrl
+
+  const today = new Date().toISOString().split('T')[0]
+  const defaultFrom = new Date()
+  defaultFrom.setDate(defaultFrom.getDate() - 7)
+  const from = searchParams.get('from') ?? defaultFrom.toISOString().split('T')[0]
+  const to = searchParams.get('to') ?? today
 
   const { data: keywords, error: kwErr } = await supabase
     .from('sc_keywords')
@@ -13,14 +20,12 @@ export async function GET() {
   if (kwErr) return NextResponse.json({ error: kwErr.message }, { status: 500 })
   if (!keywords?.length) return NextResponse.json({ mentions: [], last_sync: null })
 
-  const sevenDaysAgo = new Date()
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-
   const { data: rows, error: mErr } = await supabase
     .from('sc_mentions')
     .select('*')
     .in('keyword_id', keywords.map(k => k.id))
-    .gte('mention_date', sevenDaysAgo.toISOString().split('T')[0])
+    .gte('mention_date', from)
+    .lte('mention_date', to)
 
   if (mErr) return NextResponse.json({ error: mErr.message }, { status: 500 })
 

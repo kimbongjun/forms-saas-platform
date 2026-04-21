@@ -182,6 +182,8 @@ function DashboardTab({ mentions, keywords }: { mentions: ScMentionSummary[]; ke
 }
 
 
+const CHANNEL_PAGE_SIZE = 10
+
 // ── 채널 탐색 탭 ─────────────────────────────────────────────────
 function ChannelTab({
   posts, keywords, selectedChannel, setSelectedChannel, selectedKeyword, setSelectedKeyword,
@@ -193,12 +195,18 @@ function ChannelTab({
   selectedKeyword: string
   setSelectedKeyword: (v: string) => void
 }) {
+  const [page, setPage] = useState(1)
+
   const filtered = posts.filter(p => {
     if (selectedChannel !== 'all' && p.channel !== selectedChannel) return false
     if (selectedKeyword !== 'all' && p.keyword_id !== selectedKeyword) return false
     return true
   })
 
+  useEffect(() => { setPage(1) }, [selectedChannel, selectedKeyword])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / CHANNEL_PAGE_SIZE))
+  const paginated = filtered.slice((page - 1) * CHANNEL_PAGE_SIZE, page * CHANNEL_PAGE_SIZE)
   const presentChannels = [...new Set(posts.map(p => p.channel))] as ScChannel[]
 
   return (
@@ -233,8 +241,51 @@ function ChannelTab({
         } />
       ) : (
         <div className="space-y-3">
-          <p className="text-xs text-gray-400">{filtered.length}건 표시 중</p>
-          {filtered.map(post => <PostCard key={post.id} post={post} />)}
+          <p className="text-xs text-gray-400">총 {filtered.length}건 · {page}/{totalPages} 페이지</p>
+          {paginated.map(post => <PostCard key={post.id} post={post} />)}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-1 pt-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+              >
+                이전
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(n => n === 1 || n === totalPages || Math.abs(n - page) <= 2)
+                .reduce<(number | '…')[]>((acc, n, i, arr) => {
+                  if (i > 0 && n - (arr[i - 1] as number) > 1) acc.push('…')
+                  acc.push(n)
+                  return acc
+                }, [])
+                .map((n, i) =>
+                  n === '…' ? (
+                    <span key={`e-${i}`} className="px-1 text-xs text-gray-400">…</span>
+                  ) : (
+                    <button
+                      key={n}
+                      onClick={() => setPage(n as number)}
+                      className={[
+                        'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+                        page === n ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100',
+                      ].join(' ')}
+                    >
+                      {n}
+                    </button>
+                  )
+                )
+              }
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+              >
+                다음
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -652,6 +703,12 @@ function EmptyState({ message }: { message: string }) {
   )
 }
 
+// ── 날짜 헬퍼 ────────────────────────────────────────────────────
+function todayStr() { return new Date().toISOString().split('T')[0] }
+function daysAgoStr(n: number) {
+  const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split('T')[0]
+}
+
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────
 export default function SomeContentClient() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
@@ -666,14 +723,16 @@ export default function SomeContentClient() {
   const [newKeyword, setNewKeyword] = useState('')
   const [newCategory, setNewCategory] = useState<ScKeywordCategory>('brand')
   const [adding, setAdding] = useState(false)
+  const [dateFrom, setDateFrom] = useState(() => daysAgoStr(30))
+  const [dateTo, setDateTo] = useState(() => todayStr())
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
       const [kwRes, mentionRes, postRes] = await Promise.all([
         fetch('/api/some-content/keywords'),
-        fetch('/api/some-content/mentions'),
-        fetch('/api/some-content/posts'),
+        fetch(`/api/some-content/mentions?from=${dateFrom}&to=${dateTo}`),
+        fetch(`/api/some-content/posts?from=${dateFrom}&to=${dateTo}`),
       ])
       if (kwRes.ok) setKeywords(await kwRes.json())
       if (mentionRes.ok) {
@@ -685,7 +744,7 @@ export default function SomeContentClient() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [dateFrom, dateTo])
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
@@ -806,7 +865,44 @@ export default function SomeContentClient() {
           </div>
         </div>
 
-        <div className="mt-4 flex gap-1 overflow-x-auto">
+        {/* 기간 설정 */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {([7, 30, 90] as const).map(d => {
+            const isActive = dateFrom === daysAgoStr(d) && dateTo === todayStr()
+            return (
+              <button
+                key={d}
+                onClick={() => { setDateFrom(daysAgoStr(d)); setDateTo(todayStr()) }}
+                className={[
+                  'rounded-lg px-3 py-1 text-xs font-medium transition-colors',
+                  isActive ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                ].join(' ')}
+              >
+                최근 {d}일
+              </button>
+            )
+          })}
+          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+            <input
+              type="date"
+              value={dateFrom}
+              max={dateTo}
+              onChange={e => setDateFrom(e.target.value)}
+              className="rounded-lg border border-gray-200 px-2 py-1 text-xs outline-none focus:border-gray-400"
+            />
+            <span>~</span>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom}
+              max={todayStr()}
+              onChange={e => setDateTo(e.target.value)}
+              className="rounded-lg border border-gray-200 px-2 py-1 text-xs outline-none focus:border-gray-400"
+            />
+          </div>
+        </div>
+
+        <div className="mt-3 flex gap-1 overflow-x-auto">
           {TABS.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
