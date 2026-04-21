@@ -255,6 +255,139 @@ export async function fetchYouTubeCount(keyword: string, apiKey: string): Promis
   }
 }
 
+// ── 에펨코리아 검색 크롤러 ────────────────────────────────────────
+// URL: https://www.fmkorea.com/search.php?act=IS&where=document&is_keyword={keyword}
+export async function crawlFmkorea(keyword: string): Promise<CrawledPost[]> {
+  const url = `https://www.fmkorea.com/search.php?act=IS&where=document&is_keyword=${encodeURIComponent(keyword)}&page=1`
+  const html = await fetchText(url, { Referer: 'https://www.fmkorea.com' })
+  if (!html) return []
+
+  const posts: CrawledPost[] = []
+
+  // FM코리아: <h3 class="title"><a href="/XXXXX">title</a></h3>
+  const titleRe = /<h3[^>]*class="[^"]*title[^"]*"[^>]*>[\s\S]*?<a[^>]+href="(\/[0-9]+)"[^>]*>([\s\S]*?)<\/a>/g
+  const dateRe  = /class="time"[^>]*>([^<]+)<\/span>/g
+
+  const dates: string[] = []
+  let dm
+  while ((dm = dateRe.exec(html)) !== null) dates.push(dm[1].trim())
+
+  let m
+  let idx = 0
+  while ((m = titleRe.exec(html)) !== null && idx < 10) {
+    const path = m[1]
+    const title = decodeHtmlEntities(m[2])
+    if (!title || title.length < 2) continue
+    posts.push({
+      channel: 'fmkorea',
+      title,
+      content: null,
+      url: `https://www.fmkorea.com${path}`,
+      author: null,
+      published_at: dates[idx] ? (() => { try { return new Date(dates[idx]).toISOString() } catch { return null } })() : null,
+    })
+    idx++
+  }
+
+  // Fallback pattern
+  if (posts.length === 0) {
+    const altRe = /href="(https?:\/\/www\.fmkorea\.com\/[0-9]+)"[^>]*class="[^"]*title[^"]*"[^>]*>([\s\S]*?)<\/a>/g
+    let am
+    let aidx = 0
+    while ((am = altRe.exec(html)) !== null && aidx < 10) {
+      const title = decodeHtmlEntities(am[2])
+      if (!title || title.length < 2) continue
+      posts.push({ channel: 'fmkorea', title, content: null, url: am[1], author: null, published_at: null })
+      aidx++
+    }
+  }
+
+  return posts
+}
+
+// ── 더쿠 검색 크롤러 ──────────────────────────────────────────────
+// URL: https://theqoo.net/index.php?mid=hot&search_keyword={keyword}&search_target=all
+export async function crawlTheqoo(keyword: string): Promise<CrawledPost[]> {
+  const url = `https://theqoo.net/index.php?mid=hot&search_keyword=${encodeURIComponent(keyword)}&search_target=all&listStyle=list&page=1`
+  const html = await fetchText(url, { Referer: 'https://theqoo.net' })
+  if (!html) return []
+
+  const posts: CrawledPost[] = []
+
+  // 더쿠: <a class="title" href="...">title</a>
+  const titleRe = /<a[^>]+class="[^"]*title[^"]*"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g
+  const dateRe  = /<span[^>]*class="[^"]*date[^"]*"[^>]*>([^<]+)<\/span>/g
+
+  const dates: string[] = []
+  let dm
+  while ((dm = dateRe.exec(html)) !== null) dates.push(dm[1].trim())
+
+  let m
+  let idx = 0
+  while ((m = titleRe.exec(html)) !== null && idx < 10) {
+    const rawUrl = m[1]
+    const title = decodeHtmlEntities(m[2])
+    if (!title || title.length < 2) continue
+    const fullUrl = rawUrl.startsWith('http') ? rawUrl : `https://theqoo.net${rawUrl}`
+    posts.push({
+      channel: 'theqoo',
+      title,
+      content: null,
+      url: fullUrl,
+      author: null,
+      published_at: dates[idx] ? (() => { try { return new Date(dates[idx]).toISOString() } catch { return null } })() : null,
+    })
+    idx++
+  }
+
+  // Fallback: li > a with href containing theqoo.net
+  if (posts.length === 0) {
+    const altRe = /href="(https?:\/\/theqoo\.net\/[^"?]+)"[^>]*>\s*<span[^>]*>([\s\S]*?)<\/span>/g
+    let am
+    let aidx = 0
+    while ((am = altRe.exec(html)) !== null && aidx < 10) {
+      const title = decodeHtmlEntities(am[2])
+      if (!title || title.length < 2) continue
+      posts.push({ channel: 'theqoo', title, content: null, url: am[1], author: null, published_at: null })
+      aidx++
+    }
+  }
+
+  return posts
+}
+
+// ── 성예사 (성형예쁜사람들) 네이버 카페 크롤러 ─────────────────────────
+// Naver 카페 검색 API 사용 (NAVER_CLIENT_ID / NAVER_CLIENT_SECRET)
+export async function crawlSungyesa(keyword: string): Promise<CrawledPost[]> {
+  const clientId = process.env.NAVER_CLIENT_ID
+  const clientSecret = process.env.NAVER_CLIENT_SECRET
+  if (!clientId || !clientSecret) return []
+
+  const query = `성형예쁜사람들 ${keyword}`
+  const url = `https://openapi.naver.com/v1/search/cafearticle.json?query=${encodeURIComponent(query)}&display=10&sort=date`
+  const text = await fetchText(url, {
+    'X-Naver-Client-Id': clientId,
+    'X-Naver-Client-Secret': clientSecret,
+  })
+  if (!text) return []
+
+  try {
+    const json = JSON.parse(text) as {
+      items?: { title: string; description: string; link: string; postdate: string }[]
+    }
+    return (json.items ?? []).slice(0, 10).map(item => ({
+      channel: 'sungyesa',
+      title: decodeHtmlEntities(item.title),
+      content: decodeHtmlEntities(item.description),
+      url: item.link,
+      author: null,
+      published_at: item.postdate?.length === 8
+        ? `${item.postdate.slice(0, 4)}-${item.postdate.slice(4, 6)}-${item.postdate.slice(6, 8)}`
+        : null,
+    }))
+  } catch { return [] }
+}
+
 // ── 전체 크롤링 실행 ──────────────────────────────────────────────
 export async function crawlAllCommunity(keyword: string): Promise<CrawledPost[]> {
   const results = await Promise.allSettled([
@@ -262,6 +395,9 @@ export async function crawlAllCommunity(keyword: string): Promise<CrawledPost[]>
     crawlPpomppu(keyword),
     crawlGangnamUnnie(keyword),
     crawlBabitalk(keyword),
+    crawlFmkorea(keyword),
+    crawlTheqoo(keyword),
+    crawlSungyesa(keyword),
   ])
   return results.flatMap(r => r.status === 'fulfilled' ? r.value : [])
 }

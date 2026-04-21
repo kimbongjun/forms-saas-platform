@@ -4,16 +4,15 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   TrendingUp, Globe, Settings, RefreshCw,
   Plus, Trash2, ExternalLink, BarChart3,
-  CheckCircle2, XCircle, ChevronDown, Network,
+  CheckCircle2, XCircle, ChevronDown,
   Download, ChevronUp, Cpu, AlertCircle,
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import type { ScKeyword, ScMentionSummary, ScPost, ScKeywordCategory, ScChannel } from '@/types/database'
 
-const KeywordMindMap = dynamic(() => import('./KeywordMindMap'), { ssr: false })
+const TrendAnalysisView = dynamic(() => import('./TrendAnalysisView'), { ssr: false })
 
 type Tab = 'dashboard' | 'trend' | 'channel' | 'settings'
-type TrendView = 'channel' | 'mindmap'
 
 // ── 채널 메타데이터 ────────────────────────────────────────────────
 type DataSource = 'real' | 'crawled' | 'estimated'
@@ -27,6 +26,9 @@ const CHANNEL_META: Record<ScChannel, { label: string; color: string; badge: str
   ppomppu:       { label: '뽐뿌',          color: '#FF5722', badge: 'bg-orange-100 text-orange-700', source: 'crawled' },
   gangnam_unnie: { label: '강남언니',      color: '#FF69B4', badge: 'bg-rose-100 text-rose-700',     source: 'crawled' },
   babitalk:      { label: '바비톡',        color: '#9C27B0', badge: 'bg-purple-100 text-purple-700', source: 'crawled' },
+  fmkorea:       { label: '에펨코리아',    color: '#00ADEF', badge: 'bg-sky-100 text-sky-700',       source: 'crawled' },
+  theqoo:        { label: '더쿠',          color: '#F43F5E', badge: 'bg-rose-100 text-rose-700',     source: 'crawled' },
+  sungyesa:      { label: '성예사',        color: '#8B5CF6', badge: 'bg-violet-100 text-violet-700', source: 'crawled' },
   instagram:     { label: '인스타그램',    color: '#E1306C', badge: 'bg-pink-100 text-pink-700',     source: 'estimated' },
   twitter:       { label: 'X(트위터)',     color: '#000000', badge: 'bg-gray-100 text-gray-700',     source: 'estimated' },
   facebook:      { label: '페이스북',      color: '#1877F2', badge: 'bg-blue-100 text-blue-700',     source: 'estimated' },
@@ -41,6 +43,7 @@ const SOURCE_LABEL: Record<DataSource, { text: string; badge: string }> = {
 const CHANNEL_ORDER: ScChannel[] = [
   'naver_blog', 'naver_cafe', 'naver_news', 'youtube',
   'dcinside', 'ppomppu', 'gangnam_unnie', 'babitalk',
+  'fmkorea', 'theqoo', 'sungyesa',
   'instagram', 'twitter', 'facebook',
 ]
 
@@ -55,6 +58,16 @@ function fmt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
   return String(n)
+}
+
+function downloadCSV(filename: string, rows: (string | number)[][]) {
+  const bom = '\uFEFF'
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = filename; a.click()
+  URL.revokeObjectURL(url)
 }
 
 function fmtDate(iso: string | null): string {
@@ -81,7 +94,7 @@ function DashboardTab({ mentions, keywords }: { mentions: ScMentionSummary[]; ke
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiCard label="전체 언급량 (7일)" value={fmt(totalMentions)} sub="모든 채널 합산" />
         <KpiCard label="모니터링 키워드" value={String(keywords.filter(k => k.is_active).length)} sub={`전체 ${keywords.length}개`} />
-        <KpiCard label="수집 채널" value="11" sub="API 실측 4 · 크롤링 4 · 추정 3" />
+        <KpiCard label="수집 채널" value="14" sub="API 실측 4 · 크롤링 7 · 추정 3" />
       </div>
 
       <section>
@@ -168,160 +181,6 @@ function DashboardTab({ mentions, keywords }: { mentions: ScMentionSummary[]; ke
   )
 }
 
-// ── 트렌드 탭 ─────────────────────────────────────────────────────
-function TrendTab({
-  mentions, keywords, selectedKeyword, setSelectedKeyword,
-}: {
-  mentions: ScMentionSummary[]
-  keywords: ScKeyword[]
-  selectedKeyword: string
-  setSelectedKeyword: (v: string) => void
-}) {
-  const [view, setView] = useState<TrendView>('channel')
-
-  const activeMentions = selectedKeyword === 'all'
-    ? mentions
-    : mentions.filter(m => m.keyword_id === selectedKeyword)
-
-  const mergedByChannel: Partial<Record<ScChannel, number>> = {}
-  for (const m of activeMentions) {
-    for (const [ch, cnt] of Object.entries(m.by_channel)) {
-      mergedByChannel[ch as ScChannel] = (mergedByChannel[ch as ScChannel] ?? 0) + (cnt as number)
-    }
-  }
-  const maxVal = Math.max(0, ...Object.values(mergedByChannel).map(v => v ?? 0))
-
-  const centerKw = selectedKeyword === 'all'
-    ? (keywords.find(k => k.is_active)?.keyword ?? '')
-    : (keywords.find(k => k.id === selectedKeyword)?.keyword ?? '')
-
-  return (
-    <div className="space-y-5">
-      {/* 키워드 선택 */}
-      <div className="flex flex-wrap gap-2">
-        <Chip active={selectedKeyword === 'all'} onClick={() => setSelectedKeyword('all')}>전체</Chip>
-        {keywords.filter(k => k.is_active).map(k => (
-          <Chip key={k.id} active={selectedKeyword === k.id} onClick={() => setSelectedKeyword(k.id)}>
-            {k.keyword}
-          </Chip>
-        ))}
-      </div>
-
-      {/* 뷰 전환 */}
-      <div className="flex gap-1 rounded-xl bg-gray-100 p-1 w-fit">
-        <button
-          onClick={() => setView('channel')}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${view === 'channel' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
-        >
-          <BarChart3 className="h-4 w-4" /> 채널 분석
-        </button>
-        <button
-          onClick={() => setView('mindmap')}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${view === 'mindmap' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
-        >
-          <Network className="h-4 w-4" /> 연관어 맵
-        </button>
-      </div>
-
-      {activeMentions.length === 0 && view === 'channel' ? (
-        <EmptyState message="키워드를 선택하거나 새로고침하여 데이터를 수집하세요." />
-      ) : view === 'mindmap' ? (
-        <div className="space-y-2">
-          {centerKw ? (
-            <KeywordMindMap centerKeyword={centerKw} />
-          ) : (
-            <EmptyState message="연관어 맵을 보려면 키워드를 선택하세요." />
-          )}
-          <p className="text-xs text-gray-400 text-center">
-            노드를 클릭하면 해당 키워드의 연관어로 이동합니다 · Naver 검색광고 API 기반
-          </p>
-        </div>
-      ) : (
-        <>
-          {/* API 실측 채널 */}
-          {(() => {
-            const realChs = CHANNEL_ORDER.filter(ch => CHANNEL_META[ch].source === 'real' && (mergedByChannel[ch] ?? 0) > 0)
-            if (!realChs.length) return null
-            return (
-              <section>
-                <div className="mb-2 flex items-center gap-2">
-                  <h2 className="text-sm font-semibold text-gray-700">포털 · API 실측</h2>
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${SOURCE_LABEL.real.badge}`}>API 실측</span>
-                </div>
-                <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
-                  {realChs.map(ch => {
-                    const cnt = mergedByChannel[ch] ?? 0
-                    return <ChannelBar key={ch} label={CHANNEL_META[ch].label} color={CHANNEL_META[ch].color} count={cnt} max={maxVal} />
-                  })}
-                </div>
-              </section>
-            )
-          })()}
-
-          {/* 크롤링 채널 */}
-          {(() => {
-            const crawledChs = CHANNEL_ORDER.filter(ch => CHANNEL_META[ch].source === 'crawled' && (mergedByChannel[ch] ?? 0) > 0)
-            if (!crawledChs.length) return null
-            return (
-              <section>
-                <div className="mb-2 flex items-center gap-2">
-                  <h2 className="text-sm font-semibold text-gray-700">커뮤니티 크롤링</h2>
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${SOURCE_LABEL.crawled.badge}`}>크롤링</span>
-                </div>
-                <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
-                  {crawledChs.map(ch => {
-                    const cnt = mergedByChannel[ch] ?? 0
-                    return <ChannelBar key={ch} label={CHANNEL_META[ch].label} color={CHANNEL_META[ch].color} count={cnt} max={maxVal} />
-                  })}
-                </div>
-              </section>
-            )
-          })()}
-
-          {/* 추정 채널 */}
-          {(() => {
-            const estChs = CHANNEL_ORDER.filter(ch => CHANNEL_META[ch].source === 'estimated' && (mergedByChannel[ch] ?? 0) > 0)
-            if (!estChs.length) return null
-            return (
-              <section>
-                <div className="mb-2 flex items-center gap-2">
-                  <h2 className="text-sm font-semibold text-gray-700">SNS 추정</h2>
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${SOURCE_LABEL.estimated.badge}`}>추정</span>
-                </div>
-                <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
-                  {estChs.map(ch => {
-                    const cnt = mergedByChannel[ch] ?? 0
-                    return <ChannelBar key={ch} label={CHANNEL_META[ch].label} color={CHANNEL_META[ch].color} count={cnt} max={maxVal} opacity={0.5} />
-                  })}
-                </div>
-                <p className="mt-2 text-xs text-gray-400">
-                  ※ SNS 채널은 공식 API 미연동으로 포털 기준 비례 추정됩니다.
-                </p>
-              </section>
-            )
-          })()}
-        </>
-      )}
-    </div>
-  )
-}
-
-function ChannelBar({ label, color, count, max, opacity = 0.85 }: {
-  label: string; color: string; count: number; max: number; opacity?: number
-}) {
-  const pct = max > 0 ? (count / max) * 100 : 0
-  return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs text-gray-600">
-        <span>{label}</span>
-        <span className="font-medium">{fmt(count)}건</span>
-      </div>
-      <div className="h-4 rounded-full bg-gray-100 overflow-hidden">
-        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: color, opacity }} />
-      </div>
-    </div>
-  )
-}
 
 // ── 채널 탐색 탭 ─────────────────────────────────────────────────
 function ChannelTab({
@@ -742,7 +601,7 @@ function DataPolicySection() {
       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-2 text-sm">
         {[
           { src: 'API 실측', channels: '네이버 블로그 / 카페 / 뉴스 · YouTube', detail: 'Search API 실측 카운트 + 최신 원문 수집', cls: SOURCE_LABEL.real.badge },
-          { src: '크롤링',  channels: 'DC인사이드 · 뽐뿌 · 강남언니 · 바비톡', detail: 'HTML 파싱 또는 내부 API — 커뮤니티 크롤링 버튼으로 수동 실행', cls: SOURCE_LABEL.crawled.badge },
+          { src: '크롤링',  channels: 'DC인사이드 · 뽐뿌 · 에펨코리아 · 더쿠 · 강남언니 · 바비톡 · 성예사', detail: 'HTML 파싱 또는 내부 API — 커뮤니티 크롤링 버튼으로 수동 실행', cls: SOURCE_LABEL.crawled.badge },
           { src: '추정',    channels: '인스타그램 · X(트위터) · 페이스북', detail: '포털 데이터 기준 비례 추정 (공식 API 미연동)', cls: SOURCE_LABEL.estimated.badge },
         ].map(r => (
           <div key={r.src} className="flex items-start gap-3">
@@ -871,6 +730,35 @@ export default function SomeContentClient() {
     if (res.ok) await fetchAll()
   }
 
+  const handleExportMentions = () => {
+    const date = new Date().toISOString().slice(0, 10)
+    const rows: (string | number)[][] = [
+      ['키워드', ...CHANNEL_ORDER.map(ch => CHANNEL_META[ch].label), '총합'],
+      ...mentions.map(m => [
+        m.keyword,
+        ...CHANNEL_ORDER.map(ch => m.by_channel[ch] ?? 0),
+        m.total,
+      ]),
+    ]
+    downloadCSV(`썸콘텐츠_언급량_${date}.csv`, rows)
+  }
+
+  const handleExportPosts = () => {
+    const date = new Date().toISOString().slice(0, 10)
+    const rows: (string | number)[][] = [
+      ['키워드', '채널', '제목', '내용', 'URL', '작성일'],
+      ...posts.map(p => [
+        p.keyword,
+        CHANNEL_META[p.channel as ScChannel]?.label ?? p.channel,
+        p.title ?? '',
+        p.content ?? '',
+        p.url ?? '',
+        p.published_at ? new Date(p.published_at).toLocaleDateString('ko-KR') : '',
+      ]),
+    ]
+    downloadCSV(`썸콘텐츠_게시글_${date}.csv`, rows)
+  }
+
   const TABS = [
     { key: 'dashboard' as Tab, label: '대시보드',   icon: BarChart3 },
     { key: 'trend'     as Tab, label: '트렌드 분석', icon: TrendingUp },
@@ -892,6 +780,26 @@ export default function SomeContentClient() {
               <span className="hidden text-xs text-gray-400 sm:inline">
                 동기화: {fmtDate(lastSync)}
               </span>
+            )}
+            {mentions.length > 0 && (
+              <button
+                onClick={handleExportMentions}
+                className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                title="언급량 CSV 다운로드"
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">언급량</span>
+              </button>
+            )}
+            {posts.length > 0 && (
+              <button
+                onClick={handleExportPosts}
+                className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                title="게시글 CSV 다운로드"
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">게시글</span>
+              </button>
             )}
             <button
               onClick={handleSync}
@@ -931,10 +839,7 @@ export default function SomeContentClient() {
           <>
             {activeTab === 'dashboard' && <DashboardTab mentions={mentions} keywords={keywords} />}
             {activeTab === 'trend' && (
-              <TrendTab
-                mentions={mentions} keywords={keywords}
-                selectedKeyword={selectedKeyword} setSelectedKeyword={setSelectedKeyword}
-              />
+              <TrendAnalysisView keywords={keywords} />
             )}
             {activeTab === 'channel' && (
               <ChannelTab

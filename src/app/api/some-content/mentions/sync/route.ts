@@ -118,6 +118,9 @@ export async function POST() {
       ppomppu:       Math.round(naverTotal * 0.02),
       gangnam_unnie: Math.round(naverTotal * 0.06),
       babitalk:      Math.round(naverTotal * 0.04),
+      fmkorea:       Math.round(naverTotal * 0.03),
+      theqoo:        Math.round(naverTotal * 0.05),
+      sungyesa:      Math.round(naverTotal * 0.06),
     }
 
     await supabase.from('sc_mentions').upsert(

@@ -186,6 +186,7 @@ export type ScChannel =
   | 'naver_blog' | 'naver_cafe' | 'naver_news'
   | 'instagram' | 'youtube' | 'twitter' | 'facebook'
   | 'dcinside' | 'ppomppu' | 'gangnam_unnie' | 'babitalk'
+  | 'fmkorea' | 'theqoo' | 'sungyesa'
 
 export type ScKeywordCategory = 'brand' | 'product' | 'competitor' | 'general'
 
