@@ -341,7 +341,7 @@ export default function KeywordMindMap({ centerKeyword }: MindMapProps) {
           const boxH = hasVol ? 84 : 66
           return (
             <g style={{ pointerEvents: 'none' }}>
-              <rect x={tx} y={ty} width={260} height={boxH} rx={10} ry={10} fill="#111827" fillOpacity={0.97} />
+              <rect x={tx} y={ty} width={300} height={boxH} rx={10} ry={10} fill="#111827" fillOpacity={0.97} />
               <circle cx={tx + 14} cy={ty + 16} r={5} fill={CAT[hoveredNode.category].color} />
               <text x={tx + 24} y={ty + 20} fill="white" fontSize="13" fontWeight="700">{hovered}</text>
               {hasVol && (
