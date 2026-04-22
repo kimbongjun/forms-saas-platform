@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Monitor, Plus, RefreshCw, Trash2, Edit2, X,
   AlertCircle, Clock, Wifi, WifiOff, ChevronDown, ChevronUp,
   Mail, Globe, Activity, CheckCircle, XCircle, Gauge, Zap,
   BarChart2, TrendingUp, Info, GripVertical,
+  ShieldCheck, ShieldAlert, ShieldOff,
 } from 'lucide-react'
 import {
   DndContext,
@@ -40,6 +41,30 @@ const INTERVAL_OPTIONS: { value: MonitorInterval; label: string }[] = [
   { value: 720,  label: '12시간' },
   { value: 1440, label: '1일'    },
 ]
+
+// ── SSL ───────────────────────────────────────────────────────────
+export interface SslResult {
+  days_remaining: number | null
+  valid_until: string | null
+  valid_from: string | null
+  issued_by: string | null
+  subject_cn: string | null
+  error: string | null
+}
+
+function sslMeta(ssl: SslResult | null): {
+  label: string; color: string; bg: string; Icon: React.ElementType; days: number | null
+} {
+  if (!ssl || ssl.error) {
+    return { label: ssl?.error === 'HTTPS 미사용' ? 'HTTP' : 'SSL 오류', color: 'text-gray-400', bg: 'bg-gray-50', Icon: ShieldOff, days: null }
+  }
+  const d = ssl.days_remaining
+  if (d === null) return { label: '확인 불가', color: 'text-gray-400', bg: 'bg-gray-50', Icon: ShieldOff, days: null }
+  if (d <= 0)  return { label: '만료됨', color: 'text-red-600', bg: 'bg-red-50', Icon: ShieldOff, days: d }
+  if (d < 14)  return { label: `${d}일 남음`, color: 'text-red-600', bg: 'bg-red-50', Icon: ShieldAlert, days: d }
+  if (d < 30)  return { label: `${d}일 남음`, color: 'text-amber-600', bg: 'bg-amber-50', Icon: ShieldAlert, days: d }
+  return { label: `${d}일 남음`, color: 'text-emerald-600', bg: 'bg-emerald-50', Icon: ShieldCheck, days: d }
+}
 
 // ── 상태 UI 헬퍼 ─────────────────────────────────────────────────
 function statusMeta(s: MonitorStatus | null) {
@@ -380,7 +405,7 @@ function SiteForm({ initial, onSave, onCancel, saving }: SiteFormProps) {
 }
 
 // ── 사이트 카드 ───────────────────────────────────────────────────
-type DetailTab = 'history' | 'vitals' | 'codes'
+type DetailTab = 'history' | 'vitals' | 'codes' | 'ssl'
 
 interface SiteCardProps {
   site: MonitorSite
@@ -388,6 +413,9 @@ interface SiteCardProps {
   onEdit: (s: MonitorSite) => void
   onDelete: (id: string) => void
   checking: boolean
+  ssl: SslResult | null
+  sslLoading: boolean
+  onSslRefresh: () => void
   dragHandleProps?: {
     ref: (el: HTMLElement | null) => void
     listeners: SyntheticListenerMap | undefined
@@ -425,7 +453,89 @@ function SortableSiteCard(props: Omit<SiteCardProps, 'dragHandleProps'>) {
   )
 }
 
-function SiteCard({ site, onCheck, onEdit, onDelete, checking, dragHandleProps }: SiteCardProps) {
+// ── SSL 상세 패널 ─────────────────────────────────────────────────
+function SslPanel({ ssl, loading, onRefresh }: { ssl: SslResult | null; loading: boolean; onRefresh: () => void }) {
+  const meta = sslMeta(ssl)
+
+  const fmtDate = (iso: string | null) => {
+    if (!iso) return '—'
+    return new Date(iso).toLocaleDateString('ko-KR', {
+      year: 'numeric', month: 'long', day: 'numeric', weekday: 'short',
+    })
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* 주요 수치 + 갱신 버튼 */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className={['flex h-14 w-14 items-center justify-center rounded-xl', meta.bg].join(' ')}>
+            <meta.Icon className={['h-7 w-7', meta.color].join(' ')} />
+          </div>
+          <div>
+            <p className={['text-2xl font-bold leading-none', meta.color].join(' ')}>
+              {meta.days !== null ? `${meta.days}일` : '—'}
+            </p>
+            <p className="mt-1 text-xs text-gray-500">만료까지 잔여일</p>
+            {ssl && !ssl.error && ssl.days_remaining !== null && ssl.days_remaining < 30 && (
+              <p className={['text-[11px] font-medium mt-0.5', meta.color].join(' ')}>
+                {ssl.days_remaining <= 0 ? '인증서가 만료되었습니다!' : '갱신이 필요합니다'}
+              </p>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={onRefresh}
+          disabled={loading}
+          className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+        >
+          <RefreshCw className={['h-3.5 w-3.5', loading ? 'animate-spin' : ''].join(' ')} />
+          갱신
+        </button>
+      </div>
+
+      {/* 오류 표시 */}
+      {ssl?.error && ssl.error !== 'HTTPS 미사용' && (
+        <div className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-xs text-red-600">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          {ssl.error}
+        </div>
+      )}
+      {ssl?.error === 'HTTPS 미사용' && (
+        <div className="flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-3 text-xs text-gray-500">
+          <ShieldOff className="h-3.5 w-3.5 shrink-0" />
+          이 사이트는 HTTP를 사용하므로 SSL 인증서가 없습니다.
+        </div>
+      )}
+
+      {/* 인증서 상세 */}
+      {ssl && !ssl.error && (
+        <div className="rounded-xl border border-gray-100 bg-white overflow-hidden">
+          {[
+            { label: '만료일',   value: fmtDate(ssl.valid_until) },
+            { label: '발급일',   value: fmtDate(ssl.valid_from) },
+            { label: '발급기관', value: ssl.issued_by ?? '—' },
+            { label: '도메인',   value: ssl.subject_cn ?? '—' },
+          ].map(({ label, value }) => (
+            <div key={label} className="flex items-center border-b border-gray-50 last:border-0 px-4 py-2.5 text-xs">
+              <span className="w-20 shrink-0 font-medium text-gray-400">{label}</span>
+              <span className="text-gray-700 font-mono">{value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {loading && !ssl && (
+        <div className="flex items-center gap-2 py-4 text-xs text-gray-400">
+          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+          SSL 인증서 조회 중…
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SiteCard({ site, onCheck, onEdit, onDelete, checking, ssl, sslLoading, onSslRefresh, dragHandleProps }: SiteCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [tab, setTab] = useState<DetailTab>('history')
   const [history, setHistory] = useState<MonitorCheck[]>([])
@@ -545,6 +655,26 @@ function SiteCard({ site, onCheck, onEdit, onDelete, checking, dragHandleProps }
                   <BarChart2 className="h-2.5 w-2.5" /> {site.vitals_perf_score}
                 </span>
               )}
+              {/* SSL 배지 */}
+              {site.url.startsWith('https://') && (() => {
+                if (sslLoading && !ssl) return (
+                  <span className="flex items-center gap-0.5 rounded-full bg-gray-50 px-1.5 py-0.5 text-gray-300">
+                    <RefreshCw className="h-2.5 w-2.5 animate-spin" />
+                    <span className="text-[10px]">SSL</span>
+                  </span>
+                )
+                if (!ssl) return null
+                const sm = sslMeta(ssl)
+                return (
+                  <span
+                    className={['flex items-center gap-0.5 font-medium rounded-full px-1.5 py-0.5', sm.bg, sm.color].join(' ')}
+                    title={`SSL 인증서: ${sm.label}${ssl.issued_by ? ` · ${ssl.issued_by}` : ''}`}
+                  >
+                    <sm.Icon className="h-2.5 w-2.5" />
+                    <span className="text-[10px]">SSL {sm.label}</span>
+                  </span>
+                )
+              })()}
             </div>
 
             {site.last_error && (
@@ -580,9 +710,10 @@ function SiteCard({ site, onCheck, onEdit, onDelete, checking, dragHandleProps }
           {/* 탭 */}
           <div className="flex border-b border-gray-100 bg-gray-50 px-5">
             {([
-              { key: 'history', label: '상태 이력', Icon: Activity },
-              { key: 'vitals',  label: 'Web Vitals', Icon: Zap      },
-              { key: 'codes',   label: 'HTTP 코드',  Icon: BarChart2 },
+              { key: 'history', label: '상태 이력',   Icon: Activity    },
+              { key: 'vitals',  label: 'Web Vitals',  Icon: Zap         },
+              { key: 'codes',   label: 'HTTP 코드',   Icon: BarChart2   },
+              { key: 'ssl',     label: 'SSL 인증서',  Icon: ShieldCheck },
             ] as { key: DetailTab; label: string; Icon: React.ElementType }[]).map(({ key, label, Icon }) => (
               <button key={key} onClick={() => setTab(key)}
                 className={[
@@ -666,6 +797,11 @@ function SiteCard({ site, onCheck, onEdit, onDelete, checking, dragHandleProps }
                 {/* ── Web Vitals 탭 ────────────────────────────── */}
                 {tab === 'vitals' && (
                   <VitalsPanel siteId={site.id} initial={initialVitals} />
+                )}
+
+                {/* ── SSL 인증서 탭 ─────────────────────────────── */}
+                {tab === 'ssl' && (
+                  <SslPanel ssl={ssl} loading={sslLoading} onRefresh={onSslRefresh} />
                 )}
 
                 {/* ── HTTP 코드 분포 탭 ────────────────────────── */}
@@ -765,6 +901,22 @@ export default function MonitoringClient() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [filter, setFilter] = useState<MonitorStatus | 'all'>('all')
   const [pageError, setPageError] = useState('')
+  const [sslMap, setSslMap] = useState<Record<string, SslResult>>({})
+  const [sslLoadingSet, setSslLoadingSet] = useState<Set<string>>(new Set())
+  const sslFetchedRef = useRef<Set<string>>(new Set())
+
+  const fetchSslForSite = useCallback(async (siteId: string, fresh = false) => {
+    setSslLoadingSet(prev => new Set(prev).add(siteId))
+    try {
+      const res = await fetch(`/api/monitoring/ssl?siteId=${siteId}${fresh ? '&fresh=1' : ''}`)
+      if (res.ok) {
+        const data = await res.json() as SslResult
+        setSslMap(prev => ({ ...prev, [siteId]: data }))
+      }
+    } finally {
+      setSslLoadingSet(prev => { const n = new Set(prev); n.delete(siteId); return n })
+    }
+  }, [])
 
   // dnd-kit 센서
   const sensors = useSensors(
@@ -784,6 +936,16 @@ export default function MonitoringClient() {
   }, [])
 
   useEffect(() => { fetchSites() }, [fetchSites])
+
+  // 사이트 목록 로드 후 SSL 일괄 조회 (신규 사이트만)
+  useEffect(() => {
+    for (const site of sites) {
+      if (!sslFetchedRef.current.has(site.id)) {
+        sslFetchedRef.current.add(site.id)
+        fetchSslForSite(site.id)
+      }
+    }
+  }, [sites, fetchSslForSite])
 
   // ── CRUD ─────────────────────────────────────────────────────
   async function handleSave(formData: { name: string; url: string; check_interval: MonitorInterval; notify_email: string }) {
@@ -805,6 +967,8 @@ export default function MonitoringClient() {
         })
         const created = await res.json() as MonitorSite
         setSites(prev => [created, ...prev])
+        sslFetchedRef.current.add(created.id)
+        fetchSslForSite(created.id)
       }
       setShowForm(false)
       setEditTarget(null)
@@ -838,6 +1002,8 @@ export default function MonitoringClient() {
         last_error:         result.last_error         ?? s.last_error,
         last_checked_at:    result.checked_at         ?? new Date().toISOString(),
       } : s))
+      // 사이트 체크 시 SSL도 함께 갱신
+      fetchSslForSite(id, true)
     } finally {
       setCheckingIds(prev => { const n = new Set(prev); n.delete(id); return n })
     }
@@ -997,6 +1163,9 @@ export default function MonitoringClient() {
                     onEdit={s => { setEditTarget(s); setShowForm(true) }}
                     onDelete={id => setDeleteConfirm(id)}
                     checking={checkingIds.has(site.id)}
+                    ssl={sslMap[site.id] ?? null}
+                    sslLoading={sslLoadingSet.has(site.id)}
+                    onSslRefresh={() => fetchSslForSite(site.id, true)}
                   />
                 ))}
               </div>

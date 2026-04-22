@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import type { ScKeyword, ScMentionSummary, ScPost, ScKeywordCategory, ScChannel } from '@/types/database'
+import type { TrendExportState } from './TrendAnalysisView'
 
 const TrendAnalysisView = dynamic(() => import('./TrendAnalysisView'), { ssr: false })
 
@@ -68,6 +69,14 @@ function downloadCSV(filename: string, rows: (string | number)[][]) {
   const a = document.createElement('a')
   a.href = url; a.download = filename; a.click()
   URL.revokeObjectURL(url)
+}
+
+const MINDMAP_CAT_LABELS: Record<string, string> = {
+  brand: '브랜드', product: '제품', review: '후기/리뷰', price: '가격/할인',
+  how_to: '사용법', trend: '트렌드', event: '이벤트', general: '일반',
+}
+const MINDMAP_SRC_LABELS: Record<string, string> = {
+  ad: '광고API', autocomplete: '자동완성', news: '뉴스', blog: '블로그',
 }
 
 function fmtDate(iso: string | null): string {
@@ -703,6 +712,179 @@ function EmptyState({ message }: { message: string }) {
   )
 }
 
+// ── CSV 내보내기 모달 ──────────────────────────────────────────────
+function CsvExportModal({
+  mentions, posts, trendExportData, onClose,
+}: {
+  mentions: ScMentionSummary[]
+  posts: (ScPost & { keyword: string })[]
+  trendExportData: TrendExportState | null
+  onClose: () => void
+}) {
+  const hasMindmap = (trendExportData?.mindmapNodes?.length ?? 0) > 0
+  const hasTrend = !!trendExportData?.trendData
+  const hasSentiment = !!trendExportData?.sentimentData
+  const [sel, setSel] = useState({
+    mentions: mentions.length > 0,
+    posts: posts.length > 0,
+    mindmap: hasMindmap,
+    trend: hasTrend,
+    sentiment: hasSentiment,
+  })
+
+  const toggle = (k: keyof typeof sel) => setSel(s => ({ ...s, [k]: !s[k] }))
+
+  const handleDownload = () => {
+    const date = new Date().toISOString().slice(0, 10)
+    const rows: (string | number)[][] = []
+
+    if (sel.mentions && mentions.length > 0) {
+      rows.push(['[언급량]', ...Array(CHANNEL_ORDER.length).fill(''), ''])
+      rows.push(['키워드', ...CHANNEL_ORDER.map(ch => CHANNEL_META[ch].label), '총합'])
+      for (const m of mentions)
+        rows.push([m.keyword, ...CHANNEL_ORDER.map(ch => m.by_channel[ch] ?? 0), m.total])
+    }
+
+    if (sel.posts && posts.length > 0) {
+      if (rows.length > 0) rows.push(['', '', '', '', '', ''])
+      rows.push(['[게시글]', '', '', '', '', ''])
+      rows.push(['키워드', '채널', '제목', '내용', 'URL', '작성일'])
+      for (const p of posts)
+        rows.push([
+          p.keyword,
+          CHANNEL_META[p.channel as ScChannel]?.label ?? p.channel,
+          p.title ?? '', p.content ?? '', p.url ?? '',
+          p.published_at ? new Date(p.published_at).toLocaleDateString('ko-KR') : '',
+        ])
+    }
+
+    if (sel.mindmap && hasMindmap && trendExportData) {
+      if (rows.length > 0) rows.push(['', '', '', '', '', ''])
+      rows.push([`[연관어 마인드맵 - ${trendExportData.mindmapKeyword}]`, '', '', '', '', ''])
+      rows.push(['키워드', 'PC 검색량', '모바일 검색량', '총 검색량', '카테고리', '출처'])
+      for (const n of trendExportData.mindmapNodes)
+        rows.push([
+          n.keyword, n.pc, n.mobile, n.total,
+          MINDMAP_CAT_LABELS[n.category] ?? n.category,
+          n.sources.map(s => MINDMAP_SRC_LABELS[s] ?? s).join(' / '),
+        ])
+    }
+
+    if (sel.trend && hasTrend && trendExportData?.trendData) {
+      const { trendData, keyword } = trendExportData
+      if (rows.length > 0) rows.push(['', '', ''])
+      rows.push([`[검색량 트렌드 - ${keyword}]`, '', ''])
+      rows.push(['월', '레이블', '검색지수'])
+      for (const p of trendData.points) rows.push([p.month, p.label, p.value])
+      if (trendData.metrics) {
+        const m = trendData.metrics
+        rows.push(['', '', ''], ['[트렌드 지표]', '', ''])
+        rows.push(['방향', m.trend === 'up' ? '상승세' : m.trend === 'down' ? '하락세' : '보합세', ''])
+        rows.push(['성장률', `${m.growthRate}%`, ''], ['변동성', `${m.volatility}%`, ''])
+        rows.push(['전체 평균', m.avg, ''], ['최근 3개월', m.recent3Avg, ''])
+      }
+    }
+
+    if (sel.sentiment && hasSentiment && trendExportData?.sentimentData) {
+      const { sentimentData, keyword } = trendExportData
+      if (rows.length > 0) rows.push(['', '', ''])
+      rows.push([`[감성 분석 - ${keyword}]`, '', ''])
+      rows.push(['감성', '키워드', '가중치'])
+      for (const w of sentimentData.positive) rows.push(['긍정', w.word, w.weight])
+      for (const w of sentimentData.negative) rows.push(['부정', w.word, w.weight])
+      for (const w of sentimentData.neutral)  rows.push(['중립', w.word, w.weight])
+    }
+
+    if (rows.length === 0) return
+    downloadCSV(`썸콘텐츠_${date}.csv`, rows)
+    onClose()
+  }
+
+  const anySelected = Object.values(sel).some(Boolean)
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <h2 className="mb-4 text-base font-bold text-gray-900">CSV 내보내기</h2>
+        <div className="space-y-3">
+          {mentions.length > 0 && (
+            <label className="flex cursor-pointer items-start gap-3">
+              <input type="checkbox" checked={sel.mentions} onChange={() => toggle('mentions')} className="mt-0.5 h-4 w-4 rounded" />
+              <div>
+                <p className="text-sm font-medium text-gray-800">언급량</p>
+                <p className="text-xs text-gray-400">키워드 × 채널별 언급 수 ({mentions.length}개 키워드)</p>
+              </div>
+            </label>
+          )}
+          {posts.length > 0 && (
+            <label className="flex cursor-pointer items-start gap-3">
+              <input type="checkbox" checked={sel.posts} onChange={() => toggle('posts')} className="mt-0.5 h-4 w-4 rounded" />
+              <div>
+                <p className="text-sm font-medium text-gray-800">게시글</p>
+                <p className="text-xs text-gray-400">수집된 원문 목록 ({posts.length}건)</p>
+              </div>
+            </label>
+          )}
+          {hasMindmap && trendExportData && (
+            <label className="flex cursor-pointer items-start gap-3">
+              <input type="checkbox" checked={sel.mindmap} onChange={() => toggle('mindmap')} className="mt-0.5 h-4 w-4 rounded" />
+              <div>
+                <p className="text-sm font-medium text-gray-800">연관어 마인드맵</p>
+                <p className="text-xs text-gray-400">
+                  &ldquo;{trendExportData.mindmapKeyword}&rdquo; 연관어 {trendExportData.mindmapNodes.length}개 · PC/모바일 검색량 포함
+                </p>
+              </div>
+            </label>
+          )}
+          {hasTrend && trendExportData && (
+            <label className="flex cursor-pointer items-start gap-3">
+              <input type="checkbox" checked={sel.trend} onChange={() => toggle('trend')} className="mt-0.5 h-4 w-4 rounded" />
+              <div>
+                <p className="text-sm font-medium text-gray-800">검색량 트렌드</p>
+                <p className="text-xs text-gray-400">&ldquo;{trendExportData.keyword}&rdquo; 12개월 검색지수 + 트렌드 지표</p>
+              </div>
+            </label>
+          )}
+          {hasSentiment && trendExportData && (
+            <label className="flex cursor-pointer items-start gap-3">
+              <input type="checkbox" checked={sel.sentiment} onChange={() => toggle('sentiment')} className="mt-0.5 h-4 w-4 rounded" />
+              <div>
+                <p className="text-sm font-medium text-gray-800">감성 분석</p>
+                <p className="text-xs text-gray-400">&ldquo;{trendExportData.keyword}&rdquo; 긍정 · 부정 · 중립 키워드</p>
+              </div>
+            </label>
+          )}
+          {!mentions.length && !posts.length && !hasMindmap && !hasTrend && !hasSentiment && (
+            <p className="text-sm text-gray-400">내보낼 데이터가 없습니다. 새로고침 후 트렌드 탭을 방문하세요.</p>
+          )}
+        </div>
+        <div className="mt-6 flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            취소
+          </button>
+          <button
+            onClick={handleDownload}
+            disabled={!anySelected}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gray-900 py-2.5 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50 transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            다운로드
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── 날짜 헬퍼 ────────────────────────────────────────────────────
 function todayStr() { return new Date().toISOString().split('T')[0] }
 function daysAgoStr(n: number) {
@@ -725,6 +907,8 @@ export default function SomeContentClient() {
   const [adding, setAdding] = useState(false)
   const [dateFrom, setDateFrom] = useState(() => daysAgoStr(30))
   const [dateTo, setDateTo] = useState(() => todayStr())
+  const [trendExportData, setTrendExportData] = useState<TrendExportState | null>(null)
+  const [showExportModal, setShowExportModal] = useState(false)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -783,35 +967,6 @@ export default function SomeContentClient() {
     if (res.ok) await fetchAll()
   }
 
-  const handleExportMentions = () => {
-    const date = new Date().toISOString().slice(0, 10)
-    const rows: (string | number)[][] = [
-      ['키워드', ...CHANNEL_ORDER.map(ch => CHANNEL_META[ch].label), '총합'],
-      ...mentions.map(m => [
-        m.keyword,
-        ...CHANNEL_ORDER.map(ch => m.by_channel[ch] ?? 0),
-        m.total,
-      ]),
-    ]
-    downloadCSV(`썸콘텐츠_언급량_${date}.csv`, rows)
-  }
-
-  const handleExportPosts = () => {
-    const date = new Date().toISOString().slice(0, 10)
-    const rows: (string | number)[][] = [
-      ['키워드', '채널', '제목', '내용', 'URL', '작성일'],
-      ...posts.map(p => [
-        p.keyword,
-        CHANNEL_META[p.channel as ScChannel]?.label ?? p.channel,
-        p.title ?? '',
-        p.content ?? '',
-        p.url ?? '',
-        p.published_at ? new Date(p.published_at).toLocaleDateString('ko-KR') : '',
-      ]),
-    ]
-    downloadCSV(`썸콘텐츠_게시글_${date}.csv`, rows)
-  }
-
   const TABS = [
     { key: 'dashboard' as Tab, label: '대시보드',   icon: BarChart3 },
     { key: 'trend'     as Tab, label: '트렌드 분석', icon: TrendingUp },
@@ -834,26 +989,14 @@ export default function SomeContentClient() {
                 동기화: {fmtDate(lastSync)}
               </span>
             )}
-            {mentions.length > 0 && (
-              <button
-                onClick={handleExportMentions}
-                className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-                title="언급량 CSV 다운로드"
-              >
-                <Download className="h-4 w-4" />
-                <span className="hidden sm:inline">언급량</span>
-              </button>
-            )}
-            {posts.length > 0 && (
-              <button
-                onClick={handleExportPosts}
-                className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-                title="게시글 CSV 다운로드"
-              >
-                <Download className="h-4 w-4" />
-                <span className="hidden sm:inline">게시글</span>
-              </button>
-            )}
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              title="CSV 내보내기"
+            >
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">CSV 내보내기</span>
+            </button>
             <button
               onClick={handleRefreshAll}
               disabled={syncPhase !== 'idle'}
@@ -929,7 +1072,7 @@ export default function SomeContentClient() {
           <>
             {activeTab === 'dashboard' && <DashboardTab mentions={mentions} keywords={keywords} />}
             {activeTab === 'trend' && (
-              <TrendAnalysisView keywords={keywords} />
+              <TrendAnalysisView keywords={keywords} onExportDataChange={setTrendExportData} />
             )}
             {activeTab === 'channel' && (
               <ChannelTab
@@ -950,6 +1093,15 @@ export default function SomeContentClient() {
           </>
         )}
       </div>
+
+      {showExportModal && (
+        <CsvExportModal
+          mentions={mentions}
+          posts={posts}
+          trendExportData={trendExportData}
+          onClose={() => setShowExportModal(false)}
+        />
+      )}
     </div>
   )
 }

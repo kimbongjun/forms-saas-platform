@@ -25,6 +25,7 @@ interface LayoutNode extends GraphNode {
 
 interface MindMapProps {
   centerKeyword: string
+  onNodesChange?: (nodes: GraphNode[], keyword: string) => void
 }
 
 const CAT: Record<Category, { label: string; color: string }> = {
@@ -58,7 +59,7 @@ function trunc(s: string, max: number): string {
   return s.length > max ? s.slice(0, max - 1) + '…' : s
 }
 
-export default function KeywordMindMap({ centerKeyword }: MindMapProps) {
+export default function KeywordMindMap({ centerKeyword, onNodesChange }: MindMapProps) {
   const [center, setCenter] = useState(centerKeyword)
   const [nodes, setNodes] = useState<GraphNode[]>([])
   const [loading, setLoading] = useState(false)
@@ -80,18 +81,22 @@ export default function KeywordMindMap({ centerKeyword }: MindMapProps) {
         const data = await res.json() as { error?: string }
         setError(data.error ?? '데이터 로드 실패')
         setNodes([])
+        onNodesChange?.([], kw)
         return
       }
       const data: GraphNode[] = await res.json()
-      setNodes(data.slice(0, 60))
+      const sliced = data.slice(0, 60)
+      setNodes(sliced)
+      onNodesChange?.(sliced, kw)
       setTimeout(() => setLoaded(true), 80)
     } catch {
       setError('네트워크 오류')
       setNodes([])
+      onNodesChange?.([], kw)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [onNodesChange])
 
   useEffect(() => {
     if (centerKeyword !== center) {

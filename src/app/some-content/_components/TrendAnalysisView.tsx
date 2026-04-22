@@ -8,14 +8,26 @@ import {
 } from 'recharts'
 import {
   RefreshCw, TrendingUp, TrendingDown, Minus,
-  Download, Sparkles, ArrowUpRight, ArrowDownRight, AlertTriangle,
+  Sparkles, ArrowUpRight, ArrowDownRight, AlertTriangle,
 } from 'lucide-react'
 import type { ScKeyword } from '@/types/database'
 import type { TrendResult } from '@/app/api/some-content/trend/route'
 import type { SentimentResult, SentimentWord } from '@/app/api/some-content/sentiment/route'
 import type { InsightsResult } from '@/app/api/some-content/insights/route'
+import type { GraphNode } from '@/app/api/some-content/related/route'
 
 const KeywordMindMap = dynamic(() => import('./KeywordMindMap'), { ssr: false })
+
+// ─────────────────────────────────────────────
+// 내보내기 상태 타입 (부모 컴포넌트로 전달)
+// ─────────────────────────────────────────────
+export interface TrendExportState {
+  keyword: string
+  trendData: TrendResult | null
+  sentimentData: SentimentResult | null
+  mindmapNodes: GraphNode[]
+  mindmapKeyword: string
+}
 
 // ─────────────────────────────────────────────
 // Recharts 커스텀 툴팁
@@ -247,23 +259,14 @@ function QuotaAlert({ message, blocked }: { message: string; blocked?: boolean }
   )
 }
 
-// ─────────────────────────────────────────────
-// CSV 유틸
-// ─────────────────────────────────────────────
-function downloadCSV(filename: string, rows: (string | number)[][]) {
-  const bom = '\uFEFF'
-  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
-  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url; a.download = filename; a.click()
-  URL.revokeObjectURL(url)
-}
 
 // ─────────────────────────────────────────────
 // 메인 컴포넌트
 // ─────────────────────────────────────────────
-export default function TrendAnalysisView({ keywords }: { keywords: ScKeyword[] }) {
+export default function TrendAnalysisView({ keywords, onExportDataChange }: {
+  keywords: ScKeyword[]
+  onExportDataChange?: (state: TrendExportState) => void
+}) {
   const activeKws = keywords.filter(k => k.is_active)
   const [selectedId, setSelectedId] = useState<string>(activeKws[0]?.id ?? '')
   const [trendData, setTrendData] = useState<TrendResult | null>(null)
@@ -271,6 +274,8 @@ export default function TrendAnalysisView({ keywords }: { keywords: ScKeyword[] 
   const [trendLoading, setTrendLoading] = useState(false)
   const [sentimentLoading, setSentimentLoading] = useState(false)
   const [trendError, setTrendError] = useState<string | null>(null)
+  const [mindmapNodes, setMindmapNodes] = useState<GraphNode[]>([])
+  const [mindmapKeyword, setMindmapKeyword] = useState('')
 
   const selected = activeKws.find(k => k.id === selectedId) ?? activeKws[0]
   const selId = selected?.id ?? ''
@@ -295,28 +300,17 @@ export default function TrendAnalysisView({ keywords }: { keywords: ScKeyword[] 
       .finally(() => setSentimentLoading(false))
   }, [selId, selKw])
 
-  const handleExportCSV = () => {
-    const date = new Date().toISOString().slice(0, 10)
-    const rows: (string | number)[][] = []
-    if (trendData) {
-      rows.push(['[검색량 트렌드]', '', '']); rows.push(['월', '레이블', '검색지수'])
-      for (const p of trendData.points) rows.push([p.month, p.label, p.value])
-      if (trendData.metrics) {
-        const m = trendData.metrics; rows.push(['', '', '']); rows.push(['[트렌드 지표]', '', ''])
-        rows.push(['방향', m.trend === 'up' ? '상승세' : m.trend === 'down' ? '하락세' : '보합세', ''])
-        rows.push(['성장률', `${m.growthRate}%`, '']); rows.push(['변동성', `${m.volatility}%`, ''])
-        rows.push(['전체 평균', m.avg, '']); rows.push(['최근 3개월', m.recent3Avg, ''])
-      }
-    }
-    if (sentimentData) {
-      rows.push(['', '', '']); rows.push(['[감성 분석]', '', '']); rows.push(['감성', '키워드', '가중치'])
-      for (const w of sentimentData.positive)  rows.push(['긍정', w.word, w.weight])
-      for (const w of sentimentData.negative)  rows.push(['부정', w.word, w.weight])
-      for (const w of sentimentData.neutral)   rows.push(['중립', w.word, w.weight])
-    }
-    if (rows.length === 0) return
-    downloadCSV(`썸콘텐츠_${selKw}_${date}.csv`, rows)
-  }
+  useEffect(() => { setMindmapNodes([]); setMindmapKeyword('') }, [selId])
+
+  useEffect(() => {
+    if (!onExportDataChange) return
+    onExportDataChange({ keyword: selKw, trendData, sentimentData, mindmapNodes, mindmapKeyword })
+  }, [trendData, sentimentData, mindmapNodes, mindmapKeyword, selKw, onExportDataChange])
+
+  const handleMindmapNodesChange = useCallback((nodes: GraphNode[], kw: string) => {
+    setMindmapNodes(nodes)
+    setMindmapKeyword(kw)
+  }, [])
 
   if (activeKws.length === 0) {
     return (
@@ -332,33 +326,22 @@ export default function TrendAnalysisView({ keywords }: { keywords: ScKeyword[] 
   return (
     <div className="space-y-10">
 
-      {/* ── 키워드 선택 + CSV ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          {activeKws.map(k => (
-            <button
-              key={k.id}
-              onClick={() => setSelectedId(k.id)}
-              className={[
-                'rounded-full px-5 py-2 text-sm font-semibold transition-all',
-                (selectedId === k.id || (!selectedId && k === activeKws[0]))
-                  ? 'bg-gray-900 text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
-              ].join(' ')}
-            >
-              {k.keyword}
-            </button>
-          ))}
-        </div>
-        {(trendData || sentimentData) && (
+      {/* ── 키워드 선택 ── */}
+      <div className="flex flex-wrap gap-2">
+        {activeKws.map(k => (
           <button
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 transition-colors"
+            key={k.id}
+            onClick={() => setSelectedId(k.id)}
+            className={[
+              'rounded-full px-5 py-2 text-sm font-semibold transition-all',
+              (selectedId === k.id || (!selectedId && k === activeKws[0]))
+                ? 'bg-gray-900 text-white shadow-sm'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+            ].join(' ')}
           >
-            <Download className="h-4 w-4" />
-            CSV 내보내기
+            {k.keyword}
           </button>
-        )}
+        ))}
       </div>
 
       {/* ── SECTION 1: 연관어 마인드맵 ── */}
@@ -370,7 +353,7 @@ export default function TrendAnalysisView({ keywords }: { keywords: ScKeyword[] 
           </span>
         </div>
         <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm" style={{ minHeight: '560px' }}>
-          {selected && <KeywordMindMap centerKeyword={selected.keyword} />}
+          {selected && <KeywordMindMap centerKeyword={selected.keyword} onNodesChange={handleMindmapNodesChange} />}
         </div>
         <p className="mt-3 text-center text-xs text-gray-400">
           노드 클릭 시 해당 키워드로 탐색 · 검색량 기준 노드 크기 · 전체화면 버튼으로 크게 보기
