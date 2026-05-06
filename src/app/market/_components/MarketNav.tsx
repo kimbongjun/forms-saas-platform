@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Cpu, Users, CalendarDays } from 'lucide-react'
+import { Building2, CalendarDays, Cpu, LayoutDashboard, Users } from 'lucide-react'
 
 const TABS = [
-  { href: '/market', label: 'Daily Report', icon: LayoutDashboard, description: '오늘의 동향 요약' },
-  { href: '/market/tech-ai', label: 'Tech & AI', icon: Cpu, description: '기술 · AI · 규제 동향' },
-  { href: '/market/marketing-influencer', label: 'Marketing & KOL', icon: Users, description: '캠페인 · 인플루언서 · SNS' },
-  { href: '/market/events', label: 'Events', icon: CalendarDays, description: '전시 · 학회 일정' },
+  { href: '/market', label: 'Daily Report', icon: LayoutDashboard },
+  { href: '/market/competitors', label: 'Competitors', icon: Building2 },
+  { href: '/market/tech-ai', label: 'Tech & AI', icon: Cpu },
+  { href: '/market/marketing-influencer', label: 'Marketing & KOL', icon: Users },
+  { href: '/market/events', label: 'Events', icon: CalendarDays },
 ]
 
 export default function MarketNav() {
@@ -19,6 +20,7 @@ export default function MarketNav() {
       <div className="flex overflow-x-auto px-6">
         {TABS.map(({ href, label, icon: Icon }) => {
           const active = href === '/market' ? pathname === '/market' : pathname.startsWith(href)
+
           return (
             <Link
               key={href}
