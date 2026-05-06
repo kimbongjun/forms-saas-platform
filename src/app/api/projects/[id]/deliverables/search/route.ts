@@ -215,13 +215,17 @@ async function searchYouTube(
 async function searchInstagram(
   keyword: string,
   existingUrls: Set<string>,
+  integration?: {
+    access_token?: string | null
+    instagram_business_account_id?: string | null
+  } | null,
 ): Promise<{ results: DeliverableSearchResult[]; notices: string[] }> {
   const notices: string[] = []
   const hashtagQuery = extractHashtagQuery(keyword)
 
   if (hashtagQuery) {
-    const accessToken = process.env.INSTAGRAM_ACCESS_TOKEN
-    const instagramUserId = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID
+    const accessToken = integration?.access_token ?? process.env.INSTAGRAM_ACCESS_TOKEN
+    const instagramUserId = integration?.instagram_business_account_id ?? process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID
 
     if (!accessToken || !instagramUserId) {
       notices.push('Instagram 공식 해시태그 검색을 사용하려면 INSTAGRAM_ACCESS_TOKEN과 INSTAGRAM_BUSINESS_ACCOUNT_ID 설정이 필요합니다. 웹 검색 결과로 대체합니다.')
@@ -330,7 +334,9 @@ async function searchInstagram(
   const results = await Promise.all(
     uniqueRows.map(async (row, index) => {
       try {
-        const parsed = await parseDeliverableUrl(row.url)
+        const parsed = await parseDeliverableUrl(row.url, {
+          instagramAccessToken: integration?.access_token ?? undefined,
+        })
         return {
           key: `instagram-${index}`,
           platform: 'instagram' as const,
@@ -403,6 +409,13 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     .select('url')
     .eq('project_id', id)
 
+  const { data: integration } = await supabase
+    .from('social_integrations')
+    .select('access_token, instagram_business_account_id')
+    .eq('user_id', user.id)
+    .eq('provider', 'meta_instagram')
+    .maybeSingle()
+
   const existingUrls = new Set((existing ?? []).map((row) => row.url))
   const notices: string[] = []
   const resultsByUrl = new Map<string, DeliverableSearchResult>()
@@ -410,7 +423,7 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
   for (const platform of requestedPlatforms) {
     const outcome = platform === 'youtube'
       ? await searchYouTube(keyword, existingUrls)
-      : await searchInstagram(keyword, existingUrls)
+      : await searchInstagram(keyword, existingUrls, integration)
 
     notices.push(...outcome.notices)
     for (const result of outcome.results) {

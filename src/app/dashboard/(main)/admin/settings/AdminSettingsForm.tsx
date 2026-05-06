@@ -378,6 +378,21 @@ export default function AdminSettingsForm({ initialSettings, integrationStatus }
               <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs leading-5 text-blue-700">
                 두 값이 모두 설정되어 있으면 Instagram `#해시태그` 검색은 공식 API를 우선 사용합니다. 하나라도 없으면 웹 검색 fallback으로 동작합니다.
               </div>
+
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Meta 심사 검증 콘솔</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    로그인, 권한 승인, Instagram Business 계정 연결, 실제 API 사용 화면을 영상으로 증빙할 때 사용합니다.
+                  </p>
+                </div>
+                <Link
+                  href="/dashboard/admin/meta-instagram-review"
+                  className="rounded-xl bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-800"
+                >
+                  열기
+                </Link>
+              </div>
             </section>
 
             {/* 파비콘 */}

@@ -15,10 +15,21 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { data: integration } = await supabase
+    .from('social_integrations')
+    .select('access_token')
+    .eq('user_id', user.id)
+    .eq('provider', 'meta_instagram')
+    .maybeSingle()
+
   const { url } = await req.json() as { url?: string }
   if (!url?.trim()) {
     return NextResponse.json({ error: 'URL이 필요합니다.' }, { status: 400 })
   }
 
-  return NextResponse.json(await parseDeliverableUrl(url))
+  return NextResponse.json(
+    await parseDeliverableUrl(url, {
+      instagramAccessToken: integration?.access_token ?? undefined,
+    })
+  )
 }

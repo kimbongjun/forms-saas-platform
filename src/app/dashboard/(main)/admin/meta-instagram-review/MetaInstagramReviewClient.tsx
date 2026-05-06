@@ -1,0 +1,480 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import {
+  AlertCircle,
+  CheckCircle2,
+  ExternalLink,
+  Film,
+  Link2,
+  Loader2,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Unplug,
+} from 'lucide-react'
+
+type IntegrationStatus = {
+  envConfigured: boolean
+  connection: null | {
+    provider: string
+    status: string
+    facebook_user_id: string | null
+    facebook_page_id: string | null
+    facebook_page_name: string | null
+    instagram_business_account_id: string | null
+    instagram_username: string | null
+    scopes: string[] | null
+    token_expires_at: string | null
+    last_validated_at: string | null
+    created_at: string
+    updated_at: string
+  }
+}
+
+type DemoResponse = {
+  hashtag: string
+  permissions: Array<{ permission: string; status: string }>
+  pageCount: number
+  profile?: {
+    id: string
+    username?: string
+    name?: string
+    profile_picture_url?: string
+    biography?: string
+    website?: string
+    followers_count?: number
+    media_count?: number
+  }
+  recentMedia: Array<{
+    id: string
+    caption?: string
+    media_type?: string
+    media_url?: string
+    thumbnail_url?: string
+    permalink?: string
+    timestamp?: string
+    like_count?: number
+    comments_count?: number
+  }>
+  hashtagMedia: Array<{
+    id: string
+    caption?: string
+    media_type?: string
+    media_url?: string
+    thumbnail_url?: string
+    permalink?: string
+    timestamp?: string
+    like_count?: number
+    comments_count?: number
+  }>
+}
+
+const REVIEW_SCENARIO = [
+  '1. 관리자 로그인 상태에서 Meta Review Console 화면을 연다.',
+  '2. Connect with Meta 버튼을 눌러 Facebook Login을 시작한다.',
+  '3. pages_show_list, pages_read_engagement, instagram_basic 권한 승인 화면을 보여준다.',
+  '4. 연결 완료 후 Facebook Page와 Instagram Business 계정이 식별된 상태를 보여준다.',
+  '5. Run API Demo를 눌러 프로필, 최근 미디어, 해시태그 검색 결과를 보여준다.',
+  '6. 마지막으로 deliverables 기능에서 왜 이 API가 필요한지 설명한다.',
+]
+
+export default function MetaInstagramReviewClient() {
+  const searchParams = useSearchParams()
+  const [status, setStatus] = useState<IntegrationStatus | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [demoLoading, setDemoLoading] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
+  const [demo, setDemo] = useState<DemoResponse | null>(null)
+  const [error, setError] = useState('')
+  const [hashtag, setHashtag] = useState('classys')
+
+  const callbackMessage = useMemo(() => {
+    if (searchParams.get('connected') === '1') return 'Meta 연결이 완료되었습니다.'
+    const callbackError = searchParams.get('error')
+    if (callbackError) return `Meta 연결 오류: ${callbackError}`
+    return ''
+  }, [searchParams])
+
+  async function loadStatus() {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/integrations/meta/status', { cache: 'no-store' })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Failed to load status')
+      setStatus(json)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Failed to load status')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadStatus()
+  }, [])
+
+  async function runDemo() {
+    setDemoLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/integrations/meta/demo?hashtag=${encodeURIComponent(hashtag)}`, {
+        cache: 'no-store',
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Failed to run demo')
+      setDemo(json)
+      await loadStatus()
+    } catch (demoError) {
+      setError(demoError instanceof Error ? demoError.message : 'Failed to run demo')
+    } finally {
+      setDemoLoading(false)
+    }
+  }
+
+  async function disconnect() {
+    setDisconnecting(true)
+    setError('')
+    try {
+      const res = await fetch('/api/integrations/meta/disconnect', {
+        method: 'POST',
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Failed to disconnect')
+      setDemo(null)
+      await loadStatus()
+    } catch (disconnectError) {
+      setError(disconnectError instanceof Error ? disconnectError.message : 'Failed to disconnect')
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
+  return (
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <Link href="/dashboard/admin/settings" className="text-sm text-gray-500 hover:text-gray-700">
+            ← 사이트 설정
+          </Link>
+          <h1 className="mt-2 text-2xl font-bold text-gray-900">Meta Instagram Review Console</h1>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-gray-600">
+            Instagram Graph API 심사 영상에서 보여줄 로그인, 권한 승인, 계정 연결, 실제 API 사용 흐름을 검증하는
+            관리자용 콘솔입니다.
+          </p>
+        </div>
+        <button
+          onClick={loadStatus}
+          className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+        >
+          <RefreshCw className="h-4 w-4" />
+          새로고침
+        </button>
+      </div>
+
+      {callbackMessage ? (
+        <div className="flex items-start gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          {callbackMessage}
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          {error}
+        </div>
+      ) : null}
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">Need assessment</p>
+          <h2 className="mt-2 text-lg font-bold text-gray-900">이 프로젝트에는 Meta 연동 근거가 있습니다.</h2>
+          <p className="mt-2 text-sm leading-relaxed text-gray-600">
+            현재 `deliverables` 검색에서 Instagram `#해시태그`는 공식 API를 우선 사용하도록 이미 설계되어 있습니다.
+            다만 지금은 수동 토큰 주입 방식이라 앱 심사 영상에 필요한 사용자 승인 플로우가 없습니다.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-600">Review gap</p>
+          <h2 className="mt-2 text-lg font-bold text-gray-900">심사 영상 요건과 현재 구조는 다릅니다.</h2>
+          <p className="mt-2 text-sm leading-relaxed text-gray-600">
+            리뷰어는 로그인, 권한 승인, 실제 API 사용을 봐야 하는데, 기존 구조는 `.env.local` 토큰만 읽는 서버
+            방식이라 중간 과정을 증빙할 화면이 없습니다.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Implementation</p>
+          <h2 className="mt-2 text-lg font-bold text-gray-900">그래서 연결 전용 콘솔을 추가했습니다.</h2>
+          <p className="mt-2 text-sm leading-relaxed text-gray-600">
+            이 페이지에서 Meta OAuth 연결, 권한 확인, Instagram Business 프로필 조회, 최근 미디어 조회,
+            해시태그 검색 데모까지 수행할 수 있습니다.
+          </p>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Connection Status</h2>
+            <p className="mt-1 text-sm text-gray-500">Meta 앱 자격증명과 현재 연결 상태를 확인합니다.</p>
+          </div>
+          {loading ? <Loader2 className="h-4 w-4 animate-spin text-gray-400" /> : null}
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <StatusCard
+            title="FACEBOOK_APP_ID / SECRET"
+            value={status?.envConfigured ? 'Configured' : 'Missing'}
+            active={Boolean(status?.envConfigured)}
+          />
+          <StatusCard
+            title="OAuth connection"
+            value={status?.connection ? 'Connected' : 'Not connected'}
+            active={Boolean(status?.connection)}
+          />
+          <StatusCard
+            title="Facebook Page"
+            value={status?.connection?.facebook_page_name ?? '-'}
+            active={Boolean(status?.connection?.facebook_page_id)}
+          />
+          <StatusCard
+            title="Instagram Business"
+            value={status?.connection?.instagram_username ?? '-'}
+            active={Boolean(status?.connection?.instagram_business_account_id)}
+          />
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <a
+            href="/api/integrations/meta/start"
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white ${
+              status?.envConfigured ? 'bg-[#1877F2] hover:bg-[#1665d8]' : 'pointer-events-none bg-gray-300'
+            }`}
+          >
+            <Link2 className="h-4 w-4" />
+            Connect with Meta
+          </a>
+          <button
+            onClick={disconnect}
+            disabled={!status?.connection || disconnecting}
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+          >
+            {disconnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unplug className="h-4 w-4" />}
+            Disconnect
+          </button>
+          <a
+            href="https://developers.facebook.com/docs/app-review/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            Meta App Review Docs
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        </div>
+
+        {status?.connection?.scopes?.length ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {status.connection.scopes.map((scope) => (
+              <span key={scope} className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                {scope}
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center gap-2">
+          <Film className="h-5 w-5 text-blue-700" />
+          <h2 className="text-base font-semibold text-gray-900">Review Video Script</h2>
+        </div>
+        <div className="mt-4 space-y-2">
+          {REVIEW_SCENARIO.map((line) => (
+            <div key={line} className="rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              {line}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-5 w-5 text-emerald-600" />
+          <h2 className="text-base font-semibold text-gray-900">Run API Demo</h2>
+        </div>
+        <p className="mt-2 text-sm text-gray-500">
+          연결 후 이 버튼을 눌러 Instagram Business 프로필, 최근 미디어, 해시태그 검색 결과를 보여주면 심사 영상의
+          API 활용 근거가 됩니다.
+        </p>
+
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              value={hashtag}
+              onChange={(event) => setHashtag(event.target.value)}
+              placeholder="classys"
+              className="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-4 text-sm focus:border-gray-400 focus:outline-none"
+            />
+          </div>
+          <button
+            onClick={runDemo}
+            disabled={!status?.connection || demoLoading}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-40"
+          >
+            {demoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+            Run API Demo
+          </button>
+        </div>
+
+        {demo ? (
+          <div className="mt-5 grid gap-4 xl:grid-cols-[1.1fr,0.9fr]">
+            <div className="space-y-4">
+              <div className="rounded-2xl bg-gray-50 p-4">
+                <h3 className="text-sm font-semibold text-gray-900">Profile</h3>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <InfoLine label="Username" value={demo.profile?.username ?? '-'} />
+                  <InfoLine label="Name" value={demo.profile?.name ?? '-'} />
+                  <InfoLine label="Followers" value={String(demo.profile?.followers_count ?? '-')} />
+                  <InfoLine label="Media count" value={String(demo.profile?.media_count ?? '-')} />
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-gray-50 p-4">
+                <h3 className="text-sm font-semibold text-gray-900">Granted permissions</h3>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {demo.permissions.map((permission) => (
+                    <span
+                      key={`${permission.permission}-${permission.status}`}
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        permission.status === 'granted'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-amber-100 text-amber-700'
+                      }`}
+                    >
+                      {permission.permission}: {permission.status}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-gray-50 p-4">
+              <h3 className="text-sm font-semibold text-gray-900">Why this matters to the project</h3>
+              <ul className="mt-3 space-y-2 text-sm leading-relaxed text-gray-700">
+                <li>Instagram `#해시태그` 검색은 현재 deliverables 후보 검색 기능과 직접 연결됩니다.</li>
+                <li>권한 승인 후 받은 토큰으로 실제 Business 계정의 데이터가 조회된다는 점을 영상으로 증명할 수 있습니다.</li>
+                <li>현재 코드의 `.env.local` 고정 토큰 방식을 앱 심사용 사용자 연결 플로우로 보완합니다.</li>
+              </ul>
+            </div>
+
+            <div className="xl:col-span-2">
+              <MediaGrid title="Recent media" items={demo.recentMedia} emptyText="최근 미디어가 없습니다." />
+            </div>
+
+            <div className="xl:col-span-2">
+              <MediaGrid
+                title={`#${demo.hashtag} hashtag demo`}
+                items={demo.hashtagMedia}
+                emptyText="해시태그 결과가 없거나 권한/계정 조건이 맞지 않습니다."
+              />
+            </div>
+          </div>
+        ) : null}
+      </section>
+    </div>
+  )
+}
+
+function StatusCard({ title, value, active }: { title: string; value: string; active: boolean }) {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{title}</p>
+      <p className="mt-2 text-sm font-semibold text-gray-900">{value}</p>
+      <p className={`mt-2 text-xs font-medium ${active ? 'text-emerald-600' : 'text-amber-600'}`}>
+        {active ? 'Ready' : 'Needs action'}
+      </p>
+    </div>
+  )
+}
+
+function InfoLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+      <p className="text-[11px] uppercase tracking-wide text-gray-400">{label}</p>
+      <p className="mt-1 text-sm font-medium text-gray-900">{value}</p>
+    </div>
+  )
+}
+
+function MediaGrid({
+  title,
+  items,
+  emptyText,
+}: {
+  title: string
+  items: Array<{
+    id: string
+    caption?: string
+    media_type?: string
+    media_url?: string
+    thumbnail_url?: string
+    permalink?: string
+    timestamp?: string
+    like_count?: number
+    comments_count?: number
+  }>
+  emptyText: string
+}) {
+  return (
+    <div className="rounded-2xl bg-gray-50 p-4">
+      <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+      {items.length === 0 ? (
+        <p className="mt-3 text-sm text-gray-500">{emptyText}</p>
+      ) : (
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {items.map((item) => (
+            <a
+              key={item.id}
+              href={item.permalink ?? '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="overflow-hidden rounded-2xl border border-gray-200 bg-white hover:border-gray-300"
+            >
+              <div className="aspect-[4/3] bg-gray-100">
+                {item.thumbnail_url || item.media_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={item.thumbnail_url ?? item.media_url ?? ''}
+                    alt={item.caption ?? item.id}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-gray-400">No preview</div>
+                )}
+              </div>
+              <div className="space-y-2 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600">
+                    {item.media_type ?? 'MEDIA'}
+                  </span>
+                  <span className="text-[11px] text-gray-400">{item.timestamp?.slice(0, 10) ?? '-'}</span>
+                </div>
+                <p className="line-clamp-3 text-sm text-gray-700">{item.caption ?? 'No caption'}</p>
+                <div className="flex items-center gap-3 text-xs text-gray-500">
+                  <span>Likes {item.like_count ?? 0}</span>
+                  <span>Comments {item.comments_count ?? 0}</span>
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

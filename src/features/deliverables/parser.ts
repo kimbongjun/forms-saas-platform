@@ -141,7 +141,7 @@ async function parseYouTube(url: string): Promise<ParsedDeliverable> {
   }
 }
 
-async function parseInstagram(url: string): Promise<ParsedDeliverable> {
+async function parseInstagram(url: string, accessTokenOverride?: string): Promise<ParsedDeliverable> {
   const base: ParsedDeliverable = {
     platform: 'instagram',
     url,
@@ -156,7 +156,7 @@ async function parseInstagram(url: string): Promise<ParsedDeliverable> {
     notice: null,
   }
 
-  const accessToken = process.env.INSTAGRAM_ACCESS_TOKEN
+  const accessToken = accessTokenOverride ?? process.env.INSTAGRAM_ACCESS_TOKEN
   if (accessToken) {
     try {
       const oembedUrl = `https://graph.facebook.com/v23.0/instagram_oembed?url=${encodeURIComponent(url)}&access_token=${accessToken}&fields=thumbnail_url,title,author_name`
@@ -315,7 +315,12 @@ async function parseOpenGraph(url: string, platform: ParsedDeliverable['platform
   }
 }
 
-export async function parseDeliverableUrl(url: string) {
+export async function parseDeliverableUrl(
+  url: string,
+  options?: {
+    instagramAccessToken?: string
+  }
+) {
   const normalizedUrl = url.trim()
   const platform = detectPlatform(normalizedUrl)
 
@@ -323,7 +328,7 @@ export async function parseDeliverableUrl(url: string) {
     case 'youtube':
       return parseYouTube(normalizedUrl)
     case 'instagram':
-      return parseInstagram(normalizedUrl)
+      return parseInstagram(normalizedUrl, options?.instagramAccessToken)
     case 'tiktok':
       return parseTikTok(normalizedUrl)
     case 'twitter':
