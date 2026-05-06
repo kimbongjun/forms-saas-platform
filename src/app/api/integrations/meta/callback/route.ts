@@ -8,25 +8,33 @@ import {
   fetchMetaPermissions,
   findPageWithInstagramAccount,
   getMetaStateCookieName,
+  resolveMetaAppOrigin,
 } from '@/lib/meta-instagram'
 import { createServerClient, getUserRole } from '@/utils/supabase/server'
 
-function redirectToConsole(req: NextRequest, params: Record<string, string>) {
-  const url = new URL('/dashboard/admin/meta-instagram-review', req.url)
+function redirectToConsole(origin: string, params: Record<string, string>) {
+  const url = new URL('/dashboard/admin/meta-instagram-review', origin)
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value))
   return NextResponse.redirect(url)
 }
 
 export async function GET(req: NextRequest) {
+  const origin = resolveMetaAppOrigin({
+    requestUrl: req.url,
+    forwardedHost: req.headers.get('x-forwarded-host'),
+    forwardedProto: req.headers.get('x-forwarded-proto'),
+    host: req.headers.get('host'),
+  })
+
   const supabase = await createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) return NextResponse.redirect(new URL('/login', req.url))
+  if (!user) return NextResponse.redirect(new URL('/login', origin))
 
   const role = await getUserRole(user.id)
-  if (role !== 'administrator') return NextResponse.redirect(new URL('/dashboard', req.url))
+  if (role !== 'administrator') return NextResponse.redirect(new URL('/dashboard', origin))
 
   const url = new URL(req.url)
   const code = url.searchParams.get('code')
@@ -35,15 +43,15 @@ export async function GET(req: NextRequest) {
   const cookieState = req.cookies.get(getMetaStateCookieName())?.value
 
   if (error) {
-    return redirectToConsole(req, { error })
+    return redirectToConsole(origin, { error })
   }
 
   if (!code || !state || !cookieState || state !== cookieState) {
-    return redirectToConsole(req, { error: 'invalid_oauth_state' })
+    return redirectToConsole(origin, { error: 'invalid_oauth_state' })
   }
 
   try {
-    const redirectUri = buildMetaRedirectUri(url.origin)
+    const redirectUri = buildMetaRedirectUri(origin)
     const shortToken = await exchangeCodeForShortLivedToken(code, redirectUri)
     const longToken = await exchangeForLongLivedToken(shortToken.access_token)
     const accessToken = longToken.access_token
@@ -56,7 +64,7 @@ export async function GET(req: NextRequest) {
 
     const connectedPage = findPageWithInstagramAccount(pages)
     if (!connectedPage?.instagram_business_account?.id) {
-      return redirectToConsole(req, { error: 'missing_instagram_business_account' })
+      return redirectToConsole(origin, { error: 'missing_instagram_business_account' })
     }
 
     const grantedScopes = permissions
@@ -87,12 +95,12 @@ export async function GET(req: NextRequest) {
       { onConflict: 'user_id,provider' }
     )
 
-    const response = redirectToConsole(req, { connected: '1' })
+    const response = redirectToConsole(origin, { connected: '1' })
     response.cookies.delete(getMetaStateCookieName())
     return response
   } catch (callbackError) {
     const message = callbackError instanceof Error ? callbackError.message : 'unknown_error'
-    const response = redirectToConsole(req, { error: message })
+    const response = redirectToConsole(origin, { error: message })
     response.cookies.delete(getMetaStateCookieName())
     return response
   }

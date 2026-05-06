@@ -45,6 +45,10 @@ function getMetaEnv(name: string) {
   return value
 }
 
+function normalizeOrigin(value: string) {
+  return value.trim().replace(/\/+$/, '')
+}
+
 export function getMetaAppCredentials() {
   return {
     appId: getMetaEnv('FACEBOOK_APP_ID'),
@@ -60,8 +64,42 @@ export function getMetaStateCookieName() {
   return META_STATE_COOKIE
 }
 
+export function resolveMetaAppOrigin(input?: {
+  requestUrl?: string
+  forwardedHost?: string | null
+  forwardedProto?: string | null
+  host?: string | null
+}) {
+  const configured =
+    process.env.APP_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.NEXT_PUBLIC_SITE_URL
+
+  if (configured) {
+    return normalizeOrigin(configured)
+  }
+
+  const forwardedHost = input?.forwardedHost?.trim()
+  if (forwardedHost) {
+    const proto = input?.forwardedProto?.trim() || 'https'
+    return normalizeOrigin(`${proto}://${forwardedHost}`)
+  }
+
+  const host = input?.host?.trim()
+  if (host) {
+    const proto = input?.forwardedProto?.trim() || 'https'
+    return normalizeOrigin(`${proto}://${host}`)
+  }
+
+  if (input?.requestUrl) {
+    return normalizeOrigin(new URL(input.requestUrl).origin)
+  }
+
+  throw new Error('Unable to resolve Meta app origin')
+}
+
 export function buildMetaRedirectUri(origin: string) {
-  return `${origin}/api/integrations/meta/callback`
+  return `${normalizeOrigin(origin)}/api/integrations/meta/callback`
 }
 
 export function buildMetaOAuthUrl(origin: string, state: string) {
