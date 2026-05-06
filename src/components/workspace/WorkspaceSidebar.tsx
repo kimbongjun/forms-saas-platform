@@ -7,6 +7,7 @@ import {
   BarChart3,
   Bell,
   FolderKanban,
+  Globe,
   Grape,
   LayoutDashboard,
   Lock,
@@ -31,6 +32,7 @@ const HUB_ICONS = {
   blueberry: Grape,
   monitoring: Monitor,
   'some-content': TrendingUp,
+  market: Globe,
 }
 
 const ADMIN_LINKS = [

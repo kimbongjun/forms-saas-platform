@@ -28,6 +28,11 @@
 │
 ├── /blueberry                  키워드 인사이트 도구 (인증 필수)
 │   └── /blueberry/datalab      Naver DataLab API 연동 (검색 트렌드)
+├── /market                     Market Intelligence (인증 필수)
+│   ├── /market                 Daily Report (오늘의 동향 요약)
+│   ├── /market/tech-ai         Tech & AI Watch (기술·AI·규제)
+│   ├── /market/marketing-influencer  Marketing & KOL (SNS·인플루언서·캠페인)
+│   └── /market/events          Event & Congress (전시·학회)
 └── /projects                   프로젝트 워크스페이스 (인증 필수)
     ├── /projects               프로젝트 목록
     ├── /projects/new           위자드 Step 1 (카테고리 선택)

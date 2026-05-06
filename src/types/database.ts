@@ -217,6 +217,73 @@ export interface MonitorSitemapRun {
   pages: SitemapPageResult[]
 }
 
+// ── Market Intelligence ────────────────────────────────────────────
+export type MarketCategory =
+  | 'tech'        // Technology Trends
+  | 'ai'          // AI / SaMD
+  | 'marketing'   // Campaign & Branding
+  | 'influencer'  // KOL & Influencer
+  | 'events'      // Exhibitions & Conferences
+  | 'sns'         // SNS Feed Trends
+  | 'policy'      // Global Policy
+
+export type SnsplatformType = 'instagram' | 'youtube' | 'linkedin' | 'tiktok' | 'threads' | 'facebook'
+
+export interface MarketArticle {
+  id: string
+  category: MarketCategory
+  title: string
+  source: string
+  url: string | null
+  summary: string | null
+  insight: string | null
+  published_at: string | null
+  fetched_at: string
+  image_url: string | null
+  tags: string[]
+  metadata: Record<string, unknown> | null
+}
+
+export interface MarketInfluencer {
+  id: string
+  name: string
+  handle: string | null
+  platform: SnsplatformType
+  profile_url: string | null
+  avatar_url: string | null
+  follower_count: number | null
+  specialty: string | null
+  country: string | null
+  recent_post_count: number | null
+  avg_engagement_rate: number | null
+  last_activity_at: string | null
+  updated_at: string
+}
+
+export interface MarketEvent {
+  id: string
+  name: string
+  organizer: string | null
+  location: string | null
+  country: string | null
+  start_date: string
+  end_date: string | null
+  website_url: string | null
+  description: string | null
+  event_type: 'conference' | 'exhibition' | 'webinar' | 'congress' | null
+  is_attending: boolean
+  notes: string | null
+  created_at: string
+}
+
+export interface MarketReportCache {
+  id: string
+  report_date: string
+  summary_json: Record<string, unknown>
+  generated_at: string
+  expires_at: string | null
+}
+
 // Web Vitals 임계값 (Google 기준)
 export interface VitalsThreshold {
   good: number
