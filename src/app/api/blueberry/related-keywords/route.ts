@@ -1,36 +1,87 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'crypto'
 
-// 1시간 캐시 (키: sorted keywords join)
 const CACHE = new Map<string, { data: RelatedKeywordMap; ts: number }>()
 const CACHE_TTL = 60 * 60 * 1000
+const TREND_WINDOW_DAYS = 30
 
 export type RelatedKeywordData = {
   monthlyPc: number | null
   monthlyMobile: number | null
   blogCount: number
-  /** DataLab 기반 최근 30일 트렌드: 직전 달 대비 비율 (>1.3 = 급상승, <0.7 = 하락) */
+  contentCount: number
   trendRatio: number
-  /** 검색량·콘텐츠포화도·트렌드를 종합한 연관성 점수 (워드클라우드 크기 기준) */
+  ctrScore: number
+  lexicalScore: number
+  saturationScore: number
   relevanceScore: number
 }
 
 export type RelatedKeywordMap = Record<string, RelatedKeywordData>
 
-function parseQcCnt(v: number | string | undefined | null): number {
-  if (v === null || v === undefined) return 0
-  if (typeof v === 'number') return Math.round(v)
-  const s = String(v).trim()
-  if (s.startsWith('<')) return 0
-  const n = parseInt(s.replace(/,/g, ''), 10)
-  return isNaN(n) ? 0 : n
+function parseQcCnt(value: number | string | undefined | null) {
+  if (value === null || value === undefined) return 0
+  if (typeof value === 'number') return Math.round(value)
+  const trimmed = String(value).trim()
+  if (trimmed.startsWith('<')) return 0
+  const parsed = parseInt(trimmed.replace(/,/g, ''), 10)
+  return Number.isNaN(parsed) ? 0 : parsed
+}
+
+function normalizeKeyword(value: string) {
+  return value.trim().normalize('NFC').toLowerCase()
+}
+
+function tokenize(value: string) {
+  return normalizeKeyword(value)
+    .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
+    .split(/\s+/)
+    .filter((token) => token.length > 0)
+}
+
+function buildCharacterBigrams(value: string) {
+  const normalized = normalizeKeyword(value).replace(/\s+/g, '')
+  const result = new Set<string>()
+  for (let i = 0; i < normalized.length - 1; i += 1) {
+    result.add(normalized.slice(i, i + 2))
+  }
+  return result
+}
+
+function computeLexicalScore(seedKeyword: string, candidateKeyword: string) {
+  const seed = normalizeKeyword(seedKeyword)
+  const candidate = normalizeKeyword(candidateKeyword)
+  if (!seed || !candidate) return 0
+  if (seed === candidate) return 1
+
+  const directContainment = candidate.includes(seed) ? 1 : seed.includes(candidate) ? 0.8 : 0
+
+  const seedTokens = tokenize(seedKeyword)
+  const candidateTokens = tokenize(candidateKeyword)
+  const seedTokenSet = new Set(seedTokens)
+  const candidateTokenSet = new Set(candidateTokens)
+  const overlapCount = [...candidateTokenSet].filter((token) => seedTokenSet.has(token)).length
+  const tokenOverlap =
+    seedTokenSet.size === 0 && candidateTokenSet.size === 0
+      ? 0
+      : overlapCount / Math.max(seedTokenSet.size, candidateTokenSet.size, 1)
+
+  const seedBigrams = buildCharacterBigrams(seedKeyword)
+  const candidateBigrams = buildCharacterBigrams(candidateKeyword)
+  const bigramOverlapCount = [...candidateBigrams].filter((token) => seedBigrams.has(token)).length
+  const bigramScore =
+    seedBigrams.size === 0 && candidateBigrams.size === 0
+      ? 0
+      : bigramOverlapCount / Math.max(seedBigrams.size, candidateBigrams.size, 1)
+
+  return Math.max(directContainment, 0.55 * tokenOverlap + 0.45 * bigramScore)
 }
 
 async function fetchBatchAdVolume(
   keywords: string[],
   customerId: string,
   accessLicense: string,
-  secretKey: string,
+  secretKey: string
 ): Promise<Record<string, { pc: number; mobile: number }>> {
   const timestamp = Date.now()
   const method = 'GET'
@@ -38,22 +89,21 @@ async function fetchBatchAdVolume(
   const message = `${timestamp}.${method}.${path}`
   const signature = createHmac('sha256', secretKey).update(message).digest('base64')
 
-  const hintParam = keywords.map(k => encodeURIComponent(k)).join(',')
   try {
-    const res = await fetch(
-      `https://api.naver.com${path}?hintKeywords=${hintParam}&showDetail=1`,
-      {
-        headers: {
-          'X-Timestamp': String(timestamp),
-          'X-API-KEY': accessLicense,
-          'X-Customer': customerId,
-          'X-Signature': signature,
-        },
-        signal: AbortSignal.timeout(10000),
+    const hintParam = keywords.map((keyword) => encodeURIComponent(keyword)).join(',')
+    const response = await fetch(`https://api.naver.com${path}?hintKeywords=${hintParam}&showDetail=1`, {
+      headers: {
+        'X-Timestamp': String(timestamp),
+        'X-API-KEY': accessLicense,
+        'X-Customer': customerId,
+        'X-Signature': signature,
       },
-    )
-    if (!res.ok) return {}
-    const json = await res.json() as {
+      signal: AbortSignal.timeout(10000),
+    })
+
+    if (!response.ok) return {}
+
+    const json = (await response.json()) as {
       keywordList?: { relKeyword: string; monthlyPcQcCnt: number | string; monthlyMobileQcCnt: number | string }[]
     }
 
@@ -71,139 +121,152 @@ async function fetchBatchAdVolume(
   }
 }
 
-async function fetchBlogCount(
+async function fetchSearchTotal(
   keyword: string,
+  type: 'blog' | 'cafearticle' | 'news' | 'kin' | 'shop',
   clientId: string,
-  clientSecret: string,
-): Promise<number> {
+  clientSecret: string
+) {
   try {
-    const res = await fetch(
-      `https://openapi.naver.com/v1/search/blog.json?query=${encodeURIComponent(keyword)}&display=1`,
+    const response = await fetch(
+      `https://openapi.naver.com/v1/search/${type}.json?query=${encodeURIComponent(keyword)}&display=1`,
       {
         headers: {
           'X-Naver-Client-Id': clientId,
           'X-Naver-Client-Secret': clientSecret,
         },
         signal: AbortSignal.timeout(5000),
-      },
+      }
     )
-    if (!res.ok) return 0
-    const json = await res.json() as { total?: number }
+
+    if (!response.ok) return 0
+    const json = (await response.json()) as { total?: number }
     return json.total ?? 0
   } catch {
     return 0
   }
 }
 
-// DataLab 검색 트렌드 API: 직전 달 대비 현재 달 비율 계산
-// 반환값: keyword → trendRatio (1.0 = 변화 없음, >1.3 = 급상승)
+async function fetchContentSignals(keyword: string, clientId: string, clientSecret: string) {
+  const [blog, cafe, news, kin] = await Promise.all([
+    fetchSearchTotal(keyword, 'blog', clientId, clientSecret),
+    fetchSearchTotal(keyword, 'cafearticle', clientId, clientSecret),
+    fetchSearchTotal(keyword, 'news', clientId, clientSecret),
+    fetchSearchTotal(keyword, 'kin', clientId, clientSecret),
+  ])
+
+  return {
+    blogCount: blog,
+    contentCount: blog + cafe + news + kin,
+  }
+}
+
 async function fetchDatalabTrends(
   keywords: string[],
   clientId: string,
-  clientSecret: string,
+  clientSecret: string
 ): Promise<Record<string, number>> {
   if (keywords.length === 0) return {}
 
-  const now = new Date()
-  // 최근 3개월 데이터 조회 (월별 단위)
-  const endMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  const startMonth = new Date(now.getFullYear(), now.getMonth() - 3, 1)
+  const today = new Date()
+  const startDate = new Date(today)
+  startDate.setDate(startDate.getDate() - TREND_WINDOW_DAYS * 2)
 
-  function fmtDate(d: Date) {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
-  }
-  function fmtEndDate(d: Date) {
-    const last = new Date(d.getFullYear(), d.getMonth() + 1, 0)
-    return `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}-${last.getDate()}`
-  }
-
-  const startDate = fmtDate(startMonth)
-  const endDate = fmtEndDate(endMonth)
-
+  const format = (date: Date) => date.toISOString().slice(0, 10)
   const result: Record<string, number> = {}
-  const BATCH = 5  // DataLab API: 요청당 최대 5개 그룹
+  const batchSize = 5
 
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 12000)
+  for (let index = 0; index < keywords.length; index += batchSize) {
+    const batch = keywords.slice(index, index + batchSize)
 
-  try {
-    for (let i = 0; i < keywords.length; i += BATCH) {
-      const batch = keywords.slice(i, i + BATCH)
-      const body = {
-        startDate,
-        endDate,
-        timeUnit: 'month',
-        keywordGroups: batch.map(kw => ({ groupName: kw, keywords: [kw] })),
-      }
-
-      const res = await fetch('https://openapi.naver.com/v1/datalab/search', {
+    try {
+      const response = await fetch('https://openapi.naver.com/v1/datalab/search', {
         method: 'POST',
         headers: {
           'X-Naver-Client-Id': clientId,
           'X-Naver-Client-Secret': clientSecret,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(body),
-        signal: controller.signal,
+        body: JSON.stringify({
+          startDate: format(startDate),
+          endDate: format(today),
+          timeUnit: 'date',
+          keywordGroups: batch.map((keyword) => ({ groupName: keyword, keywords: [keyword] })),
+        }),
+        signal: AbortSignal.timeout(12000),
       })
 
-      if (!res.ok) continue
+      if (!response.ok) continue
 
-      const json = await res.json() as {
-        results?: { title: string; data: { period: string; ratio: number }[] }[]
+      const json = (await response.json()) as {
+        results?: { title: string; data: { ratio: number }[] }[]
       }
 
       for (const item of json.results ?? []) {
-        const data = item.data
-        if (data.length < 2) { result[item.title] = 1.0; continue }
-        const prev = data[data.length - 2].ratio
-        const curr = data[data.length - 1].ratio
-        // 직전 달 대비 현재 달 비율 (prev=0이면 중립)
-        result[item.title] = prev > 0 ? Math.round((curr / prev) * 100) / 100 : 1.0
+        const data = item.data ?? []
+        if (data.length < TREND_WINDOW_DAYS * 2) {
+          result[item.title] = 1
+          continue
+        }
+
+        const previousWindow = data.slice(-TREND_WINDOW_DAYS * 2, -TREND_WINDOW_DAYS)
+        const currentWindow = data.slice(-TREND_WINDOW_DAYS)
+        const previousAverage =
+          previousWindow.reduce((sum, point) => sum + point.ratio, 0) / Math.max(previousWindow.length, 1)
+        const currentAverage =
+          currentWindow.reduce((sum, point) => sum + point.ratio, 0) / Math.max(currentWindow.length, 1)
+
+        result[item.title] = previousAverage > 0 ? Number((currentAverage / previousAverage).toFixed(2)) : 1
       }
+    } catch {
+      continue
     }
-  } catch {
-    // 타임아웃 또는 네트워크 오류 시 폴백 — 트렌드 없이 진행
-  } finally {
-    clearTimeout(timer)
   }
 
   return result
 }
 
-// 연관성 점수 계산
-// - 검색량(로그 스케일): 기본 크기
-// - 콘텐츠 포화도 페널티: 블로그 수가 검색량 대비 많을수록 감점
-// - 트렌드 보너스: 최근 급상승 키워드 우선
-function computeRelevanceScore(vol: number, blogCount: number, trendRatio: number): number {
-  if (vol <= 0) return 1
+function computeScores(seedKeyword: string, keyword: string, volume: number, contentCount: number, trendRatio: number) {
+  const lexicalScore = computeLexicalScore(seedKeyword, keyword)
+  const volumeScore = Math.min(1, Math.log10(Math.max(volume, 10)) / 5)
+  const saturationRatio = contentCount / Math.max(volume, 1)
+  const saturationScore = Math.max(0, 1 - Math.min(1, saturationRatio / 12))
+  const ctrScore = Math.max(0, Math.min(1, volumeScore * 0.55 + saturationScore * 0.45))
+  const trendScore = Math.max(0, Math.min(1, (trendRatio - 0.7) / 0.9))
 
-  // 로그 스케일 검색량 점수 (0~30 범위)
-  const volScore = Math.log10(Math.max(vol, 10)) * 10
+  const hardPenalty = lexicalScore < 0.2 ? 0.55 : 1
+  const relevanceScore = Number(
+    (
+      (lexicalScore * 0.4 + volumeScore * 0.22 + ctrScore * 0.23 + trendScore * 0.15) *
+      100 *
+      hardPenalty
+    ).toFixed(1)
+  )
 
-  // 포화도: 블로그 누적 수 / (검색량 × 계수) — 낮을수록 경쟁 적음 = 클릭률 높음
-  const saturation = Math.min(blogCount / Math.max(vol * 0.3, 1), 1.0)
-
-  // 트렌드 가중치: >1.3 = 급상승(+50%), 1.1~1.3 = 상승(+20%), 0.7~0.9 = 하락(-20%)
-  const trendMultiplier = trendRatio >= 1.3 ? 1.5 : trendRatio >= 1.1 ? 1.2 : trendRatio <= 0.7 ? 0.8 : 1.0
-
-  return Math.round(volScore * (1 - saturation * 0.4) * trendMultiplier * 10) / 10
+  return {
+    lexicalScore: Number(lexicalScore.toFixed(3)),
+    saturationScore: Number(saturationScore.toFixed(3)),
+    ctrScore: Number(ctrScore.toFixed(3)),
+    relevanceScore,
+  }
 }
 
 export async function POST(req: NextRequest) {
   const clientId = process.env.NAVER_CLIENT_ID
   const clientSecret = process.env.NAVER_CLIENT_SECRET
+
   if (!clientId || !clientSecret) {
-    return NextResponse.json({ error: 'NAVER_CLIENT_ID / NAVER_CLIENT_SECRET 미설정' }, { status: 503 })
+    return NextResponse.json({ error: 'NAVER_CLIENT_ID / NAVER_CLIENT_SECRET is not configured.' }, { status: 503 })
   }
 
-  const { keywords } = await req.json() as { keywords?: string[] }
+  const { keywords, seedKeyword } = (await req.json()) as { keywords?: string[]; seedKeyword?: string }
   if (!Array.isArray(keywords) || keywords.length === 0) {
-    return NextResponse.json({ error: 'keywords 배열이 필요합니다.' }, { status: 400 })
+    return NextResponse.json({ error: 'keywords array is required.' }, { status: 400 })
   }
 
-  const normalized = keywords.map(k => k.trim().normalize('NFC')).filter(Boolean)
-  const cacheKey = [...normalized].sort().join('|')
+  const normalizedKeywords = keywords.map((keyword) => keyword.trim().normalize('NFC')).filter(Boolean)
+  const normalizedSeedKeyword = seedKeyword?.trim().normalize('NFC') || normalizedKeywords[0] || ''
+  const cacheKey = [normalizedSeedKeyword, ...normalizedKeywords].sort().join('|')
   const cached = CACHE.get(cacheKey)
   if (cached && Date.now() - cached.ts < CACHE_TTL) {
     return NextResponse.json(cached.data)
@@ -212,33 +275,38 @@ export async function POST(req: NextRequest) {
   const adCustomerId = process.env.NAVER_AD_CUSTOMER_ID?.trim()
   const adAccessLicense = process.env.NAVER_AD_ACCESS_LICENSE?.trim()
   const adSecretKey = process.env.NAVER_AD_SECRET_KEY?.trim()
-  const hasAdApi = !!(adCustomerId && adAccessLicense && adSecretKey)
+  const hasAdApi = Boolean(adCustomerId && adAccessLicense && adSecretKey)
 
-  // 트렌드 분석은 상위 10개 키워드에만 적용 (비용 절감)
-  const TOP_FOR_TREND = 10
+  const adVolumePromise = hasAdApi
+    ? fetchBatchAdVolume(normalizedKeywords, adCustomerId!, adAccessLicense!, adSecretKey!)
+    : Promise.resolve({})
 
-  const [adVolumes, trends, ...blogCounts] = await Promise.all([
-    hasAdApi
-      ? fetchBatchAdVolume(normalized, adCustomerId!, adAccessLicense!, adSecretKey!)
-      : Promise.resolve({}),
-    fetchDatalabTrends(normalized.slice(0, TOP_FOR_TREND), clientId, clientSecret),
-    ...normalized.map(kw => fetchBlogCount(kw, clientId, clientSecret)),
-  ])
+  const trendPromise = fetchDatalabTrends(normalizedKeywords.slice(0, 12), clientId, clientSecret)
+  const contentPromises = normalizedKeywords.map((keyword) => fetchContentSignals(keyword, clientId, clientSecret))
+
+  const [adVolumes, trends, ...contents] = await Promise.all([adVolumePromise, trendPromise, ...contentPromises])
 
   const result: RelatedKeywordMap = {}
-  normalized.forEach((kw, i) => {
-    const ad = (adVolumes as Record<string, { pc: number; mobile: number }>)[kw]
-    const blogCount = (blogCounts[i] as number) ?? 0
-    const vol = (ad?.pc ?? 0) + (ad?.mobile ?? 0)
-    const trendRatio = (trends as Record<string, number>)[kw] ?? 1.0
-    const relevanceScore = computeRelevanceScore(vol, blogCount, trendRatio)
+  normalizedKeywords.forEach((keyword, index) => {
+    const ad = (adVolumes as Record<string, { pc: number; mobile: number }>)[keyword]
+    const contentSignal = (contents[index] as Awaited<ReturnType<typeof fetchContentSignals>>) ?? {
+      blogCount: 0,
+      contentCount: 0,
+    }
+    const volume = (ad?.pc ?? 0) + (ad?.mobile ?? 0)
+    const trendRatio = (trends as Record<string, number>)[keyword] ?? 1
+    const scores = computeScores(normalizedSeedKeyword, keyword, volume, contentSignal.contentCount, trendRatio)
 
-    result[kw] = {
+    result[keyword] = {
       monthlyPc: ad?.pc ?? null,
       monthlyMobile: ad?.mobile ?? null,
-      blogCount,
+      blogCount: contentSignal.blogCount,
+      contentCount: contentSignal.contentCount,
       trendRatio,
-      relevanceScore,
+      ctrScore: scores.ctrScore,
+      lexicalScore: scores.lexicalScore,
+      saturationScore: scores.saturationScore,
+      relevanceScore: scores.relevanceScore,
     }
   })
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useTransition, useMemo } from 'react'
+import React, { useState, useRef, useEffect, useTransition, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import {
   Search, TrendingUp, FileText, MessageSquare, RefreshCw, Grape,
@@ -23,7 +23,35 @@ interface ReactWordcloudProps {
   callbacks?: Record<string, unknown>
   size?: [number, number]
 }
-import type React from 'react'
+
+class WordcloudErrorBoundary extends React.Component<
+  { children: React.ReactNode; onError: () => void },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode; onError: () => void }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch() {
+    this.props.onError()
+  }
+
+  componentDidUpdate(prevProps: { children: React.ReactNode }) {
+    if (prevProps.children !== this.props.children && this.state.hasError) {
+      this.setState({ hasError: false })
+    }
+  }
+
+  render() {
+    if (this.state.hasError) return null
+    return this.props.children
+  }
+}
 
 // ── Naver API 연관 키워드 타입 ─────────────────────────────────
 interface NaverRelatedKeyword {
@@ -120,7 +148,11 @@ interface RelatedNaverData {
   monthlyPc: number | null
   monthlyMobile: number | null
   blogCount: number
+  contentCount: number
   trendRatio: number
+  ctrScore: number
+  lexicalScore: number
+  saturationScore: number
   relevanceScore: number
 }
 interface SmartBlockPost { title: string; link: string; description: string; bloggername: string; postdate: string }
@@ -1134,6 +1166,8 @@ export default function BlueberryClient() {
   const [relatedNaverData, setRelatedNaverData] = useState<Record<string, RelatedNaverData>>({})
   const [relatedNaverLoading, setRelatedNaverLoading] = useState(false)
   const [showAllRelated, setShowAllRelated] = useState(false)
+  const [wordcloudError, setWordcloudError] = useState(false)
+  const [wordcloudWidth, setWordcloudWidth] = useState(0)
   const [smartBlockData, setSmartBlockData] = useState<SmartBlockTopic[]>([])
   const [smartBlockLoading, setSmartBlockLoading] = useState(false)
   const [compareKeywords, setCompareKeywords] = useState<string[]>([])
@@ -1167,6 +1201,7 @@ export default function BlueberryClient() {
 
   // ── PNG 내보내기 ─────────────────────────────────────────────
   const resultsRef = useRef<HTMLDivElement>(null)
+  const wordcloudContainerRef = useRef<HTMLDivElement>(null)
   const [isExportingPng, setIsExportingPng] = useState(false)
 
   // ── localStorage 저장 키워드 로드 ───────────────────────────
@@ -1176,6 +1211,27 @@ export default function BlueberryClient() {
       if (raw) setSavedKeywords(JSON.parse(raw) as string[])
     } catch { /* ignore */ }
   }, [])
+
+  useEffect(() => {
+    setWordcloudError(false)
+  }, [keyword, platform, relatedView])
+
+  useEffect(() => {
+    if (relatedView !== 'cloud') return
+    const element = wordcloudContainerRef.current
+    if (!element) return
+
+    const updateWidth = () => {
+      const nextWidth = Math.max(320, Math.floor(element.getBoundingClientRect().width))
+      setWordcloudWidth(nextWidth)
+    }
+
+    updateWidth()
+
+    const observer = new ResizeObserver(() => updateWidth())
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [relatedView, keyword])
 
   // ── Naver 키워드/플랫폼 변경 시 API 호출 ────────────────────
   useEffect(() => {
@@ -1223,7 +1279,7 @@ export default function BlueberryClient() {
       fetch('/api/blueberry/related-keywords', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keywords: kws }),
+        body: JSON.stringify({ seedKeyword: keyword, keywords: kws }),
       })
         .then(r => r.json())
         .then((data: Record<string, RelatedNaverData>) => setRelatedNaverData(data))
@@ -1391,7 +1447,8 @@ export default function BlueberryClient() {
       const ndB = relatedNaverData[b.keyword.trim().normalize('NFC')]
       const sA = ndA?.relevanceScore ?? (Math.log10(Math.max(a.volume, 10)) * 10)
       const sB = ndB?.relevanceScore ?? (Math.log10(Math.max(b.volume, 10)) * 10)
-      return sB - sA
+      if (sA !== sB) return sB - sA
+      return b.volume - a.volume
     })
   }, [primaryData?.relatedKeywords, relatedNaverData])
 
@@ -1402,10 +1459,12 @@ export default function BlueberryClient() {
       const score = nd?.relevanceScore ?? (Math.log10(Math.max(k.volume, 10)) * 10)
       return {
         text: k.keyword,
-        value: Math.max(1, Math.round(score * 10)),
+        value: Math.max(8, Math.round(score * 6)),
         volume: k.volume,
         competition: k.competition,
         trendRatio: nd?.trendRatio ?? 1.0,
+        lexicalScore: nd?.lexicalScore ?? 0,
+        ctrScore: nd?.ctrScore ?? 0,
       }
     })
   }, [sortedRelatedKeywords, relatedNaverData])
@@ -2219,16 +2278,18 @@ export default function BlueberryClient() {
                 <>
                   {relatedView === 'cloud' ? (
                     /* ── react-wordcloud 뷰 ── */
-                    <div className="relative min-h-[300px] w-full">
+                    <div ref={wordcloudContainerRef} className="relative min-h-[300px] w-full">
                       {relatedNaverLoading && (
                         <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/80">
                           <span className="text-xs text-gray-400 animate-pulse">연관성 점수 계산 중…</span>
                         </div>
                       )}
-                      {cloudWords.length > 0 ? (
-                        <ReactWordcloud
-                          words={cloudWords}
-                          size={[0, 300]}
+                      {cloudWords.length > 0 && wordcloudWidth > 0 && !wordcloudError ? (
+                        <WordcloudErrorBoundary onError={() => setWordcloudError(true)}>
+                          <ReactWordcloud
+                            key={`${keyword}-${wordcloudWidth}-${cloudWords.length}`}
+                            words={cloudWords}
+                            size={[wordcloudWidth, 300]}
                           options={{
                             colors: ['#002D74', '#0084C9', '#10B981', '#7C3AED', '#F59E0B', '#EF4444'],
                             enableTooltip: true,
@@ -2260,7 +2321,12 @@ export default function BlueberryClient() {
                               startTransition(() => setKeyword(word.text))
                             },
                           }}
-                        />
+                          />
+                        </WordcloudErrorBoundary>
+                      ) : wordcloudError ? (
+                        <div className="flex h-48 items-center justify-center text-center text-sm text-gray-400">
+                          워드클라우드 렌더링에 실패했습니다. 테이블 보기로 전환하거나 다시 시도해 주세요.
+                        </div>
                       ) : (
                         <div className="flex h-48 items-center justify-center text-sm text-gray-400">
                           연관 키워드 데이터를 불러오는 중…
