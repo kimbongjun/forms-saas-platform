@@ -91,12 +91,22 @@ export default function MetaInstagramReviewClient() {
   const [error, setError] = useState('')
   const [hashtag, setHashtag] = useState('classys')
 
+  const ERROR_HINTS: Record<string, string> = {
+    missing_instagram_business_account:
+      'Instagram Business 계정을 찾지 못했습니다. ① Facebook Page에 Instagram 비즈니스 계정이 연결되어 있는지 확인하세요. ② OAuth한 Facebook 사용자가 해당 Page의 Admin인지 확인하세요. ③ Meta for Developers 앱에 instagram_manage_insights 권한이 추가되어 있어야 합니다.',
+    invalid_oauth_state: 'OAuth state 불일치 — 브라우저를 새로고침하고 다시 시도하세요.',
+    integration_save_failed: 'DB 저장 실패 — social_integrations 테이블이 존재하는지 확인하세요.',
+  }
+
   const callbackMessage = useMemo(() => {
-    if (searchParams.get('connected') === '1') return 'Meta 연결이 완료되었습니다.'
+    if (searchParams.get('connected') === '1') return { type: 'success' as const, text: 'Meta 연결이 완료되었습니다.' }
     const callbackError = searchParams.get('error')
-    if (callbackError) return `Meta 연결 오류: ${callbackError}`
-    return ''
-  }, [searchParams])
+    if (callbackError) {
+      const hint = Object.entries(ERROR_HINTS).find(([key]) => callbackError.startsWith(key))?.[1]
+      return { type: 'error' as const, text: `Meta 연결 오류: ${callbackError}`, hint }
+    }
+    return null
+  }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadStatus() {
     setLoading(true)
@@ -176,9 +186,18 @@ export default function MetaInstagramReviewClient() {
       </div>
 
       {callbackMessage ? (
-        <div className="flex items-start gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+        <div className={`flex items-start gap-2 rounded-2xl border px-4 py-3 text-sm ${
+          callbackMessage.type === 'success'
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+            : 'border-rose-200 bg-rose-50 text-rose-700'
+        }`}>
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          {callbackMessage}
+          <div className="space-y-1">
+            <p>{callbackMessage.text}</p>
+            {callbackMessage.hint ? (
+              <p className="text-xs leading-relaxed opacity-80">{callbackMessage.hint}</p>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -267,6 +286,15 @@ export default function MetaInstagramReviewClient() {
             Disconnect
           </button>
           <a
+            href="/api/integrations/meta/debug"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700 hover:bg-amber-100"
+          >
+            <Search className="h-4 w-4" />
+            Debug (Raw API)
+          </a>
+          <a
             href="https://developers.facebook.com/docs/app-review/"
             target="_blank"
             rel="noopener noreferrer"
@@ -284,6 +312,19 @@ export default function MetaInstagramReviewClient() {
                 {scope}
               </span>
             ))}
+          </div>
+        ) : null}
+
+        {!status?.connection ? (
+          <div className="mt-4 space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <p className="font-semibold">연결 전 체크리스트</p>
+            <ul className="list-disc space-y-1 pl-4 text-xs leading-relaxed">
+              <li>Meta for Developers 앱에 <strong>instagram_manage_insights</strong> 권한이 추가되어 있어야 합니다.</li>
+              <li>Facebook 앱 설정 → &ldquo;Instagram&rdquo; 제품이 추가되어 있어야 합니다.</li>
+              <li>Facebook Page와 Instagram Business Account가 서로 연결되어 있어야 합니다 (Instagram 계정 설정 → 연결된 계정).</li>
+              <li>OAuth하는 Facebook 사용자가 해당 Facebook Page의 <strong>관리자(Admin)</strong>여야 합니다 (편집자/분석자 불가).</li>
+              <li>Instagram 계정이 <strong>비즈니스 계정</strong>이어야 합니다 (개인 계정 불가).</li>
+            </ul>
           </div>
         ) : null}
       </section>

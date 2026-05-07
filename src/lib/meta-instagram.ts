@@ -57,7 +57,17 @@ export function getMetaAppCredentials() {
 }
 
 export function getMetaRequiredScopes() {
-  return ['pages_show_list', 'pages_read_engagement', 'instagram_basic']
+  // instagram_basic is deprecated as of Graph API v18 / removed in v23.
+  // Without an instagram-scoped permission, /me/accounts does NOT return
+  // the instagram_business_account field even if the page has one linked.
+  // instagram_manage_insights is the canonical replacement for read access
+  // to IG Business/Creator account data via Facebook Login + Graph API.
+  return [
+    'pages_show_list',
+    'pages_read_engagement',
+    'instagram_manage_insights',
+    'instagram_manage_comments',
+  ]
 }
 
 export function getMetaStateCookieName() {

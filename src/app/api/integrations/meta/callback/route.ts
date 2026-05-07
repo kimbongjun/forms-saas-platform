@@ -71,7 +71,12 @@ export async function GET(req: NextRequest) {
       .filter((permission) => permission.status === 'granted')
       .map((permission) => permission.permission)
 
-    await supabase.from('social_integrations').upsert(
+    // Store page access token separately — Instagram Business API endpoints
+    // (/{ig-user-id}, /{ig-user-id}/media, /ig_hashtag_search) require the
+    // Page Access Token, not the User Access Token.
+    const pageAccessToken = connectedPage.access_token ?? accessToken
+
+    const { error: upsertError } = await supabase.from('social_integrations').upsert(
       {
         user_id: user.id,
         provider: 'meta_instagram',
@@ -81,19 +86,24 @@ export async function GET(req: NextRequest) {
         facebook_page_name: connectedPage.name,
         instagram_business_account_id: connectedPage.instagram_business_account.id,
         instagram_username: connectedPage.instagram_business_account.username ?? null,
-        access_token: accessToken,
+        access_token: pageAccessToken,
         token_expires_at: longToken.expires_in
           ? new Date(Date.now() + longToken.expires_in * 1000).toISOString()
           : null,
         scopes: grantedScopes,
         metadata: {
           page_count: pages.length,
+          user_access_token_expires_in: longToken.expires_in ?? null,
         },
         last_validated_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'user_id,provider' }
     )
+
+    if (upsertError) {
+      return redirectToConsole(origin, { error: `integration_save_failed:${upsertError.message}` })
+    }
 
     const response = redirectToConsole(origin, { connected: '1' })
     response.cookies.delete(getMetaStateCookieName())
