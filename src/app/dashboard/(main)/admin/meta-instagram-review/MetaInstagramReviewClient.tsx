@@ -311,7 +311,7 @@ export default function MetaInstagramReviewClient() {
           </a>
           <button
             onClick={disconnect}
-            disabled={!status?.connection || disconnecting}
+            disabled={disconnecting}
             className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40"
           >
             {disconnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unplug className="h-4 w-4" />}
