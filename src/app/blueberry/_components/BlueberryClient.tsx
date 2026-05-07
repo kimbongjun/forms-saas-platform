@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, useEffect, useTransition } from 'react'
-import dynamic from 'next/dynamic'
 import {
   Search, TrendingUp, FileText, MessageSquare, RefreshCw, Grape,
   Download, Monitor, Smartphone, Calendar, Plus, X, Info, Wifi, WifiOff, Copy, Check,
@@ -9,18 +8,14 @@ import {
 } from 'lucide-react'
 import { DateRangePickerInput } from '@/components/common/DatePickerInput'
 import DatalabForm from './DatalabForm'
-import type { Word } from 'react-wordcloud'
-
-const ReactWordcloud = dynamic(() => import('react-wordcloud'), {
-  ssr: false,
-  loading: () => <div className="flex h-[260px] items-center justify-center text-xs text-gray-300 animate-pulse">워드클라우드 로딩 중...</div>,
-})
+import WordCloudView from './WordCloudView'
 
 // ── Naver API 연관 키워드 타입 ─────────────────────────────────
 interface NaverRelatedKeyword {
   keyword: string
   monthlyPc: number
   monthlyMobile: number
+  relevanceScore: number
 }
 
 // ── Naver API 응답 타입 (route.ts 와 동기화) ────────────────────
@@ -1085,22 +1080,6 @@ function computeRelatedScore(
   return volumeNorm * 0.4 + ctrEstimate * 0.3 + trendNorm * 0.3
 }
 
-// ── 워드클라우드 옵션 ──────────────────────────────────────────────────
-const WC_OPTIONS = {
-  colors: ['#002D74', '#1d4ed8', '#7c3aed', '#0891b2', '#059669', '#b45309'],
-  fontFamily: '-apple-system, BlinkMacSystemFont, "Pretendard", sans-serif',
-  fontSizes: [14, 52] as [number, number],
-  fontWeight: '700',
-  deterministic: true,
-  rotations: 0,
-  rotationAngles: [0, 0] as [number, number],
-  padding: 6,
-  scale: 'sqrt' as const,
-  spiral: 'archimedean' as const,
-  enableTooltip: true,
-  transitionDuration: 800,
-}
-
 // ── CSV ──────────────────────────────────────────────────────────
 function downloadCsv(content: string, filename: string) {
   const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' })
@@ -1153,7 +1132,7 @@ export default function BlueberryClient() {
   const [contentCustomStart, setContentCustomStart] = useState('')
   const [contentCustomEnd, setContentCustomEnd] = useState('')
   const [mentionPeriod, setMentionPeriod] = useState<Period>('1y')
-  const [relatedPeriod, setRelatedPeriod] = useState<Period>('1y')
+  const [relatedPeriod, setRelatedPeriod] = useState<Period>('1m')
   const [relatedView, setRelatedView] = useState<'table' | 'cloud'>('table')
   const [relatedNaverData, setRelatedNaverData] = useState<Record<string, RelatedNaverData>>({})
   const [relatedNaverLoading, setRelatedNaverLoading] = useState(false)
@@ -1247,7 +1226,7 @@ export default function BlueberryClient() {
       fetch('/api/blueberry/related-keywords', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keywords: kws }),
+        body: JSON.stringify({ keywords: kws, period: relatedPeriod }),
       })
         .then(r => r.json())
         .then((data: Record<string, RelatedNaverData>) => setRelatedNaverData(data))
@@ -1255,7 +1234,7 @@ export default function BlueberryClient() {
         .finally(() => setRelatedNaverLoading(false))
     }, 300)
     return () => clearTimeout(timer)
-  }, [keyword, platform, naverApiData])
+  }, [keyword, platform, naverApiData, relatedPeriod])
 
   // ── 스마트블록 fetch ────────────────────────────────────────
   useEffect(() => {
@@ -2239,42 +2218,25 @@ export default function BlueberryClient() {
               const displayed = showAllRelated ? allRelated : allRelated.slice(0, 5)
               const canExpand = allRelated.length > 5
 
-              // ── 워드클라우드용 words ───────────────────────────────
-              const wcWords: Word[] = allRelated.map(k => ({
-                text: k.keyword,
-                value: Math.max(1, k.volume),
-                competition: k.competition,
-              }))
-
               return (
                 <>
                   {relatedView === 'cloud' ? (
-                    /* ── react-wordcloud 뷰 ── */
-                    <div className="min-h-[260px] w-full">
-                      <ReactWordcloud
-                        words={wcWords}
-                        options={WC_OPTIONS}
-                        callbacks={{
-                          getWordColor: (word) => {
-                            const comp = (word as unknown as RelatedKeyword).competition
-                            return comp === 'high' ? '#dc2626' : comp === 'mid' ? '#d97706' : '#16a34a'
-                          },
-                          getWordTooltip: (word) => {
-                            const nd = relatedNaverData[word.text.trim().normalize('NFC')]
-                            const vol = nd ? (nd.monthlyPc ?? 0) + (nd.monthlyMobile ?? 0) : word.value
-                            return `${word.text} — 월 ${fmt(vol)}회`
-                          },
-                          onWordClick: (word) => {
-                            setInput(word.text)
-                            startTransition(() => setKeyword(word.text))
-                          },
+                    /* ── 커스텀 워드클라우드 뷰 ── */
+                    <div className="w-full">
+                      <WordCloudView
+                        words={allRelated.map(k => ({
+                          text: k.keyword,
+                          value: Math.max(1, k.volume),
+                          competition: k.competition,
+                        }))}
+                        onWordClick={(text) => {
+                          setInput(text)
+                          startTransition(() => setKeyword(text))
                         }}
                       />
-                      {hasEnrichment && (
-                        <p className="mt-1 text-center text-[10px] text-gray-400">
-                          크기 = 검색량·CTR 추정 · 색상 = 경쟁도 · 클릭 시 해당 키워드 분석
-                        </p>
-                      )}
+                      <p className="mt-1 text-center text-[10px] text-gray-400">
+                        크기 = 검색량 · 색상 = 경쟁도(빨강=높음, 주황=보통, 초록=낮음) · 클릭 시 해당 키워드 분석
+                      </p>
                     </div>
                   ) : (
                     /* ── 테이블 뷰 ── */

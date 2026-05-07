@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'crypto'
 
-// 1시간 캐시 (키: sorted keywords join)
+type Period = '5y' | '3y' | '2y' | '1y' | '3m' | '1m'
+
+// 기간별 캐시 (키: period|sorted keywords)
 const CACHE = new Map<string, { data: RelatedKeywordMap; ts: number }>()
 const CACHE_TTL = 60 * 60 * 1000
 
@@ -9,7 +11,7 @@ export type RelatedKeywordData = {
   monthlyPc: number | null
   monthlyMobile: number | null
   blogCount: number
-  /** DataLab 기반 30일 트렌드 비율. avg(최근30일) / avg(이전30일). 1.0 = 변화없음, >1 = 상승 */
+  /** DataLab 기반 해당 기간 트렌드 비율. avg(후반) / avg(전반). 1.0 = 변화없음, >1 = 상승 */
   trendRatio: number
 }
 
@@ -35,7 +37,6 @@ async function fetchBatchAdVolume(
   const path = '/keywordstool'
   const message = `${timestamp}.${method}.${path}`
   const signature = createHmac('sha256', secretKey).update(message).digest('base64')
-
   const hintParam = keywords.map(k => encodeURIComponent(k)).join(',')
   try {
     const res = await fetch(
@@ -54,110 +55,99 @@ async function fetchBatchAdVolume(
     const json = await res.json() as {
       keywordList?: { relKeyword: string; monthlyPcQcCnt: number | string; monthlyMobileQcCnt: number | string }[]
     }
-
     const result: Record<string, { pc: number; mobile: number }> = {}
     for (const row of json.keywordList ?? []) {
       const key = row.relKeyword.trim().normalize('NFC')
-      result[key] = {
-        pc: parseQcCnt(row.monthlyPcQcCnt),
-        mobile: parseQcCnt(row.monthlyMobileQcCnt),
-      }
+      result[key] = { pc: parseQcCnt(row.monthlyPcQcCnt), mobile: parseQcCnt(row.monthlyMobileQcCnt) }
     }
     return result
-  } catch {
-    return {}
-  }
+  } catch { return {} }
 }
 
-async function fetchBlogCount(
-  keyword: string,
-  clientId: string,
-  clientSecret: string,
-): Promise<number> {
+async function fetchBlogCount(keyword: string, clientId: string, clientSecret: string): Promise<number> {
   try {
     const res = await fetch(
       `https://openapi.naver.com/v1/search/blog.json?query=${encodeURIComponent(keyword)}&display=1`,
       {
-        headers: {
-          'X-Naver-Client-Id': clientId,
-          'X-Naver-Client-Secret': clientSecret,
-        },
+        headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret },
         signal: AbortSignal.timeout(5000),
       },
     )
     if (!res.ok) return 0
     const json = await res.json() as { total?: number }
     return json.total ?? 0
-  } catch {
-    return 0
-  }
+  } catch { return 0 }
 }
 
-/**
- * Naver DataLab로 최근 60일 일별 트렌드를 가져와
- * (후반 30일 평균) / (전반 30일 평균) 의 trendRatio를 반환한다.
- * DataLab 제한(그룹당 5개)에 맞게 5개씩 배치 처리.
- */
+// ── 기간에 따라 DataLab 날짜 범위 결정 ──────────────────────────
+// DataLab으로 기간 내 트렌드 비율(후반/전반)을 계산하기 위해
+// period에 맞는 startDate/endDate와 timeUnit을 반환
+function getPeriodRange(period: Period): { startDate: string; endDate: string; timeUnit: 'date' | 'week' | 'month' } {
+  const now = new Date()
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+  let days: number
+  let timeUnit: 'date' | 'week' | 'month' = 'date'
+  switch (period) {
+    case '1m':  days = 60;  timeUnit = 'date';  break
+    case '3m':  days = 180; timeUnit = 'week';  break
+    case '1y':  days = 365; timeUnit = 'month'; break
+    case '2y':  days = 730; timeUnit = 'month'; break
+    case '3y':  days = 1095; timeUnit = 'month'; break
+    case '5y':  days = 1825; timeUnit = 'month'; break
+    default:    days = 60;  timeUnit = 'date';  break
+  }
+
+  const start = new Date(yesterday.getTime() - (days - 1) * 24 * 60 * 60 * 1000)
+  return { startDate: fmt(start), endDate: fmt(yesterday), timeUnit }
+}
+
+// ── DataLab 기간 트렌드 (5개씩 배치 병렬 처리) ─────────────────
 async function fetchKeywordTrends(
   keywords: string[],
   clientId: string,
   clientSecret: string,
+  period: Period,
 ): Promise<Record<string, number>> {
   if (keywords.length === 0) return {}
-
-  const now = new Date()
-  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
-  const start = new Date(end.getTime() - 59 * 24 * 60 * 60 * 1000)
-  const fmt = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-
+  const { startDate, endDate, timeUnit } = getPeriodRange(period)
   const trends: Record<string, number> = {}
   const batchSize = 5
 
   const batches: string[][] = []
-  for (let i = 0; i < keywords.length; i += batchSize) {
-    batches.push(keywords.slice(i, i + batchSize))
-  }
+  for (let i = 0; i < keywords.length; i += batchSize) batches.push(keywords.slice(i, i + batchSize))
 
-  await Promise.all(
-    batches.map(async (batch) => {
-      try {
-        const res = await fetch('https://openapi.naver.com/v1/datalab/search', {
-          method: 'POST',
-          headers: {
-            'X-Naver-Client-Id': clientId,
-            'X-Naver-Client-Secret': clientSecret,
-            'Content-Type': 'application/json; charset=UTF-8',
-          },
-          body: JSON.stringify({
-            startDate: fmt(start),
-            endDate: fmt(end),
-            timeUnit: 'date',
-            keywordGroups: batch.map(kw => ({ groupName: kw, keywords: [kw] })),
-          }),
-          signal: AbortSignal.timeout(12000),
-        })
-        if (!res.ok) return
-
-        const json = await res.json() as {
-          results?: { title: string; data: { period: string; ratio: number }[] }[]
-        }
-
-        for (const result of json.results ?? []) {
-          const data = result.data ?? []
-          if (data.length < 2) { trends[result.title] = 1; continue }
-
-          const half = Math.floor(data.length / 2)
-          const avg = (arr: { ratio: number }[]) =>
-            arr.reduce((s, d) => s + d.ratio, 0) / arr.length
-
-          const prevAvg = avg(data.slice(0, half))
-          const recentAvg = avg(data.slice(half))
-          trends[result.title] = prevAvg > 0 ? recentAvg / prevAvg : 1
-        }
-      } catch { /* DataLab 실패 시 해당 배치 trendRatio = 1 (변화없음) */ }
-    }),
-  )
+  await Promise.all(batches.map(async (batch) => {
+    try {
+      const res = await fetch('https://openapi.naver.com/v1/datalab/search', {
+        method: 'POST',
+        headers: {
+          'X-Naver-Client-Id': clientId,
+          'X-Naver-Client-Secret': clientSecret,
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: JSON.stringify({
+          startDate, endDate, timeUnit,
+          keywordGroups: batch.map(kw => ({ groupName: kw, keywords: [kw] })),
+        }),
+        signal: AbortSignal.timeout(12000),
+      })
+      if (!res.ok) return
+      const json = await res.json() as {
+        results?: { title: string; data: { period: string; ratio: number }[] }[]
+      }
+      for (const result of json.results ?? []) {
+        const data = result.data ?? []
+        if (data.length < 2) { trends[result.title] = 1; continue }
+        const half = Math.floor(data.length / 2)
+        const avg = (arr: { ratio: number }[]) => arr.reduce((s, d) => s + d.ratio, 0) / arr.length
+        const prevAvg = avg(data.slice(0, half))
+        const recentAvg = avg(data.slice(half))
+        trends[result.title] = prevAvg > 0 ? recentAvg / prevAvg : 1
+      }
+    } catch { /* DataLab 실패 → trendRatio = 1 */ }
+  }))
 
   return trends
 }
@@ -169,13 +159,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'NAVER_CLIENT_ID / NAVER_CLIENT_SECRET 미설정' }, { status: 503 })
   }
 
-  const { keywords } = await req.json() as { keywords?: string[] }
+  const body = await req.json() as { keywords?: string[]; period?: Period }
+  const { keywords } = body
+  const period: Period = body.period ?? '1m'
+
   if (!Array.isArray(keywords) || keywords.length === 0) {
     return NextResponse.json({ error: 'keywords 배열이 필요합니다.' }, { status: 400 })
   }
 
   const normalized = keywords.map(k => k.trim().normalize('NFC')).filter(Boolean)
-  const cacheKey = [...normalized].sort().join('|')
+  const cacheKey = `${period}|${[...normalized].sort().join('|')}`
   const cached = CACHE.get(cacheKey)
   if (cached && Date.now() - cached.ts < CACHE_TTL) {
     return NextResponse.json(cached.data)
@@ -190,7 +183,8 @@ export async function POST(req: NextRequest) {
     hasAdApi
       ? fetchBatchAdVolume(normalized, adCustomerId!, adAccessLicense!, adSecretKey!)
       : Promise.resolve({}),
-    fetchKeywordTrends(normalized, clientId, clientSecret),
+    // DataLab은 보조 지표 — 실패해도 무시 (trendRatio = 1)
+    fetchKeywordTrends(normalized, clientId, clientSecret, period),
     ...normalized.map(kw => fetchBlogCount(kw, clientId, clientSecret)),
   ])
 
