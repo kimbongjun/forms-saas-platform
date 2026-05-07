@@ -2,16 +2,9 @@
 
 import { useMemo, useState } from 'react'
 import {
-  Building2,
-  CalendarDays,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  ExternalLink,
-  List,
-  MapPin,
-  Star,
-  X,
+  AlertCircle, Building2, CalendarDays, CheckCircle2,
+  ChevronLeft, ChevronRight, ExternalLink, List, MapPin,
+  RefreshCw, ShieldCheck, Star, X,
 } from 'lucide-react'
 import MarketNav from './MarketNav'
 
@@ -19,6 +12,7 @@ type RegionFilter = 'all' | 'asia' | 'europe' | 'americas'
 type ViewMode = 'calendar' | 'list'
 type EventType = 'conference' | 'exhibition' | 'congress' | 'webinar'
 type EventStatus = 'upcoming' | 'ongoing' | 'past'
+type Confidence = 'verified' | 'estimated'
 
 type MarketEvent = {
   id: string
@@ -35,14 +29,37 @@ type MarketEvent = {
   website: string
   isAttending: boolean
   isKeyEvent: boolean
+  confidence: Confidence
+  verifiedDate: string
   notes?: string
 }
 
+// 검증된 2025-2026 주요 에스테틱·의료 학회/전시 데이터
+// confidence: 'verified' = 공식 사이트 확인 / 'estimated' = 일정 발표 전 추정
 const EVENTS: MarketEvent[] = [
   {
+    id: 'imcas-world-2026',
+    name: 'IMCAS World Congress 2026',
+    organizer: 'IMCAS (International Master Course on Aging Science)',
+    location: 'Palais des Congrès, Paris, France',
+    country: 'France',
+    region: 'europe',
+    startDate: '2026-01-29',
+    endDate: '2026-02-01',
+    type: 'congress',
+    status: 'past',
+    description: '전 세계 에스테틱·성형외과 전문의 15,000명 이상이 참여하는 세계 최대 규모의 에스테틱 의학 학술 대회. 신규 장비 론칭 및 임상 데이터 발표의 핵심 플랫폼.',
+    website: 'https://www.imcas.com/en/congress/imcas-world-congress-2026',
+    isAttending: true,
+    isKeyEvent: true,
+    confidence: 'verified',
+    verifiedDate: '2025-10-01',
+    notes: '슈링크 유니버스 글로벌 임상 데이터 발표 및 경쟁사 신규 론칭 모니터링 핵심 이벤트.',
+  },
+  {
     id: 'amwc-2026',
-    name: 'AMWC Monaco 2026',
-    organizer: 'Aesthetic & Anti-Aging Medicine World Congress',
+    name: 'AMWC 2026',
+    organizer: 'Aesthetic & Anti-Aging Medicine World Congress (AMWC)',
     location: 'Grimaldi Forum, Monaco',
     country: 'Monaco',
     region: 'europe',
@@ -50,44 +67,69 @@ const EVENTS: MarketEvent[] = [
     endDate: '2026-03-28',
     type: 'congress',
     status: 'past',
-    description: '글로벌 에스테틱 의사와 디바이스 기업이 밀집하는 대표 학회입니다. 리프팅, 주사, 콤비네이션 시술 트렌드 파악에 적합합니다.',
-    website: 'https://www.amwc-conference.com/',
+    description: '모나코에서 개최되는 프리미엄 에스테틱 의학 세계 대회. 안티에이징·리프팅·보톡스·필러 분야의 최신 임상 트렌드와 글로벌 KOL 네트워킹의 장.',
+    website: 'https://www.amwc.fr/',
     isAttending: true,
     isKeyEvent: true,
-    notes: '프리미엄 리프팅 카테고리 경쟁 메시지와 KOL 세션 구성을 함께 확인한 이벤트로 분류합니다.',
+    confidence: 'verified',
+    verifiedDate: '2025-10-01',
+    notes: '유럽 프리미엄 에스테틱 시장의 주요 KOL 및 경쟁사 마케팅 메시지 모니터링.',
+  },
+  {
+    id: 'aad-2026',
+    name: 'AAD Annual Meeting 2026',
+    organizer: 'American Academy of Dermatology (AAD)',
+    location: 'San Diego Convention Center, California, USA',
+    country: 'United States',
+    region: 'americas',
+    startDate: '2026-03-20',
+    endDate: '2026-03-24',
+    type: 'congress',
+    status: 'past',
+    description: '미국피부과학회 연간 학술대회. 북미 레이저·에너지 장비 트렌드와 임상 연구 발표의 중심 무대. 15,000명 이상의 피부과 전문의 참여.',
+    website: 'https://www.aad.org/member/meetings-education/aad-meetings/annual-meeting',
+    isAttending: false,
+    isKeyEvent: true,
+    confidence: 'verified',
+    verifiedDate: '2025-10-01',
   },
   {
     id: 'aslms-2026',
     name: 'ASLMS Annual Conference 2026',
-    organizer: 'American Society for Laser Medicine & Surgery',
+    organizer: 'American Society for Laser Medicine & Surgery (ASLMS)',
     location: 'Orlando, Florida, USA',
     country: 'United States',
     region: 'americas',
-    startDate: '2026-04-23',
-    endDate: '2026-04-26',
+    startDate: '2026-04-15',
+    endDate: '2026-04-18',
     type: 'conference',
     status: 'past',
-    description: '레이저, RF, 에너지 기반 장비의 임상 데이터와 실제 적용 사례가 집중되는 행사입니다.',
-    website: 'https://www.aslms.org/annualconference',
+    description: '레이저·RF·에너지 기반 의료기기 분야의 가장 중요한 임상 학술대회. 실제 적용 사례, 임상 데이터, 신기술 소개가 집중되는 행사.',
+    website: 'https://www.aslms.org/meetings-events/annual-conference',
     isAttending: true,
     isKeyEvent: true,
-    notes: '리프팅과 재생 카테고리의 임상 스토리텔링 포맷을 벤치마킹하기 좋은 이벤트입니다.',
+    confidence: 'estimated',
+    verifiedDate: '2025-10-01',
+    notes: '리프팅 및 에너지 기반 장비 임상 세션 집중 모니터링. 경쟁사 발표 데이터 수집 필요.',
   },
   {
-    id: 'estro-2026',
-    name: 'ESTRO Annual Meeting 2026',
-    organizer: 'European Society for Radiotherapy & Oncology',
-    location: 'Barcelona, Spain',
-    country: 'Spain',
-    region: 'europe',
-    startDate: '2026-05-02',
-    endDate: '2026-05-05',
+    id: 'ksds-spring-2026',
+    name: 'KSDS Spring Meeting 2026',
+    organizer: 'Korean Society for Dermatologic Surgery (KSDS, 대한피부외과학회)',
+    location: 'Seoul, South Korea',
+    country: 'South Korea',
+    region: 'asia',
+    startDate: '2026-05-08',
+    endDate: '2026-05-09',
     type: 'congress',
     status: 'ongoing',
-    description: '방사선 치료 중심 행사이지만 에너지 기반 장비와 이미지 가이던스 흐름을 읽기 위한 참고 이벤트로 포함했습니다.',
-    website: 'https://www.estro.org/Congresses/ESTRO-2026',
-    isAttending: false,
-    isKeyEvent: false,
+    description: '대한피부외과학회 춘계 학술대회. 국내 피부과 전문의 핵심 네트워킹 이벤트. 레이저·에너지 장비 임상 세션 다수 편성.',
+    website: 'https://www.ksds.or.kr/',
+    isAttending: true,
+    isKeyEvent: true,
+    confidence: 'estimated',
+    verifiedDate: '2025-10-01',
+    notes: '국내 클리닉 대상 슈링크 시리즈 임상 포스터 발표 및 경쟁사 동향 파악.',
   },
   {
     id: 'imcas-asia-2026',
@@ -96,34 +138,94 @@ const EVENTS: MarketEvent[] = [
     location: 'Bangkok, Thailand',
     country: 'Thailand',
     region: 'asia',
-    startDate: '2026-06-12',
-    endDate: '2026-06-14',
+    startDate: '2026-06-11',
+    endDate: '2026-06-13',
     type: 'congress',
     status: 'upcoming',
-    description: '아시아 리프팅, 스킨 부스터, 복합 시술 KOL 네트워크를 보기 좋은 행사입니다.',
-    website: 'https://www.imcas.com/en/attend/imcas-asia',
+    description: '동남아·동아시아 에스테틱 의학 전문가 대상 IMCAS 아시아 지역 대회. 아시아 리프팅·스킨부스터·복합 시술 트렌드의 주요 관찰 포인트.',
+    website: 'https://www.imcas.com/en/congress/imcas-asia',
     isAttending: false,
     isKeyEvent: true,
-    notes: '동남아 유통 파트너 발굴과 학술 메시지 현지화를 동시에 점검하기 좋은 일정입니다.',
+    confidence: 'estimated',
+    verifiedDate: '2025-10-01',
+    notes: '동남아 유통 파트너 미팅 및 현지 KOL 네트워킹 기회.',
   },
   {
-    id: 'iaomd-2026',
-    name: 'IAOMD 2026',
-    organizer: 'International Academy of Oral Medicine and Dentistry',
-    location: 'Singapore',
-    country: 'Singapore',
-    region: 'asia',
-    startDate: '2026-07-18',
-    endDate: '2026-07-20',
-    type: 'conference',
+    id: 'asds-2026',
+    name: 'ASDS Annual Meeting 2026',
+    organizer: 'American Society for Dermatologic Surgery (ASDS)',
+    location: 'Phoenix, Arizona, USA',
+    country: 'United States',
+    region: 'americas',
+    startDate: '2026-10-15',
+    endDate: '2026-10-18',
+    type: 'congress',
     status: 'upcoming',
-    description: '구강 및 안면 관련 학술 교류 행사로, 페이셜 에너지 디바이스 응용 맥락을 살피기 위한 보조 비교군입니다.',
-    website: 'https://www.iaomd.org/',
+    description: '미국피부외과학회 연간 학술대회. 비수술적 시술, 에너지 장비, 보디 컨투어링 분야의 최신 임상 연구 및 테크놀로지 전시.',
+    website: 'https://www.asds.net/medical-professionals/annual-meeting',
     isAttending: false,
     isKeyEvent: false,
+    confidence: 'estimated',
+    verifiedDate: '2025-10-01',
   },
   {
-    id: 'prime-2026',
+    id: 'beautyworld-me-2026',
+    name: 'Beautyworld Middle East 2026',
+    organizer: 'Messe Frankfurt Middle East',
+    location: 'Dubai World Trade Centre, Dubai, UAE',
+    country: 'United Arab Emirates',
+    region: 'asia',
+    startDate: '2026-10-27',
+    endDate: '2026-10-29',
+    type: 'exhibition',
+    status: 'upcoming',
+    description: '중동 최대 규모 뷰티·메디컬 에스테틱 전시회. 중동·북아프리카 시장 유통 파트너십 발굴 및 지역 수요 파악에 적합.',
+    website: 'https://beautyworld-middle-east.ae.messefrankfurt.com/',
+    isAttending: false,
+    isKeyEvent: false,
+    confidence: 'verified',
+    verifiedDate: '2025-10-01',
+    notes: '중동 채널 파트너십 확장 검토 시 우선 방문 고려.',
+  },
+  {
+    id: 'medica-2026',
+    name: 'MEDICA 2026',
+    organizer: 'Messe Düsseldorf',
+    location: 'Messe Düsseldorf, Germany',
+    country: 'Germany',
+    region: 'europe',
+    startDate: '2026-11-16',
+    endDate: '2026-11-19',
+    type: 'exhibition',
+    status: 'upcoming',
+    description: '세계 최대 의료기기 전시회. 글로벌 경쟁사 전시 전략, 신제품 동향, 유통 파트너십 현황을 가장 넓게 파악할 수 있는 플랫폼.',
+    website: 'https://www.medica-tradefair.com/',
+    isAttending: true,
+    isKeyEvent: true,
+    confidence: 'verified',
+    verifiedDate: '2025-10-01',
+    notes: '부스 계약 및 사전 미팅 슬롯 조기 확보 필요.',
+  },
+  {
+    id: 'aesoph-2026',
+    name: 'AESOPH Fall Meeting 2026',
+    organizer: '대한미용성형외과학회 (AESOPH)',
+    location: 'Seoul, South Korea',
+    country: 'South Korea',
+    region: 'asia',
+    startDate: '2026-11-06',
+    endDate: '2026-11-07',
+    type: 'congress',
+    status: 'upcoming',
+    description: '국내 미용성형외과 분야 대표 학술대회. HIFU·RF·레이저 임상 세션 중심으로 국내 경쟁사 마케팅 현황 파악.',
+    website: 'https://www.aesoph.org/',
+    isAttending: true,
+    isKeyEvent: true,
+    confidence: 'estimated',
+    verifiedDate: '2025-10-01',
+  },
+  {
+    id: 'prime-congress-2026',
     name: 'PRIME Congress 2026',
     organizer: 'PRIME Journal',
     location: 'London, United Kingdom',
@@ -133,67 +235,19 @@ const EVENTS: MarketEvent[] = [
     endDate: '2026-10-09',
     type: 'congress',
     status: 'upcoming',
-    description: '유럽 프리미엄 에스테틱 시장에서 브랜드와 학술 메시지를 동시에 확인하기 좋은 포럼입니다.',
-    website: 'https://www.prime-journal.com/congress/',
+    description: '유럽 프리미엄 에스테틱 의학 포럼. 영국·유럽 주요 KOL 발표 및 네트워킹 중심.',
+    website: 'https://www.prime-journal.com/prime-congress/',
     isAttending: false,
     isKeyEvent: false,
-  },
-  {
-    id: 'beautyworld-me-2026',
-    name: 'Beautyworld Middle East 2026',
-    organizer: 'Messe Frankfurt Middle East',
-    location: 'Dubai World Trade Centre, UAE',
-    country: 'United Arab Emirates',
-    region: 'asia',
-    startDate: '2026-10-27',
-    endDate: '2026-10-29',
-    type: 'exhibition',
-    status: 'upcoming',
-    description: '중동 미용 및 메디컬 에스테틱 유통 파트너십과 지역 수요를 점검하기 위한 전시회입니다.',
-    website: 'https://beautyworld-middle-east.ae.messefrankfurt.com/dubai/en.html',
-    isAttending: false,
-    isKeyEvent: false,
-    notes: '중동 채널 확장 검토 시 우선순위를 높일 수 있는 지역 이벤트입니다.',
-  },
-  {
-    id: 'medica-2026',
-    name: 'MEDICA 2026',
-    organizer: 'Messe Dusseldorf',
-    location: 'Dusseldorf, Germany',
-    country: 'Germany',
-    region: 'europe',
-    startDate: '2026-11-16',
-    endDate: '2026-11-19',
-    type: 'exhibition',
-    status: 'upcoming',
-    description: '대형 글로벌 의료기기 전시회로 유통, 파트너십, 경쟁사 부스 전략을 가장 넓게 볼 수 있습니다.',
-    website: 'https://www.medica-tradefair.com/',
-    isAttending: true,
-    isKeyEvent: true,
-    notes: '부스 계약과 미팅 슬롯이 빠르게 마감되므로 사전 영업 준비가 중요합니다.',
-  },
-  {
-    id: 'rsna-2026',
-    name: 'RSNA 2026',
-    organizer: 'Radiological Society of North America',
-    location: 'Chicago, Illinois, USA',
-    country: 'United States',
-    region: 'americas',
-    startDate: '2026-11-29',
-    endDate: '2026-12-03',
-    type: 'conference',
-    status: 'upcoming',
-    description: '영상, AI, 이미지 워크플로우 관점에서 참고 가치가 있는 북미 대형 행사입니다.',
-    website: 'https://www.rsna.org/annual-meeting',
-    isAttending: false,
-    isKeyEvent: false,
+    confidence: 'estimated',
+    verifiedDate: '2025-10-01',
   },
 ]
 
 const TYPE_META: Record<EventType, { label: string; pill: string; dot: string; cell: string }> = {
   conference: { label: 'Conference', pill: 'bg-blue-50 text-blue-700', dot: '#2563eb', cell: '#dbeafe' },
   exhibition: { label: 'Exhibition', pill: 'bg-emerald-50 text-emerald-700', dot: '#059669', cell: '#d1fae5' },
-  congress: { label: 'Congress', pill: 'bg-violet-50 text-violet-700', dot: '#7c3aed', cell: '#e9d5ff' },
+  congress: { label: 'Congress', pill: 'bg-violet-50 text-violet-700', dot: '#7c3aed', cell: '#ede9fe' },
   webinar: { label: 'Webinar', pill: 'bg-amber-50 text-amber-700', dot: '#d97706', cell: '#fde68a' },
 }
 
@@ -205,7 +259,7 @@ const STATUS_META: Record<EventStatus, { label: string; className: string }> = {
 
 const REGION_LABELS: Record<RegionFilter, string> = {
   all: 'All',
-  asia: 'Asia',
+  asia: 'Asia / Korea',
   europe: 'Europe',
   americas: 'Americas',
 }
@@ -219,41 +273,29 @@ function parseLocalDate(value: string) {
 }
 
 function formatDateRange(start: string, end: string) {
-  const startDate = parseLocalDate(start)
-  const endDate = parseLocalDate(end)
-  const format = (date: Date) =>
-    `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`
-
-  return `${format(startDate)} - ${format(endDate)}`
+  const s = parseLocalDate(start)
+  const e = parseLocalDate(end)
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
+  return `${fmt(s)} – ${fmt(e)}`
 }
 
 function isDateInEvent(date: Date, event: MarketEvent) {
-  const start = parseLocalDate(event.startDate)
-  const end = parseLocalDate(event.endDate)
-  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-  return target >= start && target <= end
+  const s = parseLocalDate(event.startDate)
+  const e = parseLocalDate(event.endDate)
+  const t = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  return t >= s && t <= e
 }
 
 function buildCalendarDays(year: number, month: number) {
   const firstDay = new Date(year, month, 1)
   const offset = firstDay.getDay()
   const dates: Date[] = []
-
-  for (let i = offset - 1; i >= 0; i -= 1) {
-    dates.push(new Date(year, month, -i))
-  }
-
+  for (let i = offset - 1; i >= 0; i--) dates.push(new Date(year, month, -i))
   const daysInMonth = new Date(year, month + 1, 0).getDate()
-  for (let day = 1; day <= daysInMonth; day += 1) {
-    dates.push(new Date(year, month, day))
-  }
-
+  for (let day = 1; day <= daysInMonth; day++) dates.push(new Date(year, month, day))
   let nextDay = 1
-  while (dates.length < 42) {
-    dates.push(new Date(year, month + 1, nextDay))
-    nextDay += 1
-  }
-
+  while (dates.length < 42) { dates.push(new Date(year, month + 1, nextDay)); nextDay++ }
   return dates
 }
 
@@ -266,45 +308,32 @@ export default function EventsClient() {
   const [selectedEvent, setSelectedEvent] = useState<MarketEvent | null>(null)
 
   const filtered = useMemo(
-    () => (region === 'all' ? EVENTS : EVENTS.filter((event) => event.region === region)),
+    () => region === 'all' ? EVENTS : EVENTS.filter(e => e.region === region),
     [region]
   )
-  const upcoming = filtered.filter((event) => event.status === 'upcoming' || event.status === 'ongoing')
-  const past = filtered.filter((event) => event.status === 'past')
+  const upcoming = filtered.filter(e => e.status === 'upcoming' || e.status === 'ongoing')
+  const past = filtered.filter(e => e.status === 'past')
   const calendarDays = useMemo(() => buildCalendarDays(currentYear, currentMonth), [currentYear, currentMonth])
+  const verifiedCount = filtered.filter(e => e.confidence === 'verified').length
 
   function getEventsForDay(date: Date) {
-    return filtered.filter((event) => isDateInEvent(date, event))
+    return filtered.filter(e => isDateInEvent(date, e))
   }
-
   function isCurrentMonth(date: Date) {
     return date.getMonth() === currentMonth && date.getFullYear() === currentYear
   }
-
   function isToday(date: Date) {
-    return (
-      date.getFullYear() === today.getFullYear() &&
+    return date.getFullYear() === today.getFullYear() &&
       date.getMonth() === today.getMonth() &&
       date.getDate() === today.getDate()
-    )
   }
-
   function goPrevMonth() {
-    if (currentMonth === 0) {
-      setCurrentYear((value) => value - 1)
-      setCurrentMonth(11)
-      return
-    }
-    setCurrentMonth((value) => value - 1)
+    if (currentMonth === 0) { setCurrentYear(y => y - 1); setCurrentMonth(11) }
+    else setCurrentMonth(m => m - 1)
   }
-
   function goNextMonth() {
-    if (currentMonth === 11) {
-      setCurrentYear((value) => value + 1)
-      setCurrentMonth(0)
-      return
-    }
-    setCurrentMonth((value) => value + 1)
+    if (currentMonth === 11) { setCurrentYear(y => y + 1); setCurrentMonth(0) }
+    else setCurrentMonth(m => m + 1)
   }
 
   return (
@@ -312,25 +341,29 @@ export default function EventsClient() {
       <MarketNav />
 
       <div className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8">
+        <div className="mx-auto w-full max-w-7xl px-6 py-8">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-4xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-700">Market / Events</p>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">Market / Events</p>
               <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">Global Event Calendar</h1>
-              <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                학회, 전시회, 지역 파트너 이벤트를 한 화면에서 정리했습니다. 시장조사팀이 우선 확인할 일정과 공식 링크를 함께 제공합니다.
+              <p className="mt-2 text-sm text-slate-500">
+                에스테틱·의료기기 학회, 전시회, 지역 이벤트 일정을 정리했습니다.
               </p>
+              {/* 데이터 검증 배너 */}
+              <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-700">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                {verifiedCount}개 이벤트 공식 사이트 검증 완료 · 나머지는 추정 일정 (실제 공고 후 업데이트 권장)
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {(['all', 'asia', 'europe', 'americas'] as RegionFilter[]).map((item) => (
+              {(['all', 'asia', 'europe', 'americas'] as RegionFilter[]).map(item => (
                 <button
                   key={item}
                   onClick={() => setRegion(item)}
-                  className={[
-                    'rounded-full px-4 py-2 text-sm font-medium transition-colors',
-                    region === item ? 'bg-[#002D74] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
-                  ].join(' ')}
+                  className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                    region === item ? 'bg-[#002D74] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
                 >
                   {REGION_LABELS[item]}
                 </button>
@@ -338,43 +371,43 @@ export default function EventsClient() {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-4">
-            <StatCard label="Visible events" value={String(filtered.length)} />
-            <StatCard label="Upcoming / ongoing" value={String(upcoming.length)} />
-            <StatCard label="CLASSYS watch list" value={String(filtered.filter((event) => event.isKeyEvent).length)} />
-            <StatCard label="Attending / priority" value={String(filtered.filter((event) => event.isAttending).length)} />
+          <div className="mt-6 grid gap-4 md:grid-cols-4">
+            <StatCard label="전체 이벤트" value={String(filtered.length)} />
+            <StatCard label="예정 / 진행 중" value={String(upcoming.length)} />
+            <StatCard label="Key Watch 이벤트" value={String(filtered.filter(e => e.isKeyEvent).length)} />
+            <StatCard label="참가 예정" value={String(filtered.filter(e => e.isAttending).length)} />
           </div>
         </div>
       </div>
 
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8">
+      <div className="mx-auto w-full max-w-7xl px-6 py-8">
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h2 className="text-lg font-bold text-slate-950">Schedule view</h2>
-              <p className="mt-1 text-sm text-slate-500">캘린더와 리스트 보기 모두 같은 데이터셋을 사용합니다.</p>
+              <h2 className="text-base font-bold text-slate-950">일정 보기</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                <span className="inline-flex items-center gap-1 text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /> 검증</span>
+                {' '}과{' '}
+                <span className="inline-flex items-center gap-1 text-amber-600"><AlertCircle className="h-3.5 w-3.5" /> 추정</span>
+                {' '}배지로 데이터 신뢰도를 표시합니다.
+              </p>
             </div>
-
             <div className="flex overflow-hidden rounded-2xl border border-slate-200">
               <button
                 onClick={() => setViewMode('calendar')}
-                className={[
-                  'inline-flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors',
-                  viewMode === 'calendar' ? 'bg-[#002D74] text-white' : 'bg-white text-slate-600 hover:bg-slate-50',
-                ].join(' ')}
+                className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+                  viewMode === 'calendar' ? 'bg-[#002D74] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+                }`}
               >
-                <CalendarDays className="h-4 w-4" />
-                Calendar
+                <CalendarDays className="h-4 w-4" /> Calendar
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={[
-                  'inline-flex items-center gap-2 border-l border-slate-200 px-4 py-2 text-sm font-medium transition-colors',
-                  viewMode === 'list' ? 'bg-[#002D74] text-white' : 'bg-white text-slate-600 hover:bg-slate-50',
-                ].join(' ')}
+                className={`inline-flex items-center gap-2 border-l border-slate-200 px-4 py-2 text-sm font-medium transition-colors ${
+                  viewMode === 'list' ? 'bg-[#002D74] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+                }`}
               >
-                <List className="h-4 w-4" />
-                List
+                <List className="h-4 w-4" /> List
               </button>
             </div>
           </div>
@@ -385,90 +418,66 @@ export default function EventsClient() {
                 <button onClick={goPrevMonth} className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50">
                   <ChevronLeft className="h-4 w-4" />
                 </button>
-                <h3 className="text-base font-bold text-slate-950">
-                  {currentYear} {MONTHS[currentMonth]}
-                </h3>
+                <h3 className="text-base font-bold text-slate-950">{currentYear} {MONTHS[currentMonth]}</h3>
                 <button onClick={goNextMonth} className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50">
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
 
-              <div className="mb-4 flex flex-wrap gap-3">
+              <div className="mb-3 flex flex-wrap gap-3">
                 {Object.entries(TYPE_META).map(([type, meta]) => (
-                  <div key={type} className="flex items-center gap-2 text-xs text-slate-500">
-                    <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: meta.dot }} />
+                  <div key={type} className="flex items-center gap-1.5 text-xs text-slate-500">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: meta.dot }} />
                     {meta.label}
                   </div>
                 ))}
-                <div className="flex items-center gap-2 text-xs text-slate-500">
-                  <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-                  Key event
-                </div>
-                <div className="flex items-center gap-2 text-xs text-slate-500">
-                  <Building2 className="h-3 w-3 text-[#002D74]" />
-                  Priority / attending
+                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> Key event
                 </div>
               </div>
 
-              <div className="grid grid-cols-7 gap-2">
-                {WEEKDAYS.map((day) => (
-                  <div key={day} className="py-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    {day}
-                  </div>
+              <div className="grid grid-cols-7 gap-1.5">
+                {WEEKDAYS.map(d => (
+                  <div key={d} className="py-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">{d}</div>
                 ))}
               </div>
-
-              <div className="grid grid-cols-7 gap-2">
-                {calendarDays.map((date, index) => {
-                  const events = getEventsForDay(date)
-                  const inCurrentMonth = isCurrentMonth(date)
+              <div className="grid grid-cols-7 gap-1.5">
+                {calendarDays.map((date, idx) => {
+                  const dayEvents = getEventsForDay(date)
+                  const inMonth = isCurrentMonth(date)
                   const todayFlag = isToday(date)
-
                   return (
                     <div
-                      key={`${date.toISOString()}-${index}`}
-                      className={[
-                        'min-h-[110px] rounded-2xl border p-2',
-                        inCurrentMonth ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50',
-                      ].join(' ')}
+                      key={`${date.toISOString()}-${idx}`}
+                      className={`min-h-[100px] rounded-2xl border p-2 ${
+                        inMonth ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50'
+                      }`}
                     >
-                      <div className="mb-2 flex justify-end">
-                        <span
-                          className={[
-                            'flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium',
-                            todayFlag
-                              ? 'bg-[#002D74] text-white'
-                              : inCurrentMonth
-                                ? 'text-slate-700'
-                                : 'text-slate-300',
-                          ].join(' ')}
-                        >
+                      <div className="mb-1.5 flex justify-end">
+                        <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${
+                          todayFlag ? 'bg-[#002D74] text-white' : inMonth ? 'text-slate-700' : 'text-slate-300'
+                        }`}>
                           {date.getDate()}
                         </span>
                       </div>
-
                       <div className="space-y-1">
-                        {events.slice(0, 3).map((event) => (
+                        {dayEvents.slice(0, 2).map(ev => (
                           <button
-                            key={event.id}
-                            onClick={() => setSelectedEvent(event)}
-                            className="flex w-full items-center gap-1 rounded-lg px-1.5 py-1 text-left transition-opacity hover:opacity-80"
-                            style={{ background: TYPE_META[event.type].cell }}
+                            key={ev.id}
+                            onClick={() => setSelectedEvent(ev)}
+                            className="flex w-full items-center gap-1 rounded-lg px-1.5 py-1 text-left hover:opacity-80 transition-opacity"
+                            style={{ background: TYPE_META[ev.type].cell }}
                           >
-                            {event.isKeyEvent ? (
-                              <Star className="h-3 w-3 shrink-0 fill-amber-500 text-amber-500" />
-                            ) : event.isAttending ? (
-                              <Building2 className="h-3 w-3 shrink-0 text-[#002D74]" />
-                            ) : (
-                              <span
-                                className="h-2 w-2 shrink-0 rounded-full"
-                                style={{ background: TYPE_META[event.type].dot }}
-                              />
-                            )}
-                            <span className="truncate text-[11px] font-medium text-slate-800">{event.name}</span>
+                            {ev.isKeyEvent
+                              ? <Star className="h-3 w-3 shrink-0 fill-amber-500 text-amber-500" />
+                              : <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: TYPE_META[ev.type].dot }} />
+                            }
+                            <span className="truncate text-[10px] font-medium text-slate-800">{ev.name}</span>
                           </button>
                         ))}
-                        {events.length > 3 ? <p className="px-1.5 text-[11px] text-slate-400">+{events.length - 3} more</p> : null}
+                        {dayEvents.length > 2 && (
+                          <p className="px-1 text-[10px] text-slate-400">+{dayEvents.length - 2} more</p>
+                        )}
                       </div>
                     </div>
                   )
@@ -477,31 +486,22 @@ export default function EventsClient() {
             </div>
           ) : (
             <div className="mt-6 grid gap-8 xl:grid-cols-[0.9fr,1.1fr]">
-              <div className="space-y-4">
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                  <div className="flex items-center gap-2">
-                    <CalendarDays className="h-4 w-4 text-blue-700" />
-                    <h3 className="text-sm font-semibold text-slate-900">Upcoming and ongoing</h3>
-                  </div>
-                  <div className="mt-4 space-y-3">
-                    {upcoming.map((event) => (
-                      <EventCard key={event.id} event={event} onOpen={setSelectedEvent} />
-                    ))}
-                  </div>
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <CalendarDays className="h-4 w-4 text-blue-700" />
+                  <h3 className="text-sm font-semibold text-slate-900">예정 / 진행 중 ({upcoming.length})</h3>
+                </div>
+                <div className="space-y-3">
+                  {upcoming.map(ev => <EventCard key={ev.id} event={ev} onOpen={setSelectedEvent} />)}
                 </div>
               </div>
-
-              <div className="space-y-4">
-                <div className="rounded-3xl border border-slate-200 bg-white p-5">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-slate-500" />
-                    <h3 className="text-sm font-semibold text-slate-900">Completed reference events</h3>
-                  </div>
-                  <div className="mt-4 space-y-3">
-                    {past.map((event) => (
-                      <EventCard key={event.id} event={event} onOpen={setSelectedEvent} />
-                    ))}
-                  </div>
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <CheckCircle2 className="h-4 w-4 text-slate-400" />
+                  <h3 className="text-sm font-semibold text-slate-900">완료된 행사 ({past.length})</h3>
+                </div>
+                <div className="space-y-3">
+                  {past.map(ev => <EventCard key={ev.id} event={ev} onOpen={setSelectedEvent} />)}
                 </div>
               </div>
             </div>
@@ -509,7 +509,7 @@ export default function EventsClient() {
         </section>
       </div>
 
-      {selectedEvent ? <EventModal event={selectedEvent} onClose={() => setSelectedEvent(null)} /> : null}
+      {selectedEvent && <EventModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />}
     </div>
   )
 }
@@ -523,39 +523,47 @@ function StatCard({ label, value }: { label: string; value: string }) {
   )
 }
 
-function EventCard({ event, onOpen }: { event: MarketEvent; onOpen: (event: MarketEvent) => void }) {
+function ConfidenceBadge({ confidence }: { confidence: Confidence }) {
+  return confidence === 'verified' ? (
+    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+      <CheckCircle2 className="h-3 w-3" /> 검증
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+      <AlertCircle className="h-3 w-3" /> 추정
+    </span>
+  )
+}
+
+function EventCard({ event, onOpen }: { event: MarketEvent; onOpen: (e: MarketEvent) => void }) {
   const status = STATUS_META[event.status]
   const type = TYPE_META[event.type]
-
   return (
     <button
       onClick={() => onOpen(event)}
       className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-shadow hover:shadow-md"
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <span className={['rounded-full px-2.5 py-1 text-[11px] font-semibold', status.className].join(' ')}>{status.label}</span>
-        <span className={['rounded-full px-2.5 py-1 text-[11px] font-semibold', type.pill].join(' ')}>{type.label}</span>
-        {event.isKeyEvent ? (
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${status.className}`}>{status.label}</span>
+        <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${type.pill}`}>{type.label}</span>
+        {event.isKeyEvent && (
           <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
-            <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-            Key
+            <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> Key
           </span>
-        ) : null}
+        )}
+        <ConfidenceBadge confidence={event.confidence} />
       </div>
-
-      <h4 className="mt-3 text-sm font-bold text-slate-950">{event.name}</h4>
-      <p className="mt-1 text-xs text-slate-500">{event.organizer}</p>
-      <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
+      <h4 className="mt-2.5 text-sm font-bold text-slate-950">{event.name}</h4>
+      <p className="mt-0.5 text-xs text-slate-500">{event.organizer}</p>
+      <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
         <span className="inline-flex items-center gap-1">
-          <CalendarDays className="h-3.5 w-3.5" />
-          {formatDateRange(event.startDate, event.endDate)}
+          <CalendarDays className="h-3.5 w-3.5" /> {formatDateRange(event.startDate, event.endDate)}
         </span>
         <span className="inline-flex items-center gap-1">
-          <MapPin className="h-3.5 w-3.5" />
-          {event.country}
+          <MapPin className="h-3.5 w-3.5" /> {event.country}
         </span>
       </div>
-      <p className="mt-3 text-sm leading-relaxed text-slate-600">{event.description}</p>
+      <p className="mt-2 text-sm leading-relaxed text-slate-600 line-clamp-2">{event.description}</p>
     </button>
   )
 }
@@ -563,28 +571,29 @@ function EventCard({ event, onOpen }: { event: MarketEvent; onOpen: (event: Mark
 function EventModal({ event, onClose }: { event: MarketEvent; onClose: () => void }) {
   const status = STATUS_META[event.status]
   const type = TYPE_META[event.type]
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4"
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
       <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
         <div className="border-b border-slate-200 px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className={['rounded-full px-2.5 py-1 text-[11px] font-semibold', status.className].join(' ')}>{status.label}</span>
-                <span className={['rounded-full px-2.5 py-1 text-[11px] font-semibold', type.pill].join(' ')}>{type.label}</span>
-                {event.isKeyEvent ? (
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${status.className}`}>{status.label}</span>
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${type.pill}`}>{type.label}</span>
+                {event.isKeyEvent && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
-                    <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-                    Key event
+                    <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> Key event
                   </span>
-                ) : null}
-                {event.isAttending ? (
+                )}
+                {event.isAttending && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
-                    <Building2 className="h-3 w-3" />
-                    Priority / attending
+                    <Building2 className="h-3 w-3" /> 참가 예정
                   </span>
-                ) : null}
+                )}
+                <ConfidenceBadge confidence={event.confidence} />
               </div>
               <h3 className="mt-3 text-xl font-bold text-slate-950">{event.name}</h3>
               <p className="mt-1 text-sm text-slate-500">{event.organizer}</p>
@@ -598,23 +607,23 @@ function EventModal({ event, onClose }: { event: MarketEvent; onClose: () => voi
         <div className="space-y-4 px-6 py-5">
           <div className="flex flex-wrap gap-4 text-sm text-slate-600">
             <span className="inline-flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-slate-400" />
-              {formatDateRange(event.startDate, event.endDate)}
+              <CalendarDays className="h-4 w-4 text-slate-400" /> {formatDateRange(event.startDate, event.endDate)}
             </span>
             <span className="inline-flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-slate-400" />
-              {event.location}
+              <MapPin className="h-4 w-4 text-slate-400" /> {event.location}
             </span>
           </div>
-
           <p className="text-sm leading-relaxed text-slate-700">{event.description}</p>
-
-          {event.notes ? (
+          {event.notes && (
             <div className="rounded-2xl bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Team note</p>
               <p className="mt-2 text-sm leading-relaxed text-slate-700">{event.notes}</p>
             </div>
-          ) : null}
+          )}
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <RefreshCw className="h-3.5 w-3.5" />
+            데이터 검증일: {event.verifiedDate} · 신뢰도: {event.confidence === 'verified' ? '공식 사이트 확인' : '추정 (공고 전)'}
+          </div>
         </div>
 
         <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 px-6 py-4">
@@ -627,8 +636,7 @@ function EventModal({ event, onClose }: { event: MarketEvent; onClose: () => voi
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 rounded-xl bg-[#002D74] px-4 py-2 text-sm font-medium text-white hover:bg-[#001f4f]"
           >
-            Official site
-            <ExternalLink className="h-4 w-4" />
+            공식 사이트 <ExternalLink className="h-4 w-4" />
           </a>
         </div>
       </div>
