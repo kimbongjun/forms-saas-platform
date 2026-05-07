@@ -1,29 +1,13 @@
 'use client'
 
-import { useState, useRef, useEffect, useTransition, useMemo } from 'react'
-import dynamic from 'next/dynamic'
+import { useState, useRef, useEffect, useTransition } from 'react'
 import {
   Search, TrendingUp, FileText, MessageSquare, RefreshCw, Grape,
   Download, Monitor, Smartphone, Calendar, Plus, X, Info, Wifi, WifiOff, Copy, Check,
-  Bookmark, BookmarkCheck, Image as ImageIcon, Flame,
+  Bookmark, BookmarkCheck, Image as ImageIcon,
 } from 'lucide-react'
 import { DateRangePickerInput } from '@/components/common/DatePickerInput'
 import DatalabForm from './DatalabForm'
-
-const ReactWordcloud = dynamic(
-  () => import('react-wordcloud').then(m => m.default as React.ComponentType<ReactWordcloudProps>),
-  { ssr: false, loading: () => <div className="h-64 animate-pulse rounded-xl bg-gray-100" /> },
-)
-
-// react-wordcloud 최소 타입 (별도 @types 없음)
-interface WCWord { text: string; value: number; [key: string]: unknown }
-interface ReactWordcloudProps {
-  words: WCWord[]
-  options?: Record<string, unknown>
-  callbacks?: Record<string, unknown>
-  size?: [number, number]
-}
-import type React from 'react'
 
 // ── Naver API 연관 키워드 타입 ─────────────────────────────────
 interface NaverRelatedKeyword {
@@ -116,13 +100,7 @@ type Period = '5y' | '3y' | '2y' | '1y' | '3m' | '1m'
 
 interface PlatformItem { name: string; count: number; color: string }
 interface RelatedKeyword { keyword: string; volume: number; competition: 'high' | 'mid' | 'low' }
-interface RelatedNaverData {
-  monthlyPc: number | null
-  monthlyMobile: number | null
-  blogCount: number
-  trendRatio: number
-  relevanceScore: number
-}
+interface RelatedNaverData { monthlyPc: number | null; monthlyMobile: number | null; blogCount: number }
 interface SmartBlockPost { title: string; link: string; description: string; bloggername: string; postdate: string }
 interface SmartBlockTopic { topic: string; total: number; posts: SmartBlockPost[] }
 interface KeywordData {
@@ -1382,34 +1360,6 @@ export default function BlueberryClient() {
   const relatedMonthCount = PERIOD_COUNT[relatedPeriod]
   const relatedPeriodLabel = PERIOD_LABEL[relatedPeriod]
 
-  // 연관 키워드 정렬: relevanceScore (검색량×포화도×트렌드) 기준 내림차순
-  // primaryData가 결정된 뒤에야 allRelated가 확정되므로 여기서 memoize
-  const sortedRelatedKeywords = useMemo(() => {
-    const base = primaryData?.relatedKeywords ?? []
-    return [...base].sort((a, b) => {
-      const ndA = relatedNaverData[a.keyword.trim().normalize('NFC')]
-      const ndB = relatedNaverData[b.keyword.trim().normalize('NFC')]
-      const sA = ndA?.relevanceScore ?? (Math.log10(Math.max(a.volume, 10)) * 10)
-      const sB = ndB?.relevanceScore ?? (Math.log10(Math.max(b.volume, 10)) * 10)
-      return sB - sA
-    })
-  }, [primaryData?.relatedKeywords, relatedNaverData])
-
-  // react-wordcloud 전용 word 배열
-  const cloudWords: WCWord[] = useMemo(() => {
-    return sortedRelatedKeywords.map(k => {
-      const nd = relatedNaverData[k.keyword.trim().normalize('NFC')]
-      const score = nd?.relevanceScore ?? (Math.log10(Math.max(k.volume, 10)) * 10)
-      return {
-        text: k.keyword,
-        value: Math.max(1, Math.round(score * 10)),
-        volume: k.volume,
-        competition: k.competition,
-        trendRatio: nd?.trendRatio ?? 1.0,
-      }
-    })
-  }, [sortedRelatedKeywords, relatedNaverData])
-
   // 차트 로딩 상태: DataLab(Naver) 또는 Google Trends(Google) 대기 중
   const isChartLoading = (platform === 'naver' && datalabLoading) ||
                          (platform === 'google' && googleApiLoading)
@@ -2213,67 +2163,36 @@ export default function BlueberryClient() {
             </div>
 
             {(() => {
-              const displayed = showAllRelated ? sortedRelatedKeywords : sortedRelatedKeywords.slice(0, 5)
-              const canExpand = sortedRelatedKeywords.length > 5
+              const allRelated = primaryData.relatedKeywords
+              const displayed = showAllRelated ? allRelated : allRelated.slice(0, 5)
+              const canExpand = allRelated.length > 5
               return (
                 <>
                   {relatedView === 'cloud' ? (
-                    /* ── react-wordcloud 뷰 ── */
-                    <div className="relative min-h-[300px] w-full">
-                      {relatedNaverLoading && (
-                        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/80">
-                          <span className="text-xs text-gray-400 animate-pulse">연관성 점수 계산 중…</span>
-                        </div>
-                      )}
-                      {cloudWords.length > 0 ? (
-                        <ReactWordcloud
-                          words={cloudWords}
-                          size={[0, 300]}
-                          options={{
-                            colors: ['#002D74', '#0084C9', '#10B981', '#7C3AED', '#F59E0B', '#EF4444'],
-                            enableTooltip: true,
-                            deterministic: true,
-                            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                            fontSizes: [14, 52],
-                            padding: 4,
-                            rotations: 2,
-                            rotationAngles: [-45, 0],
-                            scale: 'sqrt',
-                            spiral: 'archimedean',
-                            transitionDuration: 600,
-                          }}
-                          callbacks={{
-                            getWordColor: (word: WCWord) => {
-                              const tr = (word.trendRatio as number) ?? 1.0
-                              if (tr >= 1.3) return '#ef4444'
-                              if (tr >= 1.1) return '#f97316'
-                              const c = word.competition as string
-                              return c === 'high' ? '#7c3aed' : c === 'mid' ? '#d97706' : '#059669'
-                            },
-                            getWordTooltip: (word: WCWord) => {
-                              const tr = (word.trendRatio as number) ?? 1.0
-                              const trend = tr >= 1.3 ? ' 🔥 급상승' : tr >= 1.1 ? ' ↑ 상승 중' : ''
-                              return `${word.text}: 검색량 ${(word.volume as number).toLocaleString()}${trend}`
-                            },
-                            onWordClick: (word: WCWord) => {
-                              setInput(word.text)
-                              startTransition(() => setKeyword(word.text))
-                            },
-                          }}
-                        />
-                      ) : (
-                        <div className="flex h-48 items-center justify-center text-sm text-gray-400">
-                          연관 키워드 데이터를 불러오는 중…
-                        </div>
-                      )}
-                      {/* 트렌드 범례 */}
-                      <div className="mt-2 flex flex-wrap items-center gap-3 px-2 pb-1 text-[10px] text-gray-400">
-                        <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#ef4444]" />급상승 (30일 +30%↑)</span>
-                        <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#f97316]" />상승 중</span>
-                        <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#7c3aed]" />고경쟁</span>
-                        <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#059669]" />저경쟁</span>
-                        <span className="ml-auto text-gray-300">글자 크기 = 연관성 점수 (검색량 × 트렌드 × 포화도)</span>
-                      </div>
+                    /* ── 워드클라우드 뷰 ── */
+                    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-3 py-6 px-2 min-h-[160px]">
+                      {displayed.map((k, i) => {
+                        const maxVol = Math.max(...allRelated.map(r => r.volume), 1)
+                        const ratio = k.volume / maxVol
+                        const size = Math.round(12 + ratio * 24)
+                        const compColor = k.competition === 'high' ? '#e53e3e' : k.competition === 'mid' ? '#d97706' : '#16a34a'
+                        return (
+                          <button
+                            key={`${k.keyword}-${i}`}
+                            onClick={() => { setInput(k.keyword); startTransition(() => setKeyword(k.keyword)) }}
+                            className="rounded-lg px-2.5 py-1 font-semibold transition-transform hover:scale-110 hover:opacity-100 cursor-pointer"
+                            style={{
+                              fontSize: `${size}px`,
+                              opacity: 0.55 + ratio * 0.45,
+                              color: compColor,
+                              background: `${compColor}18`,
+                              border: `1px solid ${compColor}40`,
+                            }}
+                          >
+                            {k.keyword}
+                          </button>
+                        )
+                      })}
                     </div>
                   ) : (
                     /* ── 테이블 뷰 ── */
@@ -2287,7 +2206,6 @@ export default function BlueberryClient() {
                               <>
                                 <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">월간 실측 (PC+모바일)</th>
                                 <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">블로그 누적 발행량</th>
-                                <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">30일 트렌드</th>
                               </>
                             )}
                             <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">경쟁도</th>
@@ -2300,27 +2218,15 @@ export default function BlueberryClient() {
                             const realTotal = (nd?.monthlyPc != null && nd?.monthlyMobile != null)
                               ? nd.monthlyPc + nd.monthlyMobile
                               : null
-                            const isTrending = nd && nd.trendRatio >= 1.3
-                            const isRising = nd && nd.trendRatio >= 1.1 && nd.trendRatio < 1.3
                             return (
-                              <tr key={`${k.keyword}-${i}`} className={`${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}${isTrending ? ' ring-1 ring-inset ring-red-100' : ''}`}>
+                              <tr key={`${k.keyword}-${i}`} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
                                 <td className="px-4 py-2.5 font-medium text-gray-900">
-                                  <div className="flex items-center gap-1.5">
-                                    <button
-                                      className="hover:text-[#002D74] hover:underline text-left"
-                                      onClick={() => { setInput(k.keyword); startTransition(() => setKeyword(k.keyword)) }}
-                                    >
-                                      {k.keyword}
-                                    </button>
-                                    {isTrending && (
-                                      <span className="inline-flex items-center gap-0.5 rounded-full bg-red-50 px-1.5 py-0.5 text-[9px] font-bold text-red-600">
-                                        <Flame className="h-2.5 w-2.5" />급상승
-                                      </span>
-                                    )}
-                                    {isRising && (
-                                      <span className="rounded-full bg-orange-50 px-1.5 py-0.5 text-[9px] font-bold text-orange-500">↑상승</span>
-                                    )}
-                                  </div>
+                                  <button
+                                    className="hover:text-[#002D74] hover:underline text-left"
+                                    onClick={() => { setInput(k.keyword); startTransition(() => setKeyword(k.keyword)) }}
+                                  >
+                                    {k.keyword}
+                                  </button>
                                 </td>
                                 <td className="px-4 py-2.5 text-right text-gray-500 text-xs">
                                   {naverLoading ? <span className="text-gray-300 animate-pulse">--</span> : fmt(scaledVol)}
@@ -2343,26 +2249,6 @@ export default function BlueberryClient() {
                                           : <span className="text-gray-300 text-xs">-</span>
                                       }
                                     </td>
-                                    <td className="px-4 py-2.5 text-right text-xs">
-                                      {relatedNaverLoading
-                                        ? <span className="text-gray-300 animate-pulse">로딩중</span>
-                                        : nd?.trendRatio != null
-                                          ? (
-                                            <span className={
-                                              nd.trendRatio >= 1.3 ? 'font-bold text-red-600' :
-                                              nd.trendRatio >= 1.1 ? 'font-medium text-orange-500' :
-                                              nd.trendRatio <= 0.7 ? 'text-gray-400' :
-                                              'text-gray-500'
-                                            }>
-                                              {nd.trendRatio >= 1.3 ? `🔥 +${Math.round((nd.trendRatio - 1) * 100)}%` :
-                                               nd.trendRatio >= 1.1 ? `↑ +${Math.round((nd.trendRatio - 1) * 100)}%` :
-                                               nd.trendRatio <= 0.7 ? `↓ ${Math.round((nd.trendRatio - 1) * 100)}%` :
-                                               '→ 보합'}
-                                            </span>
-                                          )
-                                          : <span className="text-gray-300">-</span>
-                                      }
-                                    </td>
                                   </>
                                 )}
                                 <td className="px-4 py-2.5 text-right">
@@ -2383,7 +2269,7 @@ export default function BlueberryClient() {
                         onClick={() => setShowAllRelated(v => !v)}
                         className="rounded-lg border border-gray-200 px-4 py-1.5 text-xs font-medium text-gray-500 hover:border-[#002D74] hover:text-[#002D74] transition-colors"
                       >
-                        {showAllRelated ? `접기 ↑` : `더 보기 (${sortedRelatedKeywords.length - 5}개 더) ↓`}
+                        {showAllRelated ? `접기 ↑` : `더 보기 (${allRelated.length - 5}개 더) ↓`}
                       </button>
                     </div>
                   )}
