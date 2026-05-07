@@ -1,21 +1,32 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import {
-  RefreshCw, Cpu, Users, CalendarDays, Globe, Shield,
-  TrendingUp, ExternalLink, Clock, Zap, Download, FileText,
-  BarChart2, Map,
+  BarChart2,
+  CalendarDays,
+  Clock,
+  Cpu,
+  Download,
+  ExternalLink,
+  FileText,
+  Globe,
+  Map,
+  RefreshCw,
+  Shield,
+  TrendingUp,
+  Users,
+  Zap,
 } from 'lucide-react'
 import MarketNav from './MarketNav'
 
 const WorldMap = dynamic(() => import('./WorldMap'), {
   ssr: false,
   loading: () => (
-    <div className="flex items-center justify-center" style={{ minHeight: 480, background: '#f8fafc' }}>
+    <div className="flex min-h-[480px] items-center justify-center bg-slate-50">
       <div className="text-center">
-        <div className="mx-auto mb-3 h-10 w-10 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
-        <p className="text-xs text-blue-500">세계 지도 로딩 중...</p>
+        <div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+        <p className="text-xs text-blue-600">Loading market map...</p>
       </div>
     </div>
   ),
@@ -23,10 +34,12 @@ const WorldMap = dynamic(() => import('./WorldMap'), {
 
 const MarketCharts = dynamic(() => import('./MarketCharts'), { ssr: false })
 
-const REPORT_DATE = '2026년 5월 6일'
-const LAST_UPDATED = '2026-05-06 08:30'
+const REPORT_DATE = '2026.05.07'
+const LAST_UPDATED = '2026-05-07 09:10'
 
-interface DomainCard {
+type TabKey = 'report' | 'globe' | 'charts'
+
+type DomainCard = {
   key: string
   icon: React.ReactNode
   label: string
@@ -47,34 +60,34 @@ const DOMAIN_CARDS: DomainCard[] = [
     bg: 'bg-blue-50 border-blue-200',
     count: 8,
     highlights: [
-      'InMode, EMFACE PRO 차세대 버전 FDA 510(k) 신청 완료',
-      'Cutera 新 HIFU 플랫폼 CE 마크 획득 — Q3 유럽 출시 예정',
-      '실시간 조직 이미징 탑재 HIFU 2.0 임상시험 결과 발표 (Lasers in Surgery)',
+      '복합 에너지 장비는 리프팅 단품보다 프로토콜 세트로 포지셔닝되는 흐름이 강합니다.',
+      '실시간 이미징, 쿨링, 소비자 친화형 UX가 프리미엄 세일즈 포인트로 묶이고 있습니다.',
+      'RF와 HIFU를 분리 판매하기보다 업셀링 가능한 조합으로 묶는 메시지가 늘고 있습니다.',
     ],
-    insight: '초음파 기반 기기가 Q2 규제 승인 집중. 유럽 CE 선행 → 미국 FDA 후행 패턴 지속.',
+    insight: 'CLASSYS는 리프팅 성능만이 아니라 시술 경험, 교육, 복합 시술 제안을 함께 보여줘야 프리미엄 포지셔닝이 강해집니다.',
     sourceLinks: [
-      { title: 'EMFACE PRO FDA 510(k) Submission', url: 'https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfpmn/pmn.cfm', source: 'FDA' },
-      { title: 'Cutera CE Mark Announcement', url: 'https://www.cutera.com/news', source: 'Cutera IR' },
-      { title: 'HIFU 2.0 Clinical Trial Results', url: 'https://onlinelibrary.wiley.com/journal/10969101', source: 'Lasers in Surgery and Medicine' },
+      { title: 'CLASSYS Corporate Overview', url: 'https://classys.com/company/classys/', source: 'CLASSYS' },
+      { title: 'Lutronic About Us', url: 'https://www.lutronic.com/us/about-us/', source: 'Lutronic' },
+      { title: 'Jeisys Product Overview', url: 'https://www.jeisys.com/eng/', source: 'Jeisys' },
     ],
   },
   {
     key: 'ai',
     icon: <Zap className="h-5 w-5" />,
     label: 'AI / SaMD',
-    color: 'text-purple-700',
-    bg: 'bg-purple-50 border-purple-200',
+    color: 'text-violet-700',
+    bg: 'bg-violet-50 border-violet-200',
     count: 5,
     highlights: [
-      'Canfield Scientific × DeepDerm 피부 AI 분석 솔루션 파트너십 발표',
-      'Revian, SaMD 등록 완료 — AI 기반 피부 상태 추적 앱 출시',
-      'FDA CDER, SaMD 허가 프로세스 간소화 가이던스 공개 (초안)',
+      '시술 결과 분석과 환자 상담 보조 기능이 AI 모듈로 묶여 들어가는 사례가 많아지고 있습니다.',
+      'SaMD는 단독 제품보다 하드웨어 판매를 보조하는 구독형 서비스로 설계되는 경향이 강합니다.',
+      '임상 데이터 정리와 before/after 리포팅 자동화가 현장 수요를 만들고 있습니다.',
     ],
-    insight: 'SaMD 인허가 가이던스 명확화로 AI 피부진단 시장 진입장벽 낮아지는 추세.',
+    insight: '시장 조사 관점에서는 장비 자체보다 상담 보조, 추적 관찰, 임상 리포트 생성까지 포함한 소프트웨어 묶음이 실제 경쟁력입니다.',
     sourceLinks: [
-      { title: 'Canfield × DeepDerm Partnership', url: 'https://www.canfieldsci.com/news', source: 'Canfield Scientific' },
-      { title: 'Revian SaMD Registration', url: 'https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfRL/rl.cfm', source: 'FDA' },
-      { title: 'FDA SaMD Guidance Draft', url: 'https://www.fda.gov/medical-devices/digital-health-center-excellence', source: 'FDA.gov' },
+      { title: 'FDA Digital Health', url: 'https://www.fda.gov/medical-devices/digital-health-center-excellence', source: 'FDA' },
+      { title: 'Canfield Scientific News', url: 'https://www.canfieldsci.com/news', source: 'Canfield' },
+      { title: 'Revian Company', url: 'https://revian.com', source: 'Revian' },
     ],
   },
   {
@@ -85,15 +98,15 @@ const DOMAIN_CARDS: DomainCard[] = [
     bg: 'bg-rose-50 border-rose-200',
     count: 6,
     highlights: [
-      'Allergan Aesthetics, #RealResults 글로벌 캠페인 Instagram 주요국 동시 런칭',
-      'Galderma, 리얼닥터 콜라보 YouTube 시리즈 누적 4.2M 뷰 돌파',
-      'Merz Aesthetics, TikTok Live 의료진 Q&A 포맷 도입 — 경쟁사 대비 +34% 참여율',
+      '글로벌 브랜드는 실제 환자 결과와 의사 코멘트를 한 콘텐츠 안에서 같이 보여주는 포맷을 반복합니다.',
+      '라이브 Q&A, 숏폼 하이라이트, 장기 추적 후기 조합이 전환율이 높은 구조로 보입니다.',
+      '기업 뉴스룸과 SNS를 연결해 메시지를 증폭시키는 패턴이 강합니다.',
     ],
-    insight: '숏폼 + 의료전문가 직접 출연 조합이 고관여 고객 전환율에서 가장 높은 성과 기록 중.',
+    insight: 'CLASSYS는 제품 기능 설명보다 시술 맥락과 결과 해석을 전달하는 콘텐츠 비중을 더 높일 여지가 있습니다.',
     sourceLinks: [
-      { title: 'Allergan #RealResults Campaign', url: 'https://www.allerganaesthetics.com/newsroom', source: 'Allergan Newsroom' },
-      { title: 'Galderma Real Doctor Series', url: 'https://www.galderma.com/news', source: 'Galderma' },
-      { title: 'Merz TikTok Strategy', url: 'https://www.merzaesthetics.com/media', source: 'Merz Aesthetics' },
+      { title: 'Allergan Aesthetics Newsroom', url: 'https://www.allerganaesthetics.com/newsroom', source: 'Allergan' },
+      { title: 'Galderma News', url: 'https://www.galderma.com/news', source: 'Galderma' },
+      { title: 'Merz Aesthetics', url: 'https://www.merz-aesthetics.com/', source: 'Merz' },
     ],
   },
   {
@@ -104,15 +117,15 @@ const DOMAIN_CARDS: DomainCard[] = [
     bg: 'bg-amber-50 border-amber-200',
     count: 11,
     highlights: [
-      'Dr. Shereene Idriss(1.2M), HIFU 시술 리얼 후기 Reels — 48시간 내 2.8M 조회',
-      '@dermdoctor(12.8M TikTok), RF 리프팅 비교 영상 시리즈 3편 완결',
-      '아시아 KOL 시장: 한국·일본 피부과 의사 인플루언서 팔로워 YoY +41%',
+      '의사 본인이 출연하는 리얼 케이스 콘텐츠가 여전히 신뢰를 가장 잘 만듭니다.',
+      '미국은 교육형 숏폼, 한국은 시술 전후 설명형 콘텐츠, 동남아는 후기 중심 구조가 강합니다.',
+      'KOL 네트워크는 단순 노출보다 학회, 웨비나, 현장 데모와 묶였을 때 효율이 높습니다.',
     ],
-    insight: '아시아권 의료진 KOL이 서구권 대비 신뢰도·전환율 모두 높게 나타남. 한국 선점 기회.',
+    insight: '시장별 KOL 운영 방식이 달라서 동일한 메시지를 글로벌 공통 템플릿으로 가져가면 효율이 떨어질 수 있습니다.',
     sourceLinks: [
-      { title: 'Dr. Idriss Instagram Post', url: 'https://www.instagram.com/shereeneidriss', source: 'Instagram @shereeneidriss' },
-      { title: '@dermdoctor TikTok Series', url: 'https://www.tiktok.com/@dermdoctor', source: 'TikTok @dermdoctor' },
-      { title: 'Asia KOL Market Report', url: 'https://www.influencermarketinghub.com/asia-influencer-report', source: 'Influencer Marketing Hub' },
+      { title: 'Dr. Shereene Idriss', url: 'https://www.instagram.com/shereeneidriss/', source: 'Instagram' },
+      { title: 'DermDoctor', url: 'https://www.tiktok.com/@dermdoctor', source: 'TikTok' },
+      { title: 'Influencer Marketing Hub', url: 'https://www.influencermarketinghub.com/', source: 'IMH' },
     ],
   },
   {
@@ -121,54 +134,60 @@ const DOMAIN_CARDS: DomainCard[] = [
     label: 'Events & Congress',
     color: 'text-teal-700',
     bg: 'bg-teal-50 border-teal-200',
-    count: 3,
+    count: 4,
     highlights: [
-      'ESTRO Annual Meeting — 바르셀로나, 5/2~5/5 (진행중)',
-      'ASLMS Annual Conference — 올랜도, 4/23~4/26 (종료, 주요발표 요약 등록)',
-      'MEDICA 2026 — 뒤셀도르프, 11/16~11/19 (사전등록 오픈)',
+      'AMWC, ASLMS, IMCAS Asia, MEDICA가 리프팅 카테고리 관점의 우선 추적 이벤트입니다.',
+      '학술 프로그램뿐 아니라 부스 위치, 데모 방식, 파트너 미팅 구조를 같이 봐야 경쟁 해석이 가능합니다.',
+      '행사 후 뉴스룸과 SNS 후속 콘텐츠의 길이와 톤도 브랜드 전략 차이를 보여줍니다.',
     ],
-    insight: 'MEDICA 사전 부스 계약 마감 6월 초. 조기 신청 시 프리미엄 위치 확보 가능.',
+    insight: '이벤트는 단발성 참가보다 행사 전후 콘텐츠 운영과 파트너 팔로업이 중요합니다.',
     sourceLinks: [
-      { title: 'ESTRO 2026 Official Site', url: 'https://www.estro.org/Congresses/ESTRO-2026', source: 'ESTRO' },
-      { title: 'ASLMS 2026 Program', url: 'https://www.aslms.org/meetings/annual-conference', source: 'ASLMS' },
-      { title: 'MEDICA 2026 Registration', url: 'https://www.medica.de', source: 'Messe Düsseldorf' },
+      { title: 'AMWC Monaco', url: 'https://www.amwc-conference.com/', source: 'AMWC' },
+      { title: 'ASLMS', url: 'https://www.aslms.org/annualconference', source: 'ASLMS' },
+      { title: 'MEDICA', url: 'https://www.medica-tradefair.com/', source: 'MEDICA' },
     ],
   },
   {
     key: 'policy',
     icon: <Shield className="h-5 w-5" />,
     label: 'Global Policy',
-    color: 'text-gray-700',
-    bg: 'bg-gray-50 border-gray-200',
+    color: 'text-slate-700',
+    bg: 'bg-slate-50 border-slate-200',
     count: 4,
     highlights: [
-      '중국 NMPA, 의료미용기기 광고 규제 강화 — 전문의 검증 필수화 (6월 시행)',
-      'EU MDR 전환 기한 재연장 논의 — Class IIa 기기 2027년까지 적용 완화 가능성',
-      '태국 FDA, 의료미용기기 온라인 판매 가이드라인 초안 공개',
+      '미국, 유럽, 한국 모두 임상 근거와 사후 모니터링 요구가 강화되는 방향입니다.',
+      'AI가 붙는 제품은 기능 변경 관리 계획과 설명 책임이 점점 중요해집니다.',
+      '광고 표현과 before/after 사용 규제가 국가별로 크게 다르므로 마케팅 팀과 인허가 팀의 연결이 필요합니다.',
     ],
-    insight: '중국 규제 강화로 현지 마케팅 전략 조정 필요. EU MDR 완화는 유럽 진출 타임라인에 긍정적.',
+    insight: '시장 조사 화면에서도 규제 변화는 제품 출시 일정과 마케팅 표현 가능 범위에 직접 연결된다는 전제를 유지해야 합니다.',
     sourceLinks: [
-      { title: 'NMPA 의료미용기기 광고 고시', url: 'https://www.nmpa.gov.cn/xxgk/fgwj', source: 'NMPA (중국)' },
-      { title: 'EU MDR Extension Discussion', url: 'https://ec.europa.eu/health/medical-devices_en', source: 'European Commission' },
-      { title: 'Thailand FDA Guideline Draft', url: 'https://www.fda.moph.go.th', source: 'Thai FDA' },
+      { title: 'FDA Medical Devices', url: 'https://www.fda.gov/medical-devices', source: 'FDA' },
+      { title: 'European Commission Medical Devices', url: 'https://health.ec.europa.eu/medical-devices-sector_en', source: 'EU' },
+      { title: 'MFDS Medical Devices', url: 'https://www.mfds.go.kr/eng/index.do', source: 'MFDS' },
     ],
   },
 ]
 
 const TRENDING_TAGS = [
-  { tag: '#HIFU2026', count: 4820 },
+  { tag: '#HIFU', count: 4820 },
   { tag: '#MedicalAesthetics', count: 3910 },
   { tag: '#SaMD', count: 2640 },
   { tag: '#KOLMarketing', count: 2180 },
   { tag: '#MEDICA2026', count: 1950 },
-  { tag: '#AestheticMedicine', count: 1730 },
   { tag: '#RFLifting', count: 1420 },
   { tag: '#Thermage', count: 1210 },
-  { tag: '#EUMedicalDevice', count: 980 },
   { tag: '#FDAApproval', count: 870 },
 ]
 
-type TabKey = 'report' | 'globe' | 'charts'
+const TOP_SOURCES = [
+  { name: 'CLASSYS', url: 'https://classys.com/' },
+  { name: 'Merz Aesthetics', url: 'https://www.merz-aesthetics.com/' },
+  { name: 'Solta Medical', url: 'https://www.soltamedical.com/' },
+  { name: 'Lutronic', url: 'https://www.lutronic.com/us/' },
+  { name: 'Jeisys', url: 'https://www.jeisys.com/eng/' },
+  { name: 'FDA', url: 'https://www.fda.gov/medical-devices' },
+  { name: 'MedTech Europe', url: 'https://www.medtecheurope.org/' },
+]
 
 export default function DailyReportClient() {
   const [activeTab, setActiveTab] = useState<TabKey>('report')
@@ -180,7 +199,7 @@ export default function DailyReportClient() {
 
   async function handleRefresh() {
     setRefreshing(true)
-    await new Promise((r) => setTimeout(r, 1200))
+    await new Promise((resolve) => setTimeout(resolve, 900))
     const now = new Date()
     setLastUpdated(
       `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
@@ -194,276 +213,262 @@ export default function DailyReportClient() {
     try {
       const { toPng } = await import('html-to-image')
       const { default: jsPDF } = await import('jspdf')
-      const el = reportRef.current
-      const dataUrl = await toPng(el, { pixelRatio: 2, cacheBust: true })
+      const element = reportRef.current
+      const dataUrl = await toPng(element, { pixelRatio: 2, cacheBust: true })
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-      const imgW = 210
-      const imgH = (el.offsetHeight * imgW) / el.offsetWidth
-      const pageH = 297
+      const imgWidth = 210
+      const imgHeight = (element.offsetHeight * imgWidth) / element.offsetWidth
+      const pageHeight = 297
       let y = 0
-      while (y < imgH) {
+      while (y < imgHeight) {
         if (y > 0) pdf.addPage()
-        pdf.addImage(dataUrl, 'PNG', 0, -y, imgW, imgH)
-        y += pageH
+        pdf.addImage(dataUrl, 'PNG', 0, -y, imgWidth, imgHeight)
+        y += pageHeight
       }
       pdf.save(`Market_Intelligence_${new Date().toISOString().slice(0, 10)}.pdf`)
-    } catch (err) {
-      console.error('PDF export failed:', err)
     } finally {
       setExporting(false)
     }
   }
 
-  const TABS = [
-    { key: 'report' as TabKey, label: '오늘의 리포트', icon: <FileText className="h-4 w-4" /> },
-    { key: 'globe' as TabKey, label: '글로벌 시장 지도', icon: <Map className="h-4 w-4" /> },
-    { key: 'charts' as TabKey, label: '데이터 시각화', icon: <BarChart2 className="h-4 w-4" /> },
+  const tabs = [
+    { key: 'report' as const, label: 'Daily Report', icon: <FileText className="h-4 w-4" /> },
+    { key: 'globe' as const, label: 'Market Map', icon: <Map className="h-4 w-4" /> },
+    { key: 'charts' as const, label: 'Charts', icon: <BarChart2 className="h-4 w-4" /> },
   ]
 
   return (
-    <div className="flex min-h-full flex-col bg-white">
+    <div className="min-h-full bg-white">
       <MarketNav />
 
-      {/* 페이지 헤더 */}
-      <div
-        className="border-b border-gray-100 px-6 py-5"
-        style={{ background: 'linear-gradient(135deg, #002D74 0%, #0084C9 100%)' }}
-      >
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2 text-blue-200 text-sm mb-1">
-              <Globe className="h-3.5 w-3.5" />
-              <span>Global Medical Aesthetics Market</span>
+      <div className="border-b border-slate-200 bg-[linear-gradient(135deg,#002D74_0%,#0084C9_100%)] px-6 py-6">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="mb-2 flex items-center gap-2 text-sm text-blue-100">
+                <Globe className="h-4 w-4" />
+                <span>Global Medical Aesthetics Intelligence</span>
+              </div>
+              <h1 className="text-3xl font-bold text-white">{REPORT_DATE} Daily Report</h1>
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-blue-100">
+                글로벌 의료미용 장비 시장에서 제품, 규제, KOL, 이벤트, 마케팅 신호를 한 화면에서 정리한 운영용 대시보드입니다.
+              </p>
             </div>
-            <h1 className="text-2xl font-bold text-white">{REPORT_DATE} Daily Report</h1>
-            <p className="mt-1 text-blue-200 text-sm">글로벌 피부미용의료기기 시장 동향 자동 요약</p>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={handleExportPDF}
+                disabled={exporting || activeTab !== 'report'}
+                className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm text-white transition hover:bg-white/20 disabled:opacity-40"
+              >
+                <Download className={['h-4 w-4', exporting ? 'animate-bounce' : ''].join(' ')} />
+                {exporting ? 'Exporting PDF...' : 'Export PDF'}
+              </button>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm text-white transition hover:bg-white/20 disabled:opacity-60"
+              >
+                <RefreshCw className={['h-4 w-4', refreshing ? 'animate-spin' : ''].join(' ')} />
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleExportPDF}
-              disabled={exporting || activeTab !== 'report'}
-              className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm text-white transition-all hover:bg-white/20 disabled:opacity-40"
-              title="리포트 PDF 다운로드"
-            >
-              <Download className={['h-4 w-4', exporting ? 'animate-bounce' : ''].join(' ')} />
-              {exporting ? 'PDF 생성 중...' : 'PDF 다운로드'}
-            </button>
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm text-white transition-all hover:bg-white/20 disabled:opacity-60"
-            >
-              <RefreshCw className={['h-4 w-4', refreshing ? 'animate-spin' : ''].join(' ')} />
-              {refreshing ? '수집 중...' : '새로고침'}
-            </button>
+
+          <div className="flex items-center gap-2 text-xs text-blue-200">
+            <Clock className="h-3.5 w-3.5" />
+            <span>Last updated: {lastUpdated}</span>
+            <span className="text-blue-300">|</span>
+            <span>Auto refresh every hour</span>
           </div>
-        </div>
-        <div className="mt-3 flex items-center gap-1.5 text-xs text-blue-300">
-          <Clock className="h-3 w-3" />
-          <span>마지막 업데이트: {lastUpdated}</span>
-          <span className="mx-1 text-blue-500">·</span>
-          <span>1시간 자동 갱신</span>
         </div>
       </div>
 
-      {/* Tab navigation */}
-      <div className="flex border-b border-gray-100 bg-gray-50">
-        {TABS.map(({ key, label, icon }) => (
-          <button
-            key={key}
-            onClick={() => setActiveTab(key)}
-            className={[
-              'flex items-center gap-2 px-5 py-3.5 text-sm font-medium transition-all border-b-2',
-              activeTab === key
-                ? 'border-blue-600 text-blue-700 bg-white'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-white/60',
-            ].join(' ')}
-          >
-            {icon}
-            {label}
-          </button>
-        ))}
+      <div className="border-b border-slate-200 bg-slate-50">
+        <div className="mx-auto flex w-full max-w-7xl overflow-x-auto px-6">
+          {tabs.map(({ key, label, icon }) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={[
+                'inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors',
+                activeTab === key
+                  ? 'border-[#002D74] bg-white text-[#002D74]'
+                  : 'border-transparent text-slate-500 hover:bg-white hover:text-slate-700',
+              ].join(' ')}
+            >
+              {icon}
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Tab: 오늘의 리포트 */}
-      {activeTab === 'report' && (
-        <div ref={reportRef} className="flex-1 px-6 py-6 max-w-6xl mx-auto w-full">
-          {/* KPI 요약 */}
-          <div className="mb-6 grid grid-cols-3 gap-4 sm:grid-cols-6">
+      {activeTab === 'report' ? (
+        <div ref={reportRef} className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-6">
+          <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-6">
             {[
-              { label: '수집 기사', value: '37' },
-              { label: 'Tech / AI', value: '13' },
-              { label: '마케팅', value: '6' },
-              { label: 'KOL 동향', value: '11' },
-              { label: '이벤트', value: '3' },
-              { label: '정책', value: '4' },
-            ].map(({ label, value }) => (
-              <div key={label} className="rounded-xl border border-gray-100 bg-white px-4 py-3 text-center shadow-sm">
-                <p className="text-2xl font-bold" style={{ color: '#002D74' }}>{value}</p>
-                <p className="mt-0.5 text-xs text-gray-500">{label}</p>
+              { label: 'Signals tracked', value: '38' },
+              { label: 'Technology / AI', value: '13' },
+              { label: 'Marketing', value: '6' },
+              { label: 'KOL watch items', value: '11' },
+              { label: 'Events', value: '4' },
+              { label: 'Policy alerts', value: '4' },
+            ].map((item) => (
+              <div key={item.label} className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-center shadow-sm">
+                <p className="text-3xl font-bold tracking-tight text-[#002D74]">{item.value}</p>
+                <p className="mt-1 text-xs text-slate-500">{item.label}</p>
               </div>
             ))}
           </div>
 
-          {/* 도메인 카드 그리드 */}
           <div className="grid gap-4 lg:grid-cols-2">
             {DOMAIN_CARDS.map((card) => (
-              <div key={card.key} className={`rounded-2xl border p-5 ${card.bg}`}>
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
+              <article key={card.key} className={`rounded-3xl border p-5 ${card.bg}`}>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
                     <span className={card.color}>{card.icon}</span>
-                    <span className={`text-sm font-semibold ${card.color}`}>{card.label}</span>
+                    <div>
+                      <h2 className={`text-base font-bold ${card.color}`}>{card.label}</h2>
+                      <p className="text-xs text-slate-500">Signals: {card.count}</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-white/70 px-2.5 py-0.5 text-xs font-medium text-gray-600">
-                      기사 {card.count}건
-                    </span>
-                    <button
-                      onClick={() => setDetailCard(card)}
-                      className="flex items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-xs font-medium text-gray-500 hover:bg-white hover:text-gray-700 transition-colors"
-                      title="상세 링크 보기"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      상세 링크
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setDetailCard(card)}
+                    className="inline-flex items-center gap-1 rounded-full bg-white/70 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-white hover:text-slate-800"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Source links
+                  </button>
                 </div>
 
-                <ul className="mb-3 space-y-2">
-                  {card.highlights.map((h, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                <div className="space-y-2">
+                  {card.highlights.map((item) => (
+                    <div key={item} className="flex items-start gap-2 text-sm leading-relaxed text-slate-700">
                       <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-60" />
-                      {h}
-                    </li>
+                      {item}
+                    </div>
                   ))}
-                </ul>
-
-                <div className="rounded-xl bg-white/60 px-3 py-2">
-                  <p className="mb-0.5 text-xs font-semibold text-gray-500">비즈니스 시사점</p>
-                  <p className="text-xs leading-relaxed text-gray-700">{card.insight}</p>
                 </div>
-              </div>
+
+                <div className="mt-4 rounded-2xl bg-white/60 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Business interpretation</p>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-700">{card.insight}</p>
+                </div>
+              </article>
             ))}
           </div>
 
-          {/* 트렌딩 해시태그 */}
-          <div className="mt-6 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <h2 className="mb-4 text-sm font-semibold" style={{ color: '#2C3E50' }}>오늘의 트렌딩 키워드</h2>
-            <div className="flex flex-wrap gap-2">
-              {TRENDING_TAGS.map(({ tag, count }, i) => {
-                const size = i < 3 ? 'text-base font-semibold' : i < 6 ? 'text-sm font-medium' : 'text-xs'
-                const opacity = i < 3 ? 'opacity-100' : i < 7 ? 'opacity-80' : 'opacity-60'
-                return (
-                  <span
-                    key={tag}
-                    className={`${size} ${opacity} cursor-default rounded-full border px-3 py-1 transition-all hover:opacity-100`}
-                    style={{ borderColor: '#0084C9', color: '#002D74', background: `rgba(0, 132, 201, ${0.06 + (10 - i) * 0.02})` }}
-                  >
-                    {tag}
-                    <span className="ml-1.5 text-xs text-gray-400">{count.toLocaleString()}</span>
-                  </span>
-                )
-              })}
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-bold text-slate-950">Trending tags</h2>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {TRENDING_TAGS.map(({ tag, count }, index) => (
+                <span
+                  key={tag}
+                  className={[
+                    'rounded-full border px-3 py-1 text-sm transition',
+                    index < 3 ? 'font-semibold' : 'font-medium',
+                  ].join(' ')}
+                  style={{
+                    borderColor: '#93c5fd',
+                    color: '#002D74',
+                    background: `rgba(59, 130, 246, ${0.08 + (8 - index) * 0.02})`,
+                  }}
+                >
+                  {tag}
+                  <span className="ml-1.5 text-xs text-slate-400">{count.toLocaleString()}</span>
+                </span>
+              ))}
             </div>
           </div>
 
-          {/* 주요 출처 */}
-          <div className="mt-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold" style={{ color: '#2C3E50' }}>주요 데이터 출처</h2>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { name: 'Google News', url: 'https://news.google.com' },
-                { name: 'PubMed', url: 'https://pubmed.ncbi.nlm.nih.gov' },
-                { name: 'FDA.gov', url: 'https://www.fda.gov/medical-devices' },
-                { name: 'CE Marking', url: 'https://ec.europa.eu/growth/single-market/ce-marking_en' },
-                { name: 'LinkedIn', url: 'https://www.linkedin.com' },
-                { name: 'MassDevice', url: 'https://www.massdevice.com' },
-                { name: 'Fierce Biotech', url: 'https://www.fiercebiotech.com' },
-                { name: 'Aesthetic Authority', url: 'https://aestheticauthority.com' },
-                { name: 'Lasers in Surgery', url: 'https://onlinelibrary.wiley.com/journal/10969101' },
-              ].map(({ name, url }) => (
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-bold text-slate-950">Core sources</h2>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {TOP_SOURCES.map((source) => (
                 <a
-                  key={name}
-                  href={url}
+                  key={source.name}
+                  href={source.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 rounded-lg bg-gray-50 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-800"
                 >
-                  <ExternalLink className="h-3 w-3 text-gray-400" />
-                  {name}
+                  <ExternalLink className="h-3 w-3" />
+                  {source.name}
                 </a>
               ))}
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Tab: 글로벌 시장 지도 */}
-      {activeTab === 'globe' && (
-        <div className="flex-1 flex flex-col bg-gray-50">
-          <div className="border-b border-gray-100 bg-white px-6 py-3">
-            <h2 className="text-sm font-semibold" style={{ color: '#2C3E50' }}>글로벌 피부미용의료기기 시장 지도</h2>
-            <p className="text-xs text-gray-400">국가/대륙별 시장 규모 · 성장률 · 주요 기기 현황</p>
+      {activeTab === 'globe' ? (
+        <div className="flex-1 bg-slate-50">
+          <div className="border-b border-slate-200 bg-white px-6 py-4">
+            <div className="mx-auto w-full max-w-7xl">
+              <h2 className="text-base font-bold text-slate-950">Global market map</h2>
+              <p className="mt-1 text-sm text-slate-500">지역별 시장 규모, 성장률, 대표 장비 카테고리를 같이 보는 참고 화면입니다.</p>
+            </div>
           </div>
           <WorldMap />
         </div>
-      )}
+      ) : null}
 
-      {/* Tab: 데이터 시각화 */}
-      {activeTab === 'charts' && (
-        <div className="flex-1 bg-gray-50">
-          <div className="border-b border-gray-100 bg-white px-6 py-3">
-            <h2 className="text-sm font-semibold" style={{ color: '#2C3E50' }}>데이터 시각화 분석</h2>
-            <p className="text-xs text-gray-400">지역별 시장 규모 · 기기 카테고리 · 성장 전망 · 키워드 분석</p>
+      {activeTab === 'charts' ? (
+        <div className="flex-1 bg-slate-50">
+          <div className="border-b border-slate-200 bg-white px-6 py-4">
+            <div className="mx-auto w-full max-w-7xl">
+              <h2 className="text-base font-bold text-slate-950">Data charts</h2>
+              <p className="mt-1 text-sm text-slate-500">시장 규모, 카테고리 구성, 지역별 성장 축을 시각적으로 확인하는 화면입니다.</p>
+            </div>
           </div>
           <MarketCharts />
         </div>
-      )}
+      ) : null}
 
-      {/* Detail Link Modal */}
-      {detailCard && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setDetailCard(null) }}
-        >
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
-            <div className={`flex items-start justify-between rounded-t-2xl p-5 pb-4 ${detailCard.bg}`}>
-              <div className="flex items-center gap-2.5">
-                <span className={detailCard.color}>{detailCard.icon}</span>
-                <div>
-                  <h2 className={`text-base font-bold ${detailCard.color}`}>{detailCard.label}</h2>
-                  <p className="text-xs text-gray-500">원본 출처 링크 {detailCard.sourceLinks.length}건</p>
+      {detailCard ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && setDetailCard(null)}>
+          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className={`p-5 ${detailCard.bg}`}>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <span className={detailCard.color}>{detailCard.icon}</span>
+                  <div>
+                    <h2 className={`text-base font-bold ${detailCard.color}`}>{detailCard.label}</h2>
+                    <p className="text-xs text-slate-500">{detailCard.sourceLinks.length} source links</p>
+                  </div>
                 </div>
+                <button
+                  onClick={() => setDetailCard(null)}
+                  className="rounded-full bg-white/70 px-3 py-1 text-xs font-medium text-slate-600 transition hover:bg-white"
+                >
+                  Close
+                </button>
               </div>
-              <button onClick={() => setDetailCard(null)} className="rounded-lg p-1 text-gray-400 hover:bg-white/50 hover:text-gray-600 transition-colors">
-                <ExternalLink className="h-4 w-4 rotate-0" />
-              </button>
             </div>
-            <div className="p-5 space-y-3">
-              {detailCard.sourceLinks.map((link, i) => (
+
+            <div className="space-y-3 p-5">
+              {detailCard.sourceLinks.map((link) => (
                 <a
-                  key={i}
+                  key={link.title}
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-start gap-3 rounded-xl border border-gray-100 p-3.5 hover:border-blue-200 hover:bg-blue-50 transition-all group"
+                  className="flex items-start gap-3 rounded-2xl border border-slate-200 p-3 transition hover:border-blue-200 hover:bg-blue-50"
                 >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 group-hover:bg-blue-100">
-                    <ExternalLink className="h-3.5 w-3.5 text-gray-500 group-hover:text-blue-600" />
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                    <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-800 group-hover:text-blue-700 leading-snug">{link.title}</p>
-                    <p className="mt-0.5 text-xs text-gray-400">{link.source}</p>
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{link.title}</p>
+                    <p className="mt-1 text-xs text-slate-400">{link.source}</p>
                   </div>
                 </a>
               ))}
             </div>
-            <div className="px-5 pb-5">
-              <p className="text-[11px] text-gray-400 text-center">※ 원본 페이지는 외부 사이트에서 제공됩니다</p>
-            </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

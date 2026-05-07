@@ -61,7 +61,7 @@ type KOL = {
   profileUrl: string
 }
 
-const LAST_UPDATED = '2026-05-06 08:30'
+const LAST_UPDATED = '2026-05-07 09:10'
 
 const PLATFORM_META: Record<PlatformKey, { label: string; bg: string; text: string }> = {
   instagram: { label: 'IG', bg: '#fdf2f8', text: '#be185d' },
@@ -86,7 +86,7 @@ const KOLS: KOL[] = [
     country: 'USA',
     followers: '1.24M',
     engagement: '5.8%',
-    summary: '의사 본인 출연형 리프팅 리뷰 콘텐츠가 여전히 강합니다.',
+    summary: '의사 본인이 직접 출연하는 리얼 케이스와 제품 해석형 콘텐츠가 강점입니다.',
     profileUrl: 'https://www.instagram.com/shereeneidriss/',
   },
   {
@@ -97,7 +97,7 @@ const KOLS: KOL[] = [
     country: 'USA',
     followers: '12.8M',
     engagement: '9.2%',
-    summary: '짧은 비교형 영상으로 RF/HIFU 콘텐츠 반응을 키우는 대표 채널입니다.',
+    summary: '짧고 비교가 쉬운 교육형 포맷으로 RF와 HIFU 카테고리 반응을 잘 이끌어냅니다.',
     profileUrl: 'https://www.tiktok.com/@dermdoctor',
   },
   {
@@ -108,7 +108,7 @@ const KOLS: KOL[] = [
     country: 'Korea',
     followers: '890K',
     engagement: '6.9%',
-    summary: '국내 리프팅 시술 후기와 케이스형 숏폼에 강합니다.',
+    summary: '국내 리프팅 시술의 전후 설명형 콘텐츠와 리뷰 포맷이 강한 편입니다.',
     profileUrl: 'https://www.instagram.com/drhyunjin_skin/',
   },
   {
@@ -119,7 +119,7 @@ const KOLS: KOL[] = [
     country: 'USA',
     followers: '7.41M',
     engagement: '6.3%',
-    summary: '긴 영상 기반 브랜드 협업과 설명형 포맷 파급력이 큽니다.',
+    summary: '긴 영상 기반의 브랜드 설명과 스토리텔링 설계가 뛰어난 채널입니다.',
     profileUrl: 'https://www.youtube.com/@DrPimplePopper',
   },
 ]
@@ -128,8 +128,8 @@ const CAMPAIGNS: Campaign[] = [
   {
     brand: 'Allergan Aesthetics',
     name: '#RealResults',
-    summary: '실제 환자 결과 중심의 UGC 포맷으로 Instagram과 TikTok을 동시에 운용하는 캠페인입니다.',
-    insight: '시술 전후 결과와 의사 멘트를 같이 노출해 신뢰도와 확산력을 동시에 확보한 구조입니다.',
+    summary: '실제 환자 결과와 UGC를 결합해 Instagram과 TikTok에서 동시에 확산시키는 구조입니다.',
+    insight: '시술 전후 결과와 의사 코멘트를 한 프레임에서 같이 노출해 신뢰와 전환을 동시에 노리는 포맷입니다.',
     detailUrl: 'https://www.allerganaesthetics.com/newsroom',
     sourceLabel: 'Allergan Newsroom',
     platforms: ['instagram', 'tiktok'],
@@ -137,7 +137,7 @@ const CAMPAIGNS: Campaign[] = [
     media: [
       {
         type: 'post',
-        title: 'Before & After carousel',
+        title: 'Before & after carousel',
         metric: '8.4M impressions',
         platform: 'instagram',
         detailUrl: 'https://www.allerganaesthetics.com/newsroom',
@@ -167,8 +167,8 @@ const CAMPAIGNS: Campaign[] = [
   {
     brand: 'Galderma',
     name: 'Real Doctor Series',
-    summary: '의사 Q&A와 시술 케이스를 YouTube 장편 영상과 LinkedIn 요약 포스트로 연결한 포맷입니다.',
-    insight: '전문가 신뢰를 앞세우고 장편 설명형 영상으로 교육 가치까지 챙기는 점이 강점입니다.',
+    summary: '의사 Q&A와 시술 케이스를 YouTube 장편 영상과 LinkedIn 요약 포스트로 이어가는 포맷입니다.',
+    insight: '전문가 신뢰를 앞세우고, 교육형 장편 설명으로 브랜드 이해도를 높이는 데 강점이 있습니다.',
     detailUrl: 'https://www.galderma.com/news',
     sourceLabel: 'Galderma News',
     platforms: ['youtube', 'linkedin'],
@@ -209,8 +209,8 @@ const CAMPAIGNS: Campaign[] = [
   {
     brand: 'Merz Aesthetics',
     name: 'Live Q&A Series',
-    summary: 'TikTok Live와 Instagram 클립을 묶어 질문 수집, 실시간 상담, 재편집 재배포까지 이어지는 구조입니다.',
-    insight: '라이브 원본, 숏폼 재가공, 랜딩 전환까지 연결되는 퍼널 설계가 매우 명확합니다.',
+    summary: 'TikTok Live와 Instagram 릴스를 엮어 질문 수집, 실시간 상담, 하이라이트 재배포까지 이어지는 구조입니다.',
+    insight: '라이브 원본과 후속 숏폼이 연결돼서 참여도와 재사용성이 모두 높은 편입니다.',
     detailUrl: 'https://www.merz-aesthetics.com/',
     sourceLabel: 'Merz Aesthetics',
     platforms: ['tiktok', 'instagram'],
@@ -262,24 +262,10 @@ function MediaTypeIcon({ type }: { type: MediaType }) {
   return <Play className="h-3 w-3" />
 }
 
-function MediaThumbnail({
-  media,
-  onOpen,
-}: {
-  media: CampaignMedia
-  onOpen: (media: CampaignMedia) => void
-}) {
+function MediaThumbnail({ media, onOpen }: { media: CampaignMedia; onOpen: (media: CampaignMedia) => void }) {
   return (
-    <button
-      onClick={() => onOpen(media)}
-      className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-gray-950 text-left"
-    >
-      <div
-        className="absolute inset-0"
-        style={{
-          background: `linear-gradient(135deg, ${media.brandColor} 0%, #111827 100%)`,
-        }}
-      />
+    <button onClick={() => onOpen(media)} className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-slate-950 text-left">
+      <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${media.brandColor} 0%, #111827 100%)` }} />
       {media.thumbnailUrl ? (
         <img
           src={media.thumbnailUrl}
@@ -301,19 +287,19 @@ function MediaThumbnail({
           <MediaBadge platform={media.platform} />
         </div>
 
-        {(media.type === 'video' || media.type === 'reel' || media.type === 'shorts') && (
+        {(media.type === 'video' || media.type === 'reel' || media.type === 'shorts') ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm transition-colors group-hover:bg-white/30">
               <Play className="ml-0.5 h-5 w-5 text-white" fill="white" />
             </div>
           </div>
-        )}
+        ) : null}
 
-        {media.type === 'live' && (
+        {media.type === 'live' ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="rounded-md bg-red-500/90 px-2.5 py-1 text-[10px] font-bold text-white">LIVE</div>
           </div>
-        )}
+        ) : null}
 
         <div className="relative mt-auto">
           <p className="line-clamp-2 text-sm font-semibold text-white">{media.title}</p>
@@ -351,46 +337,46 @@ export default function InfluencerClient() {
     <div className="min-h-full bg-white">
       <MarketNav />
 
-      <div className="border-b border-gray-100 px-6 py-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">Market / Marketing</p>
-            <h1 className="mt-2 text-2xl font-bold text-gray-900">Marketing & KOL Intelligence</h1>
-            <p className="mt-2 max-w-3xl text-sm text-gray-600">
-              캠페인 벤치마크, SNS 트렌드, 글로벌 KOL 채널을 한 화면에서 비교합니다.
-            </p>
+      <div className="border-b border-slate-200 px-6 py-5">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">Market / Marketing</p>
+              <h1 className="mt-2 text-2xl font-bold text-slate-950">Marketing & KOL Intelligence</h1>
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+                캠페인 벤치마크, SNS 흐름, 글로벌 KOL 채널을 한 화면에서 비교하고 상세 링크와 미디어 미리보기를 제공합니다.
+              </p>
+            </div>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 transition hover:bg-slate-50 disabled:opacity-60"
+            >
+              <RefreshCw className={['h-4 w-4', refreshing ? 'animate-spin' : ''].join(' ')} />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </button>
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-60"
-          >
-            <RefreshCw className={['h-4 w-4', refreshing ? 'animate-spin' : ''].join(' ')} />
-            Refresh
-          </button>
-        </div>
-        <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-400">
-          <Clock className="h-3 w-3" />
-          <span>Last updated: {lastUpdated}</span>
+          <div className="flex items-center gap-1.5 text-xs text-slate-400">
+            <Clock className="h-3 w-3" />
+            <span>Last updated: {lastUpdated}</span>
+          </div>
         </div>
       </div>
 
-      <div className="border-b border-gray-100 bg-gray-50 px-6 py-3">
-        <div className="flex flex-wrap gap-2">
+      <div className="border-b border-slate-200 bg-slate-50 px-6 py-3">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap gap-2">
           {([
-            ['all', '전체 보기'],
-            ['sns', 'SNS 피드'],
-            ['kol', 'KOL 분석'],
-            ['campaign', '캠페인'],
+            ['all', 'Overview'],
+            ['sns', 'SNS Trend'],
+            ['kol', 'KOL Watch'],
+            ['campaign', 'Campaign'],
           ] as const).map(([key, label]) => (
             <button
               key={key}
               onClick={() => setActiveTab(key)}
               className={[
                 'rounded-xl px-4 py-2 text-sm font-medium transition-colors',
-                activeTab === key
-                  ? 'bg-[#002D74] text-white'
-                  : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-100',
+                activeTab === key ? 'bg-[#002D74] text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100',
               ].join(' ')}
             >
               {label}
@@ -399,29 +385,29 @@ export default function InfluencerClient() {
         </div>
       </div>
 
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-6">
-        {showSns && (
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-6">
+        {showSns ? (
           <section>
             <div className="mb-4 flex items-center gap-2">
               <Flame className="h-5 w-5 text-rose-500" />
-              <h2 className="text-base font-bold text-gray-900">SNS 트렌드 스냅샷</h2>
+              <h2 className="text-base font-bold text-slate-950">SNS trend snapshot</h2>
             </div>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               {SNS_OVERVIEW.map((item) => (
-                <div key={item.name} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                <div key={item.name} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="mb-3 flex items-center justify-between">
-                    <p className="text-sm font-semibold text-gray-900">{item.name}</p>
+                    <p className="text-sm font-semibold text-slate-900">{item.name}</p>
                     <MediaBadge platform={item.platform} />
                   </div>
                   <p className="text-2xl font-bold text-[#002D74]">{item.postsPerDay}</p>
-                  <p className="mt-0.5 text-xs text-gray-400">posts / day</p>
+                  <p className="mt-0.5 text-xs text-slate-400">posts / day</p>
                   <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-                    <div className="rounded-xl bg-gray-50 px-3 py-2">
-                      <p className="text-gray-400">Engagement</p>
-                      <p className="mt-0.5 font-semibold text-gray-800">{item.engagement}</p>
+                    <div className="rounded-xl bg-slate-50 px-3 py-2">
+                      <p className="text-slate-400">Engagement</p>
+                      <p className="mt-0.5 font-semibold text-slate-800">{item.engagement}</p>
                     </div>
-                    <div className="rounded-xl bg-gray-50 px-3 py-2">
-                      <p className="text-gray-400">Growth</p>
+                    <div className="rounded-xl bg-slate-50 px-3 py-2">
+                      <p className="text-slate-400">Growth</p>
                       <p className="mt-0.5 font-semibold text-emerald-600">{item.growth}</p>
                     </div>
                   </div>
@@ -429,28 +415,23 @@ export default function InfluencerClient() {
               ))}
             </div>
           </section>
-        )}
+        ) : null}
 
-        {showKol && (
+        {showKol ? (
           <section>
             <div className="mb-4 flex items-center gap-2">
               <Users className="h-5 w-5 text-blue-700" />
-              <h2 className="text-base font-bold text-gray-900">KOL Watch List</h2>
+              <h2 className="text-base font-bold text-slate-950">KOL watch list</h2>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               {KOLS.map((kol) => {
                 const meta = PLATFORM_META[kol.platform]
                 return (
-                  <article key={kol.handle} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                  <article key={kol.handle} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <h3 className="text-sm font-bold text-gray-900">{kol.name}</h3>
-                        <a
-                          href={kol.profileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-1 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
-                        >
+                        <h3 className="text-sm font-bold text-slate-900">{kol.name}</h3>
+                        <a href={kol.profileUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800">
                           {kol.handle}
                           <ExternalLink className="h-3 w-3" />
                         </a>
@@ -461,82 +442,80 @@ export default function InfluencerClient() {
                     </div>
 
                     <div className="mt-4 grid grid-cols-3 gap-3">
-                      <div className="rounded-xl bg-gray-50 p-3 text-center">
+                      <div className="rounded-xl bg-slate-50 p-3 text-center">
                         <p className="text-sm font-bold text-[#002D74]">{kol.followers}</p>
-                        <p className="text-[10px] text-gray-400">Followers</p>
+                        <p className="text-[10px] text-slate-400">Followers</p>
                       </div>
-                      <div className="rounded-xl bg-gray-50 p-3 text-center">
+                      <div className="rounded-xl bg-slate-50 p-3 text-center">
                         <p className="text-sm font-bold text-[#002D74]">{kol.engagement}</p>
-                        <p className="text-[10px] text-gray-400">Engagement</p>
+                        <p className="text-[10px] text-slate-400">Engagement</p>
                       </div>
-                      <div className="rounded-xl bg-gray-50 p-3 text-center">
+                      <div className="rounded-xl bg-slate-50 p-3 text-center">
                         <p className="text-sm font-bold text-[#002D74]">{kol.country}</p>
-                        <p className="text-[10px] text-gray-400">Market</p>
+                        <p className="text-[10px] text-slate-400">Market</p>
                       </div>
                     </div>
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <span className="rounded-lg bg-gray-50 px-2.5 py-1 text-xs text-gray-600">{kol.specialty}</span>
-                      <span className="rounded-lg bg-gray-50 px-2.5 py-1 text-xs text-gray-600">{kol.country}</span>
+                      <span className="rounded-lg bg-slate-50 px-2.5 py-1 text-xs text-slate-600">{kol.specialty}</span>
+                      <span className="rounded-lg bg-slate-50 px-2.5 py-1 text-xs text-slate-600">{kol.country}</span>
                     </div>
 
-                    <p className="mt-4 text-sm leading-relaxed text-gray-600">{kol.summary}</p>
+                    <p className="mt-4 text-sm leading-relaxed text-slate-600">{kol.summary}</p>
                   </article>
                 )
               })}
             </div>
           </section>
-        )}
+        ) : null}
 
-        {showCampaign && (
+        {showCampaign ? (
           <section>
             <div className="mb-4 flex items-center gap-2">
               <Film className="h-5 w-5 text-[#002D74]" />
-              <h2 className="text-base font-bold text-gray-900">Campaign Benchmark</h2>
-              <span className="text-xs text-gray-400">썸네일, 상세 링크, 영상 미리보기를 포함합니다.</span>
+              <h2 className="text-base font-bold text-slate-950">Campaign benchmark</h2>
+              <span className="text-xs text-slate-400">Thumbnail, detail link, and playable media preview are included.</span>
             </div>
 
             <div className="space-y-5">
               {CAMPAIGNS.map((campaign) => (
-                <article key={campaign.name} className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
-                  <div className="border-b border-gray-100 p-5">
+                <article key={campaign.name} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                  <div className="border-b border-slate-200 p-5">
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                       <div className="max-w-3xl">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-lg font-bold text-gray-900">{campaign.brand}</h3>
-                          <span className="rounded-full bg-[#002D74] px-3 py-1 text-xs font-semibold text-white">
-                            {campaign.name}
-                          </span>
+                          <h3 className="text-lg font-bold text-slate-900">{campaign.brand}</h3>
+                          <span className="rounded-full bg-[#002D74] px-3 py-1 text-xs font-semibold text-white">{campaign.name}</span>
                         </div>
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           {campaign.platforms.map((platform) => (
                             <MediaBadge key={platform} platform={platform} />
                           ))}
                         </div>
-                        <p className="mt-3 text-sm leading-relaxed text-gray-600">{campaign.summary}</p>
+                        <p className="mt-3 text-sm leading-relaxed text-slate-600">{campaign.summary}</p>
                         <div className="mt-3 rounded-2xl bg-blue-50 px-4 py-3">
                           <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">Why it matters</p>
-                          <p className="mt-1 text-sm text-blue-900">{campaign.insight}</p>
+                          <p className="mt-1 text-sm text-blue-950">{campaign.insight}</p>
                         </div>
                       </div>
 
                       <div className="grid shrink-0 grid-cols-3 gap-3 xl:min-w-[310px]">
-                        <div className="rounded-2xl bg-gray-50 p-3 text-center">
-                          <div className="mb-1 flex items-center justify-center gap-1 text-[11px] text-gray-400">
+                        <div className="rounded-2xl bg-slate-50 p-3 text-center">
+                          <div className="mb-1 flex items-center justify-center gap-1 text-[11px] text-slate-400">
                             <Eye className="h-3 w-3" />
                             Impressions
                           </div>
                           <p className="text-sm font-bold text-[#002D74]">{campaign.kpi.impressions}</p>
                         </div>
-                        <div className="rounded-2xl bg-gray-50 p-3 text-center">
-                          <div className="mb-1 flex items-center justify-center gap-1 text-[11px] text-gray-400">
+                        <div className="rounded-2xl bg-slate-50 p-3 text-center">
+                          <div className="mb-1 flex items-center justify-center gap-1 text-[11px] text-slate-400">
                             <Heart className="h-3 w-3" />
                             Engagement
                           </div>
                           <p className="text-sm font-bold text-[#002D74]">{campaign.kpi.engagement}</p>
                         </div>
-                        <div className="rounded-2xl bg-gray-50 p-3 text-center">
-                          <div className="mb-1 flex items-center justify-center gap-1 text-[11px] text-gray-400">
+                        <div className="rounded-2xl bg-slate-50 p-3 text-center">
+                          <div className="mb-1 flex items-center justify-center gap-1 text-[11px] text-slate-400">
                             <MessageCircle className="h-3 w-3" />
                             Sentiment
                           </div>
@@ -550,18 +529,18 @@ export default function InfluencerClient() {
                         href={campaign.detailUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
                       >
-                        캠페인 상세 보기
+                        Campaign detail
                         <ExternalLink className="h-3 w-3" />
                       </a>
                       <a
                         href={campaign.detailUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
                       >
-                        소스: {campaign.sourceLabel}
+                        Source: {campaign.sourceLabel}
                         <ExternalLink className="h-3 w-3" />
                       </a>
                     </div>
@@ -569,22 +548,22 @@ export default function InfluencerClient() {
 
                   <div className="p-5">
                     <div className="mb-3 flex items-center justify-between">
-                      <p className="text-sm font-semibold text-gray-900">Media preview</p>
-                      <p className="text-xs text-gray-400">카드를 누르면 모달 재생 또는 외부 링크로 이동합니다.</p>
+                      <p className="text-sm font-semibold text-slate-900">Media preview</p>
+                      <p className="text-xs text-slate-400">Click any card to open the modal preview or follow the detail link.</p>
                     </div>
                     <div className="grid gap-3 md:grid-cols-3">
                       {campaign.media.map((media) => (
                         <div key={`${campaign.name}-${media.title}`} className="space-y-2">
                           <MediaThumbnail media={media} onOpen={setSelectedMedia} />
                           <div className="flex items-center justify-between gap-2 px-1">
-                            <span className="text-xs text-gray-500">{media.metric}</span>
+                            <span className="text-xs text-slate-500">{media.metric}</span>
                             <a
                               href={media.detailUrl}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800"
                             >
-                              상세 링크
+                              Detail link
                               <ExternalLink className="h-3 w-3" />
                             </a>
                           </div>
@@ -596,22 +575,18 @@ export default function InfluencerClient() {
               ))}
             </div>
           </section>
-        )}
+        ) : null}
       </div>
 
       {selectedMedia ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
               <div>
-                <p className="text-sm font-bold text-gray-900">{selectedMedia.title}</p>
-                <p className="mt-0.5 text-xs text-gray-500">{selectedMedia.metric}</p>
+                <p className="text-sm font-bold text-slate-900">{selectedMedia.title}</p>
+                <p className="mt-0.5 text-xs text-slate-500">{selectedMedia.metric}</p>
               </div>
-              <button
-                onClick={() => setSelectedMedia(null)}
-                className="rounded-full border border-gray-200 p-2 text-gray-500 hover:bg-gray-50"
-                aria-label="Close preview"
-              >
+              <button onClick={() => setSelectedMedia(null)} className="rounded-full border border-slate-200 p-2 text-slate-500 hover:bg-slate-50" aria-label="Close preview">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -636,7 +611,7 @@ export default function InfluencerClient() {
                 >
                   <div className="text-center">
                     <p className="text-lg font-semibold">{selectedMedia.title}</p>
-                    <p className="mt-2 text-sm text-white/80">외부 플랫폼 상세 링크로 이동해 확인하세요.</p>
+                    <p className="mt-2 text-sm text-white/80">Open the detail link to view the original source asset.</p>
                   </div>
                 </div>
               )}
@@ -648,14 +623,11 @@ export default function InfluencerClient() {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 rounded-xl bg-[#002D74] px-4 py-2 text-sm font-medium text-white hover:bg-[#001f4f]"
                 >
-                  원본 상세 링크 열기
+                  Open source detail
                   <ExternalLink className="h-4 w-4" />
                 </a>
-                <button
-                  onClick={() => setSelectedMedia(null)}
-                  className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
-                >
-                  닫기
+                <button onClick={() => setSelectedMedia(null)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                  Close
                 </button>
               </div>
             </div>
