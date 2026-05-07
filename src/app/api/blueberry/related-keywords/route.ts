@@ -9,6 +9,8 @@ export type RelatedKeywordData = {
   monthlyPc: number | null
   monthlyMobile: number | null
   blogCount: number
+  /** DataLab 기반 30일 트렌드 비율. avg(최근30일) / avg(이전30일). 1.0 = 변화없음, >1 = 상승 */
+  trendRatio: number
 }
 
 export type RelatedKeywordMap = Record<string, RelatedKeywordData>
@@ -34,7 +36,6 @@ async function fetchBatchAdVolume(
   const message = `${timestamp}.${method}.${path}`
   const signature = createHmac('sha256', secretKey).update(message).digest('base64')
 
-  // Naver Ad API는 hintKeywords를 콤마로 구분된 복수 키워드 지원 (최대 100개)
   const hintParam = keywords.map(k => encodeURIComponent(k)).join(',')
   try {
     const res = await fetch(
@@ -92,6 +93,75 @@ async function fetchBlogCount(
   }
 }
 
+/**
+ * Naver DataLab로 최근 60일 일별 트렌드를 가져와
+ * (후반 30일 평균) / (전반 30일 평균) 의 trendRatio를 반환한다.
+ * DataLab 제한(그룹당 5개)에 맞게 5개씩 배치 처리.
+ */
+async function fetchKeywordTrends(
+  keywords: string[],
+  clientId: string,
+  clientSecret: string,
+): Promise<Record<string, number>> {
+  if (keywords.length === 0) return {}
+
+  const now = new Date()
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+  const start = new Date(end.getTime() - 59 * 24 * 60 * 60 * 1000)
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+  const trends: Record<string, number> = {}
+  const batchSize = 5
+
+  const batches: string[][] = []
+  for (let i = 0; i < keywords.length; i += batchSize) {
+    batches.push(keywords.slice(i, i + batchSize))
+  }
+
+  await Promise.all(
+    batches.map(async (batch) => {
+      try {
+        const res = await fetch('https://openapi.naver.com/v1/datalab/search', {
+          method: 'POST',
+          headers: {
+            'X-Naver-Client-Id': clientId,
+            'X-Naver-Client-Secret': clientSecret,
+            'Content-Type': 'application/json; charset=UTF-8',
+          },
+          body: JSON.stringify({
+            startDate: fmt(start),
+            endDate: fmt(end),
+            timeUnit: 'date',
+            keywordGroups: batch.map(kw => ({ groupName: kw, keywords: [kw] })),
+          }),
+          signal: AbortSignal.timeout(12000),
+        })
+        if (!res.ok) return
+
+        const json = await res.json() as {
+          results?: { title: string; data: { period: string; ratio: number }[] }[]
+        }
+
+        for (const result of json.results ?? []) {
+          const data = result.data ?? []
+          if (data.length < 2) { trends[result.title] = 1; continue }
+
+          const half = Math.floor(data.length / 2)
+          const avg = (arr: { ratio: number }[]) =>
+            arr.reduce((s, d) => s + d.ratio, 0) / arr.length
+
+          const prevAvg = avg(data.slice(0, half))
+          const recentAvg = avg(data.slice(half))
+          trends[result.title] = prevAvg > 0 ? recentAvg / prevAvg : 1
+        }
+      } catch { /* DataLab 실패 시 해당 배치 trendRatio = 1 (변화없음) */ }
+    }),
+  )
+
+  return trends
+}
+
 export async function POST(req: NextRequest) {
   const clientId = process.env.NAVER_CLIENT_ID
   const clientSecret = process.env.NAVER_CLIENT_SECRET
@@ -116,10 +186,11 @@ export async function POST(req: NextRequest) {
   const adSecretKey = process.env.NAVER_AD_SECRET_KEY?.trim()
   const hasAdApi = !!(adCustomerId && adAccessLicense && adSecretKey)
 
-  const [adVolumes, ...blogCounts] = await Promise.all([
+  const [adVolumes, trendMap, ...blogCounts] = await Promise.all([
     hasAdApi
       ? fetchBatchAdVolume(normalized, adCustomerId!, adAccessLicense!, adSecretKey!)
       : Promise.resolve({}),
+    fetchKeywordTrends(normalized, clientId, clientSecret),
     ...normalized.map(kw => fetchBlogCount(kw, clientId, clientSecret)),
   ])
 
@@ -130,6 +201,7 @@ export async function POST(req: NextRequest) {
       monthlyPc: ad?.pc ?? null,
       monthlyMobile: ad?.mobile ?? null,
       blogCount: (blogCounts[i] as number) ?? 0,
+      trendRatio: (trendMap as Record<string, number>)[kw] ?? 1,
     }
   })
 

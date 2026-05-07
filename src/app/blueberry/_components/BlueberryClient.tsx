@@ -1,13 +1,20 @@
 'use client'
 
 import { useState, useRef, useEffect, useTransition } from 'react'
+import dynamic from 'next/dynamic'
 import {
   Search, TrendingUp, FileText, MessageSquare, RefreshCw, Grape,
   Download, Monitor, Smartphone, Calendar, Plus, X, Info, Wifi, WifiOff, Copy, Check,
-  Bookmark, BookmarkCheck, Image as ImageIcon,
+  Bookmark, BookmarkCheck, Image as ImageIcon, TrendingDown,
 } from 'lucide-react'
 import { DateRangePickerInput } from '@/components/common/DatePickerInput'
 import DatalabForm from './DatalabForm'
+import type { Word } from 'react-wordcloud'
+
+const ReactWordcloud = dynamic(() => import('react-wordcloud'), {
+  ssr: false,
+  loading: () => <div className="flex h-[260px] items-center justify-center text-xs text-gray-300 animate-pulse">워드클라우드 로딩 중...</div>,
+})
 
 // ── Naver API 연관 키워드 타입 ─────────────────────────────────
 interface NaverRelatedKeyword {
@@ -100,7 +107,13 @@ type Period = '5y' | '3y' | '2y' | '1y' | '3m' | '1m'
 
 interface PlatformItem { name: string; count: number; color: string }
 interface RelatedKeyword { keyword: string; volume: number; competition: 'high' | 'mid' | 'low' }
-interface RelatedNaverData { monthlyPc: number | null; monthlyMobile: number | null; blogCount: number }
+interface RelatedNaverData {
+  monthlyPc: number | null
+  monthlyMobile: number | null
+  blogCount: number
+  /** avg(최근30일) / avg(이전30일). 1.0=변화없음, >1=상승 */
+  trendRatio: number
+}
 interface SmartBlockPost { title: string; link: string; description: string; bloggername: string; postdate: string }
 interface SmartBlockTopic { topic: string; total: number; posts: SmartBlockPost[] }
 interface KeywordData {
@@ -1054,6 +1067,39 @@ const COMP_STYLE = {
   low: 'bg-emerald-50 text-emerald-700',
 }
 const COMP_LABEL = { high: '경쟁 높음', mid: '경쟁 보통', low: '경쟁 낮음' }
+
+// ── 연관 키워드 가중치 스코어링 ───────────────────────────────────────
+// 검색량 40% + CTR 추정(검색량 / 콘텐츠 포화도) 30% + 트렌드(최근 30일) 30%
+function computeRelatedScore(
+  volume: number,
+  blogCount: number,
+  trendRatio: number,
+  maxVolume: number,
+  maxBlog: number,
+): number {
+  const volumeNorm = maxVolume > 0 ? volume / maxVolume : 0
+  const saturationNorm = maxBlog > 0 ? Math.log(blogCount + 1) / Math.log(maxBlog + 1) : 0
+  const ctrEstimate = volumeNorm * (1 - saturationNorm * 0.6)
+  // trendRatio: 0.5이하=하락, 1.0=보합, 2.0+=급상승 → 0~1 정규화
+  const trendNorm = Math.min(1, Math.max(0, (trendRatio - 0.5) / 1.5))
+  return volumeNorm * 0.4 + ctrEstimate * 0.3 + trendNorm * 0.3
+}
+
+// ── 워드클라우드 옵션 ──────────────────────────────────────────────────
+const WC_OPTIONS = {
+  colors: ['#002D74', '#1d4ed8', '#7c3aed', '#0891b2', '#059669', '#b45309'],
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Pretendard", sans-serif',
+  fontSizes: [14, 52] as [number, number],
+  fontWeight: '700',
+  deterministic: true,
+  rotations: 0,
+  rotationAngles: [0, 0] as [number, number],
+  padding: 6,
+  scale: 'sqrt' as const,
+  spiral: 'archimedean' as const,
+  enableTooltip: true,
+  transitionDuration: 800,
+}
 
 // ── CSV ──────────────────────────────────────────────────────────
 function downloadCsv(content: string, filename: string) {
@@ -2163,40 +2209,82 @@ export default function BlueberryClient() {
             </div>
 
             {(() => {
-              const allRelated = primaryData.relatedKeywords
+              const baseRelated = primaryData.relatedKeywords
+              const hasEnrichment = !relatedNaverLoading && Object.keys(relatedNaverData).length > 0
+
+              // ── 가중치 스코어로 재정렬 (relatedNaverData 로드 완료 시) ──
+              const allRelated = hasEnrichment
+                ? (() => {
+                    const maxVol = Math.max(
+                      ...baseRelated.map(k => {
+                        const nd = relatedNaverData[k.keyword.trim().normalize('NFC')]
+                        return nd ? (nd.monthlyPc ?? 0) + (nd.monthlyMobile ?? 0) : k.volume
+                      }), 1,
+                    )
+                    const maxBlog = Math.max(
+                      ...baseRelated.map(k => relatedNaverData[k.keyword.trim().normalize('NFC')]?.blogCount ?? 0), 1,
+                    )
+                    return [...baseRelated].sort((a, b) => {
+                      const nda = relatedNaverData[a.keyword.trim().normalize('NFC')]
+                      const ndb = relatedNaverData[b.keyword.trim().normalize('NFC')]
+                      const volA = nda ? (nda.monthlyPc ?? 0) + (nda.monthlyMobile ?? 0) : a.volume
+                      const volB = ndb ? (ndb.monthlyPc ?? 0) + (ndb.monthlyMobile ?? 0) : b.volume
+                      const sA = computeRelatedScore(volA, nda?.blogCount ?? 0, nda?.trendRatio ?? 1, maxVol, maxBlog)
+                      const sB = computeRelatedScore(volB, ndb?.blogCount ?? 0, ndb?.trendRatio ?? 1, maxVol, maxBlog)
+                      return sB - sA
+                    })
+                  })()
+                : baseRelated
+
               const displayed = showAllRelated ? allRelated : allRelated.slice(0, 5)
               const canExpand = allRelated.length > 5
+
+              // ── 워드클라우드용 words ───────────────────────────────
+              const wcWords: Word[] = allRelated.map(k => ({
+                text: k.keyword,
+                value: Math.max(1, k.volume),
+                competition: k.competition,
+              }))
+
               return (
                 <>
                   {relatedView === 'cloud' ? (
-                    /* ── 워드클라우드 뷰 ── */
-                    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-3 py-6 px-2 min-h-[160px]">
-                      {displayed.map((k, i) => {
-                        const maxVol = Math.max(...allRelated.map(r => r.volume), 1)
-                        const ratio = k.volume / maxVol
-                        const size = Math.round(12 + ratio * 24)
-                        const compColor = k.competition === 'high' ? '#e53e3e' : k.competition === 'mid' ? '#d97706' : '#16a34a'
-                        return (
-                          <button
-                            key={`${k.keyword}-${i}`}
-                            onClick={() => { setInput(k.keyword); startTransition(() => setKeyword(k.keyword)) }}
-                            className="rounded-lg px-2.5 py-1 font-semibold transition-transform hover:scale-110 hover:opacity-100 cursor-pointer"
-                            style={{
-                              fontSize: `${size}px`,
-                              opacity: 0.55 + ratio * 0.45,
-                              color: compColor,
-                              background: `${compColor}18`,
-                              border: `1px solid ${compColor}40`,
-                            }}
-                          >
-                            {k.keyword}
-                          </button>
-                        )
-                      })}
+                    /* ── react-wordcloud 뷰 ── */
+                    <div className="min-h-[260px] w-full">
+                      <ReactWordcloud
+                        words={wcWords}
+                        options={WC_OPTIONS}
+                        callbacks={{
+                          getWordColor: (word) => {
+                            const comp = (word as unknown as RelatedKeyword).competition
+                            return comp === 'high' ? '#dc2626' : comp === 'mid' ? '#d97706' : '#16a34a'
+                          },
+                          getWordTooltip: (word) => {
+                            const nd = relatedNaverData[word.text.trim().normalize('NFC')]
+                            const vol = nd ? (nd.monthlyPc ?? 0) + (nd.monthlyMobile ?? 0) : word.value
+                            return `${word.text} — 월 ${fmt(vol)}회`
+                          },
+                          onWordClick: (word) => {
+                            setInput(word.text)
+                            startTransition(() => setKeyword(word.text))
+                          },
+                        }}
+                      />
+                      {hasEnrichment && (
+                        <p className="mt-1 text-center text-[10px] text-gray-400">
+                          크기 = 검색량·CTR 추정 · 색상 = 경쟁도 · 클릭 시 해당 키워드 분석
+                        </p>
+                      )}
                     </div>
                   ) : (
                     /* ── 테이블 뷰 ── */
                     <div className="overflow-hidden rounded-xl border border-gray-100">
+                      {hasEnrichment && (
+                        <div className="flex items-center gap-1.5 border-b border-blue-50 bg-blue-50/60 px-4 py-2 text-[11px] text-blue-600">
+                          <TrendingUp className="h-3 w-3" />
+                          검색량·CTR 추정·트렌드(30일)로 가중치 정렬 적용됨
+                        </div>
+                      )}
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-gray-100 bg-gray-50">
@@ -2204,8 +2292,9 @@ export default function BlueberryClient() {
                             <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">추정 검색량</th>
                             {platform === 'naver' && (
                               <>
-                                <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">월간 실측 (PC+모바일)</th>
-                                <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">블로그 누적 발행량</th>
+                                <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">월간 실측</th>
+                                <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">블로그 발행량</th>
+                                <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500">30일 트렌드</th>
                               </>
                             )}
                             <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">경쟁도</th>
@@ -2218,15 +2307,27 @@ export default function BlueberryClient() {
                             const realTotal = (nd?.monthlyPc != null && nd?.monthlyMobile != null)
                               ? nd.monthlyPc + nd.monthlyMobile
                               : null
+                            const trendRatio = nd?.trendRatio ?? null
+                            const trendPct = trendRatio !== null ? Math.round((trendRatio - 1) * 100) : null
+                            const isRising = trendPct !== null && trendPct >= 10
+                            const isFalling = trendPct !== null && trendPct <= -10
                             return (
                               <tr key={`${k.keyword}-${i}`} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
                                 <td className="px-4 py-2.5 font-medium text-gray-900">
-                                  <button
-                                    className="hover:text-[#002D74] hover:underline text-left"
-                                    onClick={() => { setInput(k.keyword); startTransition(() => setKeyword(k.keyword)) }}
-                                  >
-                                    {k.keyword}
-                                  </button>
+                                  <div className="flex items-center gap-1.5">
+                                    {isRising && (
+                                      <TrendingUp className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                                    )}
+                                    {isFalling && (
+                                      <TrendingDown className="h-3.5 w-3.5 shrink-0 text-red-400" />
+                                    )}
+                                    <button
+                                      className="hover:text-[#002D74] hover:underline text-left"
+                                      onClick={() => { setInput(k.keyword); startTransition(() => setKeyword(k.keyword)) }}
+                                    >
+                                      {k.keyword}
+                                    </button>
+                                  </div>
                                 </td>
                                 <td className="px-4 py-2.5 text-right text-gray-500 text-xs">
                                   {naverLoading ? <span className="text-gray-300 animate-pulse">--</span> : fmt(scaledVol)}
@@ -2248,6 +2349,22 @@ export default function BlueberryClient() {
                                           ? fmt(nd.blogCount)
                                           : <span className="text-gray-300 text-xs">-</span>
                                       }
+                                    </td>
+                                    <td className="px-4 py-2.5 text-center">
+                                      {relatedNaverLoading ? (
+                                        <span className="text-gray-300 animate-pulse text-xs">로딩중</span>
+                                      ) : trendPct !== null ? (
+                                        <span className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                          isRising ? 'bg-emerald-50 text-emerald-600'
+                                            : isFalling ? 'bg-red-50 text-red-500'
+                                            : 'bg-gray-50 text-gray-400'
+                                        }`}>
+                                          {isRising ? '↑' : isFalling ? '↓' : '→'}
+                                          {trendPct > 0 ? '+' : ''}{trendPct}%
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-200 text-xs">-</span>
+                                      )}
                                     </td>
                                   </>
                                 )}
