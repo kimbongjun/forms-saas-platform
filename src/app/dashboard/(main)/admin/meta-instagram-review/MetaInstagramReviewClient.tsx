@@ -98,12 +98,28 @@ export default function MetaInstagramReviewClient() {
     integration_save_failed: 'DB 저장 실패 — social_integrations 테이블이 존재하는지 확인하세요.',
   }
 
+  type DiagInfo = {
+    page_count: string
+    pages: string
+    ig_field_present: string
+    scopes: string
+  }
+
   const callbackMessage = useMemo(() => {
-    if (searchParams.get('connected') === '1') return { type: 'success' as const, text: 'Meta 연결이 완료되었습니다.' }
+    if (searchParams.get('connected') === '1') return { type: 'success' as const, text: 'Meta 연결이 완료되었습니다.', hint: undefined, diag: undefined }
     const callbackError = searchParams.get('error')
     if (callbackError) {
       const hint = Object.entries(ERROR_HINTS).find(([key]) => callbackError.startsWith(key))?.[1]
-      return { type: 'error' as const, text: `Meta 연결 오류: ${callbackError}`, hint }
+      const diagPageCount = searchParams.get('diag_page_count')
+      const diag: DiagInfo | undefined = diagPageCount
+        ? {
+            page_count: diagPageCount,
+            pages: searchParams.get('diag_pages') ?? '(none)',
+            ig_field_present: searchParams.get('diag_ig_field_present') ?? 'unknown',
+            scopes: searchParams.get('diag_scopes') ?? '(none)',
+          }
+        : undefined
+      return { type: 'error' as const, text: `Meta 연결 오류: ${callbackError}`, hint, diag }
     }
     return null
   }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -186,18 +202,34 @@ export default function MetaInstagramReviewClient() {
       </div>
 
       {callbackMessage ? (
-        <div className={`flex items-start gap-2 rounded-2xl border px-4 py-3 text-sm ${
+        <div className={`rounded-2xl border px-4 py-3 text-sm ${
           callbackMessage.type === 'success'
             ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
             : 'border-rose-200 bg-rose-50 text-rose-700'
         }`}>
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          <div className="space-y-1">
-            <p>{callbackMessage.text}</p>
-            {callbackMessage.hint ? (
-              <p className="text-xs leading-relaxed opacity-80">{callbackMessage.hint}</p>
-            ) : null}
+          <div className="flex items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="space-y-1">
+              <p className="font-medium">{callbackMessage.text}</p>
+              {callbackMessage.hint ? (
+                <p className="text-xs leading-relaxed opacity-80">{callbackMessage.hint}</p>
+              ) : null}
+            </div>
           </div>
+          {callbackMessage.diag ? (
+            <div className="mt-3 rounded-xl bg-white/60 p-3 text-xs font-mono space-y-1 border border-rose-100">
+              <p className="font-semibold text-rose-800 not-italic font-sans mb-2">API 진단 정보</p>
+              <p><span className="text-rose-400">page_count:</span> {callbackMessage.diag.page_count}</p>
+              <p><span className="text-rose-400">pages:</span> {callbackMessage.diag.pages}</p>
+              <p>
+                <span className="text-rose-400">instagram_business_account 필드 존재:</span>{' '}
+                <span className={callbackMessage.diag.ig_field_present === 'true' ? 'text-amber-600' : 'text-rose-600'}>
+                  {callbackMessage.diag.ig_field_present}
+                </span>
+              </p>
+              <p><span className="text-rose-400">granted_scopes:</span> {callbackMessage.diag.scopes}</p>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

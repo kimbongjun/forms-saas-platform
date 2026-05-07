@@ -64,7 +64,21 @@ export async function GET(req: NextRequest) {
 
     const connectedPage = findPageWithInstagramAccount(pages)
     if (!connectedPage?.instagram_business_account?.id) {
-      return redirectToConsole(origin, { error: 'missing_instagram_business_account' })
+      const grantedForDiag = permissions
+        .filter((p) => p.status === 'granted')
+        .map((p) => p.permission)
+        .join(',')
+      const pageNames = pages.map((p) => p.name).join('|')
+      const hasIgField = pages.some(
+        (p) => 'instagram_business_account' in p && p.instagram_business_account !== undefined
+      )
+      return redirectToConsole(origin, {
+        error: 'missing_instagram_business_account',
+        diag_page_count: String(pages.length),
+        diag_pages: pageNames || '(none)',
+        diag_ig_field_present: String(hasIgField),
+        diag_scopes: grantedForDiag || '(none)',
+      })
     }
 
     const grantedScopes = permissions
