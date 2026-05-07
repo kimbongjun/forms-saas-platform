@@ -9,13 +9,13 @@ import {
 } from 'lucide-react'
 import MarketNav from './MarketNav'
 
-const GlobeViewer = dynamic(() => import('./GlobeViewer'), {
+const WorldMap = dynamic(() => import('./WorldMap'), {
   ssr: false,
   loading: () => (
-    <div className="flex items-center justify-center" style={{ minHeight: 480, background: 'radial-gradient(ellipse at 30% 40%, #0a1a3e 0%, #020c1e 60%, #000510 100%)' }}>
+    <div className="flex items-center justify-center" style={{ minHeight: 480, background: '#f8fafc' }}>
       <div className="text-center">
         <div className="mx-auto mb-3 h-10 w-10 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
-        <p className="text-xs text-blue-400">3D 지구본 로딩 중...</p>
+        <p className="text-xs text-blue-500">세계 지도 로딩 중...</p>
       </div>
     </div>
   ),
@@ -400,12 +400,12 @@ export default function DailyReportClient() {
 
       {/* Tab: 글로벌 시장 지도 */}
       {activeTab === 'globe' && (
-        <div className="flex-1 flex flex-col bg-slate-950">
-          <div className="border-b border-gray-800 px-6 py-3">
-            <h2 className="text-sm font-semibold text-white">글로벌 피부미용의료기기 시장 지도</h2>
+        <div className="flex-1 flex flex-col bg-gray-50">
+          <div className="border-b border-gray-100 bg-white px-6 py-3">
+            <h2 className="text-sm font-semibold" style={{ color: '#2C3E50' }}>글로벌 피부미용의료기기 시장 지도</h2>
             <p className="text-xs text-gray-400">국가/대륙별 시장 규모 · 성장률 · 주요 기기 현황</p>
           </div>
-          <GlobeViewer />
+          <WorldMap />
         </div>
       )}
 

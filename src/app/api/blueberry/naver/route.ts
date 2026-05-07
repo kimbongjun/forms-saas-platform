@@ -5,6 +5,12 @@ import { createHmac } from 'crypto'
 const CACHE = new Map<string, { data: NaverKeywordResult; ts: number }>()
 const CACHE_TTL = 60 * 60 * 1000
 
+export interface NaverRelatedKeyword {
+  keyword: string
+  monthlyPc: number
+  monthlyMobile: number
+}
+
 export interface NaverKeywordResult {
   /** 검색광고 API 실측 월간 검색량 (null = 광고 API 미설정) */
   monthlyPcQcCnt: number | null
@@ -17,6 +23,8 @@ export interface NaverKeywordResult {
     kin: number
     shop: number
   }
+  /** 함께 많이 찾는 연관 키워드 (Ad API keywordList 기반, 최대 20개) */
+  relatedKeywords: NaverRelatedKeyword[]
   fetchedAt: string
 }
 
@@ -39,7 +47,7 @@ async function fetchAdSearchVolume(
   customerId: string,
   accessLicense: string,
   secretKey: string,
-): Promise<{ pc: number; mobile: number } | null> {
+): Promise<{ pc: number; mobile: number; relatedKeywords: NaverRelatedKeyword[] } | null> {
   const timestamp = Date.now()
   const method = 'GET'
   const path = '/keywordstool'
@@ -72,24 +80,14 @@ async function fetchAdSearchVolume(
       }[]
     }
 
-    // 응답 진단 로그 — 어떤 키워드들이 반환됐는지 확인
-    console.log(
-      `[Blueberry/Naver] AdAPI response for "${keyword}":`,
-      JSON.stringify(json.keywordList?.map(k => ({
-        relKeyword: k.relKeyword,
-        pc: k.monthlyPcQcCnt,
-        mobile: k.monthlyMobileQcCnt,
-      })).slice(0, 5)),
-    )
-
     const trimmed = keyword.trim().normalize('NFC')
-    const row = json.keywordList?.find(
-      (k) => k.relKeyword.trim().normalize('NFC') === trimmed,
-    )
+    const list = json.keywordList ?? []
+
+    const row = list.find((k) => k.relKeyword.trim().normalize('NFC') === trimmed)
     if (!row) {
       console.warn(
         `[Blueberry/Naver] "${keyword}" not found. Available: [${
-          json.keywordList?.map(k => k.relKeyword).slice(0, 5).join(', ')
+          list.map(k => k.relKeyword).slice(0, 5).join(', ')
         }]`,
       )
       return null
@@ -97,8 +95,20 @@ async function fetchAdSearchVolume(
 
     const pc = parseQcCnt(row.monthlyPcQcCnt)
     const mobile = parseQcCnt(row.monthlyMobileQcCnt)
-    console.log(`[Blueberry/Naver] parsed → pc=${pc}, mobile=${mobile}`)
-    return { pc, mobile }
+
+    // keywordList 전체가 "함께 많이 찾는" 연관 키워드 — 정확 일치 항목 제외 후 상위 20개
+    const relatedKeywords: NaverRelatedKeyword[] = list
+      .filter((k) => k.relKeyword.trim().normalize('NFC') !== trimmed)
+      .map((k) => ({
+        keyword: k.relKeyword,
+        monthlyPc: parseQcCnt(k.monthlyPcQcCnt),
+        monthlyMobile: parseQcCnt(k.monthlyMobileQcCnt),
+      }))
+      .sort((a, b) => (b.monthlyPc + b.monthlyMobile) - (a.monthlyPc + a.monthlyMobile))
+      .slice(0, 20)
+
+    console.log(`[Blueberry/Naver] parsed → pc=${pc}, mobile=${mobile}, relatedKeywords=${relatedKeywords.length}`)
+    return { pc, mobile, relatedKeywords }
   } catch (e) {
     console.error('[Blueberry/Naver] AdAPI exception:', e)
     return null
@@ -175,6 +185,7 @@ export async function POST(req: NextRequest) {
       monthlyPcQcCnt: adVolume?.pc ?? null,
       monthlyMobileQcCnt: adVolume?.mobile ?? null,
       contentByPlatform: { blog, cafe, news, kin, shop },
+      relatedKeywords: adVolume?.relatedKeywords ?? [],
       fetchedAt: new Date().toISOString(),
     }
 

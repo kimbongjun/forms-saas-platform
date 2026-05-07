@@ -51,7 +51,7 @@ export const WORKSPACE_HUBS: WorkspaceHub[] = [
   {
     key: 'market',
     href: '/market',
-    label: 'Market Intelligence',
+    label: '시장조사',
     description: '글로벌 의료기기 시장 동향',
   },
 ]

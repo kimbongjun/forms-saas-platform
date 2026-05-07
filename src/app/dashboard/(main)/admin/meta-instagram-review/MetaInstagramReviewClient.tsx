@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import {
@@ -15,62 +15,7 @@ import {
   ShieldCheck,
   Unplug,
 } from 'lucide-react'
-
-type IntegrationStatus = {
-  envConfigured: boolean
-  connection: null | {
-    provider: string
-    status: string
-    facebook_user_id: string | null
-    facebook_page_id: string | null
-    facebook_page_name: string | null
-    instagram_business_account_id: string | null
-    instagram_username: string | null
-    scopes: string[] | null
-    token_expires_at: string | null
-    last_validated_at: string | null
-    created_at: string
-    updated_at: string
-  }
-}
-
-type DemoResponse = {
-  hashtag: string
-  permissions: Array<{ permission: string; status: string }>
-  pageCount: number
-  profile?: {
-    id: string
-    username?: string
-    name?: string
-    profile_picture_url?: string
-    biography?: string
-    website?: string
-    followers_count?: number
-    media_count?: number
-  }
-  recentMedia: Array<{
-    id: string
-    caption?: string
-    media_type?: string
-    media_url?: string
-    thumbnail_url?: string
-    permalink?: string
-    timestamp?: string
-    like_count?: number
-    comments_count?: number
-  }>
-  hashtagMedia: Array<{
-    id: string
-    caption?: string
-    media_type?: string
-    media_url?: string
-    thumbnail_url?: string
-    permalink?: string
-    timestamp?: string
-    like_count?: number
-    comments_count?: number
-  }>
-}
+import { useMetaDemo, useMetaDisconnect, useMetaStatus } from '@/hooks/queries/useMetaIntegration'
 
 const REVIEW_SCENARIO = [
   '1. 관리자 로그인 상태에서 Meta Review Console 화면을 연다.',
@@ -83,13 +28,16 @@ const REVIEW_SCENARIO = [
 
 export default function MetaInstagramReviewClient() {
   const searchParams = useSearchParams()
-  const [status, setStatus] = useState<IntegrationStatus | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [demoLoading, setDemoLoading] = useState(false)
-  const [disconnecting, setDisconnecting] = useState(false)
-  const [demo, setDemo] = useState<DemoResponse | null>(null)
-  const [error, setError] = useState('')
   const [hashtag, setHashtag] = useState('classys')
+
+  const { data: status, isLoading: loading, error: statusError, refetch: refetchStatus } = useMetaStatus()
+  const demoMutation = useMetaDemo(hashtag)
+  const disconnectMutation = useMetaDisconnect()
+
+  const demo = demoMutation.data ?? null
+  const demoLoading = demoMutation.isPending
+  const disconnecting = disconnectMutation.isPending
+  const error = statusError?.message ?? demoMutation.error?.message ?? disconnectMutation.error?.message ?? ''
 
   const ERROR_HINTS: Record<string, string> = {
     missing_instagram_business_account:
@@ -124,60 +72,9 @@ export default function MetaInstagramReviewClient() {
     return null
   }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function loadStatus() {
-    setLoading(true)
-    setError('')
-    try {
-      const res = await fetch('/api/integrations/meta/status', { cache: 'no-store' })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? 'Failed to load status')
-      setStatus(json)
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Failed to load status')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadStatus()
-  }, [])
-
-  async function runDemo() {
-    setDemoLoading(true)
-    setError('')
-    try {
-      const res = await fetch(`/api/integrations/meta/demo?hashtag=${encodeURIComponent(hashtag)}`, {
-        cache: 'no-store',
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? 'Failed to run demo')
-      setDemo(json)
-      await loadStatus()
-    } catch (demoError) {
-      setError(demoError instanceof Error ? demoError.message : 'Failed to run demo')
-    } finally {
-      setDemoLoading(false)
-    }
-  }
-
-  async function disconnect() {
-    setDisconnecting(true)
-    setError('')
-    try {
-      const res = await fetch('/api/integrations/meta/disconnect', {
-        method: 'POST',
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? 'Failed to disconnect')
-      setDemo(null)
-      await loadStatus()
-    } catch (disconnectError) {
-      setError(disconnectError instanceof Error ? disconnectError.message : 'Failed to disconnect')
-    } finally {
-      setDisconnecting(false)
-    }
-  }
+  function loadStatus() { void refetchStatus() }
+  function runDemo() { demoMutation.mutate() }
+  function disconnect() { disconnectMutation.mutate() }
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8">

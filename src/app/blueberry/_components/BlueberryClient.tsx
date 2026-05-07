@@ -9,12 +9,21 @@ import {
 import { DateRangePickerInput } from '@/components/common/DatePickerInput'
 import DatalabForm from './DatalabForm'
 
+// ── Naver API 연관 키워드 타입 ─────────────────────────────────
+interface NaverRelatedKeyword {
+  keyword: string
+  monthlyPc: number
+  monthlyMobile: number
+}
+
 // ── Naver API 응답 타입 (route.ts 와 동기화) ────────────────────
 interface NaverApiData {
   /** 검색광고 API 실측 월간 검색량 (null = 광고 API 미설정) */
   monthlyPcQcCnt: number | null
   monthlyMobileQcCnt: number | null
   contentByPlatform: { blog: number; cafe: number; news: number; kin: number; shop: number }
+  /** Ad API keywordList 기반 실측 연관 키워드 (최대 20개) */
+  relatedKeywords: NaverRelatedKeyword[]
   fetchedAt: string
 }
 
@@ -91,6 +100,9 @@ type Period = '5y' | '3y' | '2y' | '1y' | '3m' | '1m'
 
 interface PlatformItem { name: string; count: number; color: string }
 interface RelatedKeyword { keyword: string; volume: number; competition: 'high' | 'mid' | 'low' }
+interface RelatedNaverData { monthlyPc: number | null; monthlyMobile: number | null; blogCount: number }
+interface SmartBlockPost { title: string; link: string; description: string; bloggername: string; postdate: string }
+interface SmartBlockTopic { topic: string; total: number; posts: SmartBlockPost[] }
 interface KeywordData {
   searchVolume: number[]
   searchVolumePC: number[]
@@ -204,12 +216,20 @@ function resolveAdData(
     const searchVolumePC = hasAdVol ? scaleToMonthlyAvg(mock.searchVolumePC, apiData.monthlyPcQcCnt!) : mock.searchVolumePC
     const searchVolumeMobile = hasAdVol ? scaleToMonthlyAvg(mock.searchVolumeMobile, apiData.monthlyMobileQcCnt!) : mock.searchVolumeMobile
 
+    // 연관 키워드: Ad API 실측 keywordList 우선, 없으면 mock 스케일 폴백
+    const apiRelated = apiData.relatedKeywords ?? []
     const mockAvgSearch = mock.searchVolume.reduce((s, v) => s + v, 0) / 12
     const relKeywordScale = hasAdVol && mockAvgSearch > 0 ? totalMonthly! / mockAvgSearch : 1
-    const relatedKeywords = mock.relatedKeywords.map((k) => ({
-      ...k,
-      volume: Math.round(k.volume * relKeywordScale),
-    }))
+    const relatedKeywords: RelatedKeyword[] = apiRelated.length > 0
+      ? apiRelated.map((k) => {
+          const vol = k.monthlyPc + k.monthlyMobile
+          const competition: RelatedKeyword['competition'] = vol > (totalMonthly ?? 0) * 0.5 ? 'high' : vol > (totalMonthly ?? 0) * 0.2 ? 'mid' : 'low'
+          return { keyword: k.keyword, volume: vol, competition }
+        })
+      : mock.relatedKeywords.map((k) => ({
+          ...k,
+          volume: Math.round(k.volume * relKeywordScale),
+        }))
 
     const cp = [
       { name: '블로그', count: apiData.contentByPlatform.blog, color: '#03C75A' },
@@ -1088,6 +1108,12 @@ export default function BlueberryClient() {
   const [contentCustomEnd, setContentCustomEnd] = useState('')
   const [mentionPeriod, setMentionPeriod] = useState<Period>('1y')
   const [relatedPeriod, setRelatedPeriod] = useState<Period>('1y')
+  const [relatedView, setRelatedView] = useState<'table' | 'cloud'>('table')
+  const [relatedNaverData, setRelatedNaverData] = useState<Record<string, RelatedNaverData>>({})
+  const [relatedNaverLoading, setRelatedNaverLoading] = useState(false)
+  const [showAllRelated, setShowAllRelated] = useState(false)
+  const [smartBlockData, setSmartBlockData] = useState<SmartBlockTopic[]>([])
+  const [smartBlockLoading, setSmartBlockLoading] = useState(false)
   const [compareKeywords, setCompareKeywords] = useState<string[]>([])
   const [compareInput, setCompareInput] = useState('')
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -1149,6 +1175,64 @@ export default function BlueberryClient() {
       .catch(() => { /* 네트워크 오류 시 목업 유지 */ })
       .finally(() => setApiLoading(false))
   }, [keyword, platform])
+
+  // ── 연관 키워드 실측 데이터 (Naver) ────────────────────────────
+  // naverApiData.relatedKeywords(Ad API 실측)가 있으면 그것을 사용,
+  // 없으면(API 미설정) 빈 배열 — 배치 검색량 fetch도 실측 키워드 목록으로 실행
+  useEffect(() => {
+    if (!keyword || platform !== 'naver') {
+      setRelatedNaverData({})
+      setShowAllRelated(false)
+      return
+    }
+    // naverApiData가 로드되기 전엔 대기 (keyword 변경 시 naverApiData도 null로 초기화되므로 재실행됨)
+    if (naverApiData === null) return
+
+    const apiRelated = naverApiData.relatedKeywords ?? []
+    if (apiRelated.length === 0) {
+      setRelatedNaverData({})
+      return
+    }
+
+    setShowAllRelated(false)
+    const kws = apiRelated.map(k => k.keyword)
+    const timer = setTimeout(() => {
+      setRelatedNaverLoading(true)
+      fetch('/api/blueberry/related-keywords', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keywords: kws }),
+      })
+        .then(r => r.json())
+        .then((data: Record<string, RelatedNaverData>) => setRelatedNaverData(data))
+        .catch(() => {})
+        .finally(() => setRelatedNaverLoading(false))
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [keyword, platform, naverApiData])
+
+  // ── 스마트블록 fetch ────────────────────────────────────────
+  useEffect(() => {
+    if (!keyword || platform !== 'naver') {
+      setSmartBlockData([])
+      return
+    }
+    if (naverApiData === null) return
+
+    const apiRelated = naverApiData.relatedKeywords ?? []
+    // 상위 5개 연관 키워드를 서브 토픽으로 사용
+    const subTopics = apiRelated.slice(0, 5).map(k => k.keyword)
+    setSmartBlockLoading(true)
+    fetch('/api/blueberry/smart-block', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keyword, subTopics }),
+    })
+      .then(r => r.json())
+      .then((data: SmartBlockTopic[]) => setSmartBlockData(Array.isArray(data) ? data : []))
+      .catch(() => {})
+      .finally(() => setSmartBlockLoading(false))
+  }, [keyword, platform, naverApiData])
 
   // ── Google Trends API 호출 ───────────────────────────────────
   useEffect(() => {
@@ -2058,38 +2142,212 @@ export default function BlueberryClient() {
                 <p className="text-sm font-semibold text-gray-900">연관 키워드</p>
                 <p className="text-xs text-gray-400">&ldquo;{keyword}&rdquo; 와 함께 검색되는 키워드 · {relatedPeriodLabel}</p>
               </div>
-              <PeriodTabs value={relatedPeriod} onChange={setRelatedPeriod} />
+              <div className="flex items-center gap-2">
+                {/* 뷰 토글 */}
+                <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
+                  <button
+                    onClick={() => setRelatedView('table')}
+                    className={`px-3 py-1.5 font-medium transition-colors ${relatedView === 'table' ? 'bg-[#002D74] text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                  >
+                    테이블
+                  </button>
+                  <button
+                    onClick={() => setRelatedView('cloud')}
+                    className={`px-3 py-1.5 font-medium transition-colors ${relatedView === 'cloud' ? 'bg-[#002D74] text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                  >
+                    워드클라우드
+                  </button>
+                </div>
+                <PeriodTabs value={relatedPeriod} onChange={setRelatedPeriod} />
+              </div>
             </div>
-            <div className="overflow-hidden rounded-xl border border-gray-100">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">키워드</th>
-                    <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">검색량 ({relatedPeriodLabel})</th>
-                    <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">경쟁도</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {primaryData.relatedKeywords.map((k, i) => {
-                    const scaledVol = Math.round(k.volume * relatedMonthCount / 12)
-                    return (
-                      <tr key={`${k.keyword}-${i}`} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
-                        <td className="px-4 py-2.5 font-medium text-gray-900">{k.keyword}</td>
-                        <td className="px-4 py-2.5 text-right text-gray-600">
-                          {naverLoading ? <span className="text-gray-300 animate-pulse">--</span> : fmt(scaledVol)}
-                        </td>
-                        <td className="px-4 py-2.5 text-right">
-                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${COMP_STYLE[k.competition]}`}>
-                            {COMP_LABEL[k.competition]}
-                          </span>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+
+            {(() => {
+              const allRelated = primaryData.relatedKeywords
+              const displayed = showAllRelated ? allRelated : allRelated.slice(0, 5)
+              const canExpand = allRelated.length > 5
+              return (
+                <>
+                  {relatedView === 'cloud' ? (
+                    /* ── 워드클라우드 뷰 ── */
+                    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-3 py-6 px-2 min-h-[160px]">
+                      {displayed.map((k, i) => {
+                        const maxVol = Math.max(...allRelated.map(r => r.volume), 1)
+                        const ratio = k.volume / maxVol
+                        const size = Math.round(12 + ratio * 24)
+                        const compColor = k.competition === 'high' ? '#e53e3e' : k.competition === 'mid' ? '#d97706' : '#16a34a'
+                        return (
+                          <button
+                            key={`${k.keyword}-${i}`}
+                            onClick={() => { setInput(k.keyword); startTransition(() => setKeyword(k.keyword)) }}
+                            className="rounded-lg px-2.5 py-1 font-semibold transition-transform hover:scale-110 hover:opacity-100 cursor-pointer"
+                            style={{
+                              fontSize: `${size}px`,
+                              opacity: 0.55 + ratio * 0.45,
+                              color: compColor,
+                              background: `${compColor}18`,
+                              border: `1px solid ${compColor}40`,
+                            }}
+                          >
+                            {k.keyword}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    /* ── 테이블 뷰 ── */
+                    <div className="overflow-hidden rounded-xl border border-gray-100">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-100 bg-gray-50">
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">키워드</th>
+                            <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">추정 검색량</th>
+                            {platform === 'naver' && (
+                              <>
+                                <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">월간 실측 (PC+모바일)</th>
+                                <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">블로그 누적 발행량</th>
+                              </>
+                            )}
+                            <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">경쟁도</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {displayed.map((k, i) => {
+                            const scaledVol = Math.round(k.volume * relatedMonthCount / 12)
+                            const nd = relatedNaverData[k.keyword.trim().normalize('NFC')]
+                            const realTotal = (nd?.monthlyPc != null && nd?.monthlyMobile != null)
+                              ? nd.monthlyPc + nd.monthlyMobile
+                              : null
+                            return (
+                              <tr key={`${k.keyword}-${i}`} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                                <td className="px-4 py-2.5 font-medium text-gray-900">
+                                  <button
+                                    className="hover:text-[#002D74] hover:underline text-left"
+                                    onClick={() => { setInput(k.keyword); startTransition(() => setKeyword(k.keyword)) }}
+                                  >
+                                    {k.keyword}
+                                  </button>
+                                </td>
+                                <td className="px-4 py-2.5 text-right text-gray-500 text-xs">
+                                  {naverLoading ? <span className="text-gray-300 animate-pulse">--</span> : fmt(scaledVol)}
+                                </td>
+                                {platform === 'naver' && (
+                                  <>
+                                    <td className="px-4 py-2.5 text-right text-gray-800 font-medium">
+                                      {relatedNaverLoading
+                                        ? <span className="text-gray-300 animate-pulse text-xs">로딩중</span>
+                                        : realTotal !== null
+                                          ? <span className="text-[#002D74]">{fmt(realTotal)}</span>
+                                          : <span className="text-gray-300 text-xs">-</span>
+                                      }
+                                    </td>
+                                    <td className="px-4 py-2.5 text-right text-gray-700">
+                                      {relatedNaverLoading
+                                        ? <span className="text-gray-300 animate-pulse text-xs">로딩중</span>
+                                        : nd?.blogCount != null && nd.blogCount > 0
+                                          ? fmt(nd.blogCount)
+                                          : <span className="text-gray-300 text-xs">-</span>
+                                      }
+                                    </td>
+                                  </>
+                                )}
+                                <td className="px-4 py-2.5 text-right">
+                                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${COMP_STYLE[k.competition]}`}>
+                                    {COMP_LABEL[k.competition]}
+                                  </span>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {canExpand && (
+                    <div className="mt-3 flex justify-center">
+                      <button
+                        onClick={() => setShowAllRelated(v => !v)}
+                        className="rounded-lg border border-gray-200 px-4 py-1.5 text-xs font-medium text-gray-500 hover:border-[#002D74] hover:text-[#002D74] transition-colors"
+                      >
+                        {showAllRelated ? `접기 ↑` : `더 보기 (${allRelated.length - 5}개 더) ↓`}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </div>
+
+          {/* ── 스마트블록 인기 주제 (Naver 탭 전용) ── */}
+          {platform === 'naver' && (
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="mb-1 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#03C75A]/10 px-2.5 py-1 text-xs font-bold text-[#03C75A]">
+                  N 스마트블록
+                </span>
+                <p className="text-sm font-semibold text-gray-900">인기 주제 콘텐츠</p>
+              </div>
+              <p className="mb-4 text-xs text-gray-400 leading-relaxed">
+                &ldquo;{keyword}&rdquo; 관련 서브 주제별 블로그 인기 콘텐츠입니다. 스마트블록 인기 주제 섹션 존재는 해당 키워드가 여러 서브 주제를 내포하는 대형 키워드임을 의미합니다.
+              </p>
+
+              {smartBlockLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-24 animate-pulse rounded-xl bg-gray-100" />
+                  ))}
+                </div>
+              ) : smartBlockData.length === 0 ? (
+                <p className="py-8 text-center text-sm text-gray-400">스마트블록 데이터를 불러오지 못했습니다. Naver API 키를 확인하세요.</p>
+              ) : (
+                <div className="space-y-5">
+                  {smartBlockData.map((block) => (
+                    <div key={block.topic} className="rounded-xl border border-gray-100 overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-100">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-[#002D74]">#{block.topic}</span>
+                          <span className="text-xs text-gray-400">블로그 {fmt(block.total)}건</span>
+                        </div>
+                        <a
+                          href={`https://search.naver.com/search.naver?query=${encodeURIComponent(block.topic)}&where=blog`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-gray-400 hover:text-[#03C75A] transition-colors"
+                        >
+                          네이버에서 보기 →
+                        </a>
+                      </div>
+                      <div className="divide-y divide-gray-50">
+                        {block.posts.map((post, pi) => (
+                          <a
+                            key={pi}
+                            href={post.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors group"
+                          >
+                            <span className="mt-0.5 shrink-0 text-xs font-bold text-gray-300 w-4">{pi + 1}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 group-hover:text-[#002D74] truncate">
+                                {post.title}
+                              </p>
+                              <p className="mt-0.5 text-xs text-gray-400 line-clamp-1">{post.description}</p>
+                              <div className="mt-1 flex items-center gap-2 text-[11px] text-gray-400">
+                                <span>{post.bloggername}</span>
+                                {post.postdate && (
+                                  <span>· {post.postdate.slice(0, 4)}.{post.postdate.slice(4, 6)}.{post.postdate.slice(6, 8)}</span>
+                                )}
+                              </div>
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
       ) : (

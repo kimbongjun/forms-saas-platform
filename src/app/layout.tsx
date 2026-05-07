@@ -7,6 +7,7 @@ import {
   getResolvedSiteDescription,
   getResolvedSiteTitle,
 } from '@/utils/site-settings'
+import QueryProvider from '@/providers/QueryProvider'
 import './globals.css'
 
 const geistSans = Geist({
@@ -120,7 +121,9 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        {children}
+        <QueryProvider>
+          {children}
+        </QueryProvider>
       </body>
     </html>
   )
