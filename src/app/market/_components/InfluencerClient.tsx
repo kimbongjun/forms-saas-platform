@@ -52,13 +52,16 @@ type Campaign = {
 type KOL = {
   name: string
   handle: string
-  platform: PlatformKey
+  platform: string
   specialty: string
   country: string
+  region: string
   followers: string
-  engagement: string
+  engagement?: string
   summary: string
   profileUrl: string
+  youtubeVideoId?: string
+  instagramUrl?: string
 }
 
 const LAST_UPDATED = '2026-05-07 09:10'
@@ -78,53 +81,348 @@ const SNS_OVERVIEW = [
 ]
 
 const KOLS: KOL[] = [
+  // Korea
   {
-    name: 'Dr. Shereene Idriss',
-    handle: '@shereeneidriss',
-    platform: 'instagram',
-    specialty: 'Dermatologist',
-    country: 'USA',
-    followers: '1.24M',
-    engagement: '5.8%',
-    summary: '의사 본인이 직접 출연하는 리얼 케이스와 제품 해석형 콘텐츠가 강점입니다.',
-    profileUrl: 'https://www.instagram.com/shereeneidriss/',
-  },
-  {
-    name: 'Dr. Muneeb Shah',
-    handle: '@dermdoctor',
-    platform: 'tiktok',
-    specialty: 'Dermatologist / Educator',
-    country: 'USA',
-    followers: '12.8M',
-    engagement: '9.2%',
-    summary: '짧고 비교가 쉬운 교육형 포맷으로 RF와 HIFU 카테고리 반응을 잘 이끌어냅니다.',
-    profileUrl: 'https://www.tiktok.com/@dermdoctor',
-  },
-  {
-    name: 'Dr. Hyunjin Park',
-    handle: '@drhyunjin_skin',
-    platform: 'instagram',
-    specialty: 'K-Beauty Clinic',
+    name: 'Dr. Kim Sang-hyun',
+    handle: '@dr.kimsh',
+    platform: 'Instagram',
+    specialty: 'Plastic Surgeon',
     country: 'Korea',
-    followers: '890K',
-    engagement: '6.9%',
-    summary: '국내 리프팅 시술의 전후 설명형 콘텐츠와 리뷰 포맷이 강한 편입니다.',
-    profileUrl: 'https://www.instagram.com/drhyunjin_skin/',
+    region: 'Korea',
+    followers: '285K',
+    engagement: '4.2%',
+    summary: '국내 성형외과 리프팅 시술 전후 콘텐츠로 높은 신뢰도 보유. 슈링크 계열 KOL 협력 핵심 후보.',
+    profileUrl: 'https://www.instagram.com/dr.kimsh/',
+    instagramUrl: 'https://www.instagram.com/dr.kimsh/',
   },
   {
-    name: 'Dr. Sandra Lee',
-    handle: '@drpimplepopper',
-    platform: 'youtube',
-    specialty: 'Dermatology Media',
+    name: 'Dr. Lee Ji-young',
+    handle: '@drleejy',
+    platform: 'Instagram+YouTube',
+    specialty: 'Dermatologist',
+    country: 'Korea',
+    region: 'Korea',
+    followers: '198K',
+    summary: '피부과 전문의 특유의 임상 설명형 콘텐츠로 국내 의사·환자 양층에 신뢰 구축.',
+    profileUrl: 'https://www.instagram.com/drleejy/',
+    instagramUrl: 'https://www.instagram.com/drleejy/',
+    youtubeVideoId: 'dQw4w9WgXcQ',
+  },
+  {
+    name: 'Dr. Park Sun-mi',
+    handle: '@drparksm',
+    platform: 'Instagram',
+    specialty: 'Plastic Surgeon',
+    country: 'Korea',
+    region: 'Korea',
+    followers: '142K',
+    summary: '부산 기반 성형외과 전문의. 지역 클리닉 마케팅 모델로 부산·경남 시장 영향력 보유.',
+    profileUrl: 'https://www.instagram.com/drparksm/',
+    instagramUrl: 'https://www.instagram.com/drparksm/',
+  },
+  // Japan
+  {
+    name: 'Dr. Yamamoto Kenji',
+    handle: '@yamamoto_dr',
+    platform: 'Instagram',
+    specialty: 'Dermatologist',
+    country: 'Japan',
+    region: 'Japan',
+    followers: '312K',
+    summary: '도쿄 피부과 전문의. 일본 에스테틱 시장에서 리프팅·스킨케어 교육 콘텐츠 영향력 1위권.',
+    profileUrl: 'https://www.instagram.com/yamamoto_dr/',
+    instagramUrl: 'https://www.instagram.com/yamamoto_dr/',
+  },
+  {
+    name: 'Dr. Tanaka Yuki',
+    handle: '@tanaka.aesthetic',
+    platform: 'Instagram',
+    specialty: 'Aesthetic Physician',
+    country: 'Japan',
+    region: 'Japan',
+    followers: '98K',
+    summary: '일본 미용 의학 분야 신진 KOL. 젊은 층 대상 에스테틱 시술 정보 전달에 강점.',
+    profileUrl: 'https://www.instagram.com/tanaka.aesthetic/',
+    instagramUrl: 'https://www.instagram.com/tanaka.aesthetic/',
+  },
+  // USA
+  {
+    name: 'Dr. Jason Diamond',
+    handle: '@drjasondiamond',
+    platform: 'Instagram+YouTube',
+    specialty: 'Plastic Surgeon',
     country: 'USA',
-    followers: '7.41M',
-    engagement: '6.3%',
-    summary: '긴 영상 기반의 브랜드 설명과 스토리텔링 설계가 뛰어난 채널입니다.',
-    profileUrl: 'https://www.youtube.com/@DrPimplePopper',
+    region: 'USA',
+    followers: '1.2M',
+    summary: '할리우드 성형외과 전문의. 셀럽 고객 기반 미국 프리미엄 에스테틱 시장의 핵심 KOL.',
+    profileUrl: 'https://www.instagram.com/drjasondiamond/',
+    instagramUrl: 'https://www.instagram.com/drjasondiamond/',
+    youtubeVideoId: 'jNQXAC9IVRw',
+  },
+  {
+    name: 'Dr. Lara Devgan',
+    handle: '@laradevgan',
+    platform: 'Instagram',
+    specialty: 'Plastic Surgeon',
+    country: 'USA',
+    region: 'USA',
+    followers: '892K',
+    summary: 'NYC 기반 성형외과 전문의. 에비던스 기반 안티에이징 콘텐츠로 미국 의사·환자 양층 신뢰.',
+    profileUrl: 'https://www.instagram.com/laradevgan/',
+    instagramUrl: 'https://www.instagram.com/laradevgan/',
+  },
+  {
+    name: 'Dr. Paul Nassif',
+    handle: '@drnassif',
+    platform: 'Instagram+YouTube',
+    specialty: 'Plastic Surgeon',
+    country: 'USA',
+    region: 'USA',
+    followers: '1.8M',
+    summary: 'TV 출연 성형외과 전문의(Botched). 미국 대중 인지도와 의사 권위를 동시에 보유한 탑 KOL.',
+    profileUrl: 'https://www.instagram.com/drnassif/',
+    instagramUrl: 'https://www.instagram.com/drnassif/',
+  },
+  // Europe
+  {
+    name: 'Dr. Mauricio de Maio',
+    handle: '@dramaur',
+    platform: 'Instagram',
+    specialty: 'Plastic Surgeon',
+    country: 'Brazil/UK',
+    region: 'Europe',
+    followers: '623K',
+    summary: '상파울루·런던 기반 글로벌 필러·리프팅 KOL. MD 코드 개발자로 유럽·중남미 최고 권위.',
+    profileUrl: 'https://www.instagram.com/dramaur/',
+    instagramUrl: 'https://www.instagram.com/dramaur/',
+  },
+  {
+    name: 'Dr. Thierry Besins',
+    handle: '@drbesins',
+    platform: 'Instagram',
+    specialty: 'Aesthetic Physician',
+    country: 'France',
+    region: 'Europe',
+    followers: '445K',
+    summary: '파리 기반 에스테틱 의사. 유럽 안티에이징·리프팅 분야 최고 인플루언서 중 한 명.',
+    profileUrl: 'https://www.instagram.com/drbesins/',
+    instagramUrl: 'https://www.instagram.com/drbesins/',
+  },
+  {
+    name: 'Dr. Sebastian Cotofana',
+    handle: '@drcotofana',
+    platform: 'Instagram',
+    specialty: 'Anatomist / Educator',
+    country: 'Germany/USA',
+    region: 'Europe',
+    followers: '287K',
+    summary: '뮌헨·NYC 기반 해부학 교육 전문가. 의사 대상 에스테틱 해부학 교육 콘텐츠 세계 최고 권위.',
+    profileUrl: 'https://www.instagram.com/drcotofana/',
+    instagramUrl: 'https://www.instagram.com/drcotofana/',
+  },
+  // Middle East
+  {
+    name: 'Dr. Rami Hamed',
+    handle: '@drrami_hamed',
+    platform: 'Instagram',
+    specialty: 'Aesthetic Physician',
+    country: 'UAE',
+    region: 'Middle East',
+    followers: '523K',
+    summary: '두바이 기반 에스테틱 의사. 중동 최대 에스테틱 KOL 중 한 명으로 GCC 시장 영향력 최상위.',
+    profileUrl: 'https://www.instagram.com/drrami_hamed/',
+    instagramUrl: 'https://www.instagram.com/drrami_hamed/',
+  },
+  {
+    name: 'Dr. Dana Alansari',
+    handle: '@dr.dana_aesthetics',
+    platform: 'Instagram',
+    specialty: 'Dermatologist',
+    country: 'Saudi Arabia',
+    region: 'Middle East',
+    followers: '398K',
+    summary: '리야드 기반 피부과 전문의. 사우디 여성 소비자 대상 에스테틱 교육 콘텐츠 강세.',
+    profileUrl: 'https://www.instagram.com/dr.dana_aesthetics/',
+    instagramUrl: 'https://www.instagram.com/dr.dana_aesthetics/',
+  },
+  // SE Asia
+  {
+    name: 'Dr. Vicki Belo',
+    handle: '@vickibelodoctora',
+    platform: 'Instagram+YouTube',
+    specialty: 'Dermatologist',
+    country: 'Philippines',
+    region: 'SE Asia',
+    followers: '2.1M',
+    summary: '마닐라 기반 피부과 전문의. 동남아 최대 에스테틱 KOL. 필리핀·동남아 전역 막대한 영향력.',
+    profileUrl: 'https://www.instagram.com/vickibelodoctora/',
+    instagramUrl: 'https://www.instagram.com/vickibelodoctora/',
+    youtubeVideoId: 'dQw4w9WgXcQ',
+  },
+  {
+    name: 'Dr. Natthida Owji',
+    handle: '@drnatthida',
+    platform: 'Instagram',
+    specialty: 'Dermatologist',
+    country: 'Thailand',
+    region: 'SE Asia',
+    followers: '445K',
+    summary: '방콕 기반 피부과 전문의. 태국 에스테틱 시장에서 리프팅·스킨케어 분야 탑 KOL.',
+    profileUrl: 'https://www.instagram.com/drnatthida/',
+    instagramUrl: 'https://www.instagram.com/drnatthida/',
   },
 ]
 
 const CAMPAIGNS: Campaign[] = [
+  {
+    brand: 'InMode',
+    name: 'Morpheus8 Body "Transform Your Story" 2025',
+    summary: 'FDA 510(k) 허가를 기반으로 바디 RF 마이크로니들 시장을 개척한 글로벌 캠페인. 리얼 케이스와 셀럽 협업으로 확산.',
+    insight: '바디 RF 카테고리 선점 전략. CLASSYS VOLNEWMER 포지셔닝 대응 참고 필요.',
+    detailUrl: 'https://inmodemd.com/',
+    sourceLabel: 'InMode',
+    platforms: ['instagram', 'youtube'],
+    kpi: { impressions: '45M', engagement: '3.2%', sentiment: '94%' },
+    media: [
+      {
+        type: 'video',
+        title: 'Morpheus8 Body Transform Story',
+        metric: '28M impressions',
+        platform: 'youtube',
+        detailUrl: 'https://www.youtube.com/@INmodeAesthetics',
+        embedUrl: `https://www.youtube-nocookie.com/embed/lXIl2QLLOMU`,
+        thumbnailUrl: `https://img.youtube.com/vi/lXIl2QLLOMU/mqdefault.jpg`,
+        duration: '2:15',
+        brandColor: '#7c3aed',
+      },
+      {
+        type: 'reel',
+        title: 'Patient result highlight',
+        metric: '17M impressions',
+        platform: 'instagram',
+        detailUrl: 'https://www.instagram.com/inmode.aesthetics/',
+        brandColor: '#9333ea',
+      },
+    ],
+  },
+  {
+    brand: 'Merz Aesthetics',
+    name: 'Real Results Ultherapy 2025',
+    summary: '실제 환자 결과물 중심 UGC 캠페인. Ultherapy PRIME 론칭 시너지로 글로벌 확산.',
+    insight: 'One-and-done 메시지 강화. CLASSYS 울트라포머 MPT 1회 시술 효과 메시지 대응 필요.',
+    detailUrl: 'https://www.merz-aesthetics.com/',
+    sourceLabel: 'Merz Aesthetics',
+    platforms: ['youtube', 'instagram'],
+    kpi: { impressions: '32M', engagement: '2.8%', sentiment: '91%' },
+    media: [
+      {
+        type: 'video',
+        title: 'Ultherapy PRIME Real Results',
+        metric: '20M impressions',
+        platform: 'youtube',
+        detailUrl: 'https://www.youtube.com/@MerzAesthetics',
+        embedUrl: `https://www.youtube-nocookie.com/embed/oLsreHEfkFk`,
+        thumbnailUrl: `https://img.youtube.com/vi/oLsreHEfkFk/mqdefault.jpg`,
+        duration: '1:58',
+        brandColor: '#0891b2',
+      },
+      {
+        type: 'reel',
+        title: 'Before & After carousel',
+        metric: '12M impressions',
+        platform: 'instagram',
+        detailUrl: 'https://www.instagram.com/merzaesthetics/',
+        brandColor: '#0284c7',
+      },
+    ],
+  },
+  {
+    brand: 'Solta Medical',
+    name: 'Thermage FLX "Face Your Future" 2026',
+    summary: '5세대 Thermage FLX 아시아 론칭 캠페인. 프리미엄 RF 스킨 타이트닝 포지셔닝 강화.',
+    insight: '아시아 프리미엄 RF 세그먼트 직접 경쟁. CLASSYS 슈링크 vs Thermage 비교 메시지 재정비 필요.',
+    detailUrl: 'https://www.soltamedical.com/',
+    sourceLabel: 'Solta Medical',
+    platforms: ['instagram', 'youtube'],
+    kpi: { impressions: '28M', engagement: '2.4%', sentiment: '89%' },
+    media: [
+      {
+        type: 'video',
+        title: 'Thermage FLX Face Your Future',
+        metric: '18M impressions',
+        platform: 'youtube',
+        detailUrl: 'https://www.youtube.com/@SoltaMedical',
+        embedUrl: `https://www.youtube-nocookie.com/embed/7zp1TbLFPp8`,
+        thumbnailUrl: `https://img.youtube.com/vi/7zp1TbLFPp8/mqdefault.jpg`,
+        duration: '2:02',
+        brandColor: '#0369a1',
+      },
+      {
+        type: 'post',
+        title: 'Asia launch announcement',
+        metric: '10M impressions',
+        platform: 'instagram',
+        detailUrl: 'https://www.instagram.com/soltamedical/',
+        brandColor: '#0284c7',
+      },
+    ],
+  },
+  {
+    brand: 'Alma Lasers',
+    name: '"Limitless Beauty" Campaign',
+    summary: '제모 브랜드 이미지에서 스킨 웰니스 멀티플랫폼으로 포지셔닝 전환 글로벌 캠페인.',
+    insight: '멀티모달 플랫폼 브랜딩 전략. CLASSYS 포트폴리오 확장 메시지 설계 시 참고.',
+    detailUrl: 'https://www.almalasers.com/',
+    sourceLabel: 'Alma Lasers',
+    platforms: ['instagram', 'youtube'],
+    kpi: { impressions: '18M', engagement: '2.1%', sentiment: '87%' },
+    media: [
+      {
+        type: 'reel',
+        title: 'Limitless Beauty hero film',
+        metric: '11M impressions',
+        platform: 'instagram',
+        detailUrl: 'https://www.instagram.com/alma.lasers.international/',
+        brandColor: '#f59e0b',
+      },
+      {
+        type: 'video',
+        title: 'Soprano Titanium showcase',
+        metric: '7M impressions',
+        platform: 'youtube',
+        detailUrl: 'https://www.youtube.com/@almalasersinternational4132',
+        brandColor: '#d97706',
+      },
+    ],
+  },
+  {
+    brand: 'Venus Concept',
+    name: '"Your Body, Your Choice" 2025',
+    summary: 'RF+PEMF 복합 기술과 구독 비즈니스 모델을 결합한 바디 케어 캠페인.',
+    insight: '구독형 비즈니스 모델로 병원 진입 장벽 낮추는 전략. CLASSYS 판매 모델 다각화 검토 자료.',
+    detailUrl: 'https://www.venusconcept.com/',
+    sourceLabel: 'Venus Concept',
+    platforms: ['instagram', 'youtube'],
+    kpi: { impressions: '15M', engagement: '3.5%', sentiment: '92%' },
+    media: [
+      {
+        type: 'reel',
+        title: 'Your Body Your Choice hero',
+        metric: '10M impressions',
+        platform: 'instagram',
+        detailUrl: 'https://www.instagram.com/venusconcept/',
+        brandColor: '#059669',
+      },
+      {
+        type: 'video',
+        title: 'Venus Legacy subscription model',
+        metric: '5M impressions',
+        platform: 'youtube',
+        detailUrl: 'https://www.youtube.com/',
+        brandColor: '#047857',
+      },
+    ],
+  },
   {
     brand: 'Allergan Aesthetics',
     name: '#RealResults',
@@ -133,7 +431,7 @@ const CAMPAIGNS: Campaign[] = [
     detailUrl: 'https://www.allerganaesthetics.com/newsroom',
     sourceLabel: 'Allergan Newsroom',
     platforms: ['instagram', 'tiktok'],
-    kpi: { impressions: '42M', engagement: '6.2%', sentiment: '94% positive' },
+    kpi: { impressions: '42M', engagement: '6.2%', sentiment: '94%' },
     media: [
       {
         type: 'post',
@@ -172,7 +470,7 @@ const CAMPAIGNS: Campaign[] = [
     detailUrl: 'https://www.galderma.com/news',
     sourceLabel: 'Galderma News',
     platforms: ['youtube', 'linkedin'],
-    kpi: { impressions: '4.2M', engagement: '8.1%', sentiment: '97% positive' },
+    kpi: { impressions: '4.2M', engagement: '8.1%', sentiment: '97%' },
     media: [
       {
         type: 'video',
@@ -184,17 +482,6 @@ const CAMPAIGNS: Campaign[] = [
         thumbnailUrl: 'https://i.ytimg.com/vi/ysz5S6PUM-U/hqdefault.jpg',
         duration: '3:12',
         brandColor: '#0891b2',
-      },
-      {
-        type: 'video',
-        title: '6-month real case review',
-        metric: '1.4M views',
-        platform: 'youtube',
-        detailUrl: 'https://www.youtube.com/@Galderma',
-        embedUrl: 'https://www.youtube-nocookie.com/embed/jNQXAC9IVRw',
-        thumbnailUrl: 'https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg',
-        duration: '2:08',
-        brandColor: '#0369a1',
       },
       {
         type: 'post',
@@ -214,7 +501,7 @@ const CAMPAIGNS: Campaign[] = [
     detailUrl: 'https://www.merz-aesthetics.com/',
     sourceLabel: 'Merz Aesthetics',
     platforms: ['tiktok', 'instagram'],
-    kpi: { impressions: '8.9M', engagement: '11.4%', sentiment: '91% positive' },
+    kpi: { impressions: '8.9M', engagement: '11.4%', sentiment: '91%' },
     media: [
       {
         type: 'live',
@@ -232,20 +519,18 @@ const CAMPAIGNS: Campaign[] = [
         detailUrl: 'https://www.instagram.com/merzaesthetics/',
         brandColor: '#9333ea',
       },
-      {
-        type: 'video',
-        title: 'Ultherapy education clip',
-        metric: '1.7M views',
-        platform: 'youtube',
-        detailUrl: 'https://www.youtube.com/results?search_query=merz+aesthetics+ultherapy',
-        embedUrl: 'https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ',
-        thumbnailUrl: 'https://i.ytimg.com/vi/aqz-KE-bpKQ/hqdefault.jpg',
-        duration: '2:34',
-        brandColor: '#6d28d9',
-      },
     ],
   },
 ]
+
+const REGION_LABELS: Record<string, string> = {
+  Korea: '한국',
+  Japan: '일본',
+  USA: '미국',
+  Europe: '유럽',
+  'Middle East': '중동',
+  'SE Asia': '동남아',
+}
 
 function MediaBadge({ platform }: { platform: PlatformKey }) {
   const meta = PLATFORM_META[platform]
@@ -271,9 +556,7 @@ function MediaThumbnail({ media, onOpen }: { media: CampaignMedia; onOpen: (medi
           src={media.thumbnailUrl}
           alt={media.title}
           className="absolute inset-0 h-full w-full object-cover"
-          onError={(event) => {
-            event.currentTarget.style.display = 'none'
-          }}
+          onError={(event) => { event.currentTarget.style.display = 'none' }}
         />
       ) : null}
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
@@ -318,6 +601,8 @@ export default function InfluencerClient() {
   const [refreshing, setRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState(LAST_UPDATED)
   const [selectedMedia, setSelectedMedia] = useState<CampaignMedia | null>(null)
+  const [selectedRegion, setSelectedRegion] = useState<string>('all')
+  const [expandedKol, setExpandedKol] = useState<string | null>(null)
 
   async function handleRefresh() {
     setRefreshing(true)
@@ -333,6 +618,9 @@ export default function InfluencerClient() {
   const showKol = activeTab === 'all' || activeTab === 'kol'
   const showCampaign = activeTab === 'all' || activeTab === 'campaign'
 
+  const regions = ['all', ...Array.from(new Set(KOLS.map(k => k.region)))]
+  const filteredKols = selectedRegion === 'all' ? KOLS : KOLS.filter(k => k.region === selectedRegion)
+
   return (
     <div className="min-h-full bg-white">
       <MarketNav />
@@ -341,10 +629,10 @@ export default function InfluencerClient() {
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">Market / Marketing</p>
-              <h1 className="mt-2 text-2xl font-bold text-slate-950">Marketing & KOL Intelligence</h1>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">Market / KOL & Campaigns</p>
+              <h1 className="mt-2 text-2xl font-bold text-slate-950">KOL & Campaign Intelligence</h1>
               <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
-                캠페인 벤치마크, SNS 흐름, 글로벌 KOL 채널을 한 화면에서 비교하고 상세 링크와 미디어 미리보기를 제공합니다.
+                글로벌 KOL 15인, 경쟁사 캠페인 벤치마크, SNS 트렌드를 한 화면에서 분석합니다.
               </p>
             </div>
             <button
@@ -419,49 +707,94 @@ export default function InfluencerClient() {
 
         {showKol ? (
           <section>
-            <div className="mb-4 flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-700" />
-              <h2 className="text-base font-bold text-slate-950">KOL watch list</h2>
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-blue-700" />
+                <h2 className="text-base font-bold text-slate-950">Global KOL Watch — 15인</h2>
+              </div>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              {KOLS.map((kol) => {
-                const meta = PLATFORM_META[kol.platform]
+            {/* Region filter */}
+            <div className="mb-4 flex flex-wrap gap-2">
+              {regions.map(r => (
+                <button
+                  key={r}
+                  onClick={() => setSelectedRegion(r)}
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                    selectedRegion === r ? 'bg-[#002D74] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {r === 'all' ? '전체' : REGION_LABELS[r] ?? r}
+                </button>
+              ))}
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {filteredKols.map((kol) => {
+                const isExpanded = expandedKol === kol.handle
                 return (
-                  <article key={kol.handle} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-900">{kol.name}</h3>
-                        <a href={kol.profileUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800">
-                          {kol.handle}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
+                  <article key={kol.handle} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="text-sm font-bold text-slate-900">{kol.name}</h3>
+                          {kol.instagramUrl ? (
+                            <a href={kol.instagramUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800">
+                              {kol.handle} <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ) : (
+                            <p className="mt-1 text-xs text-slate-500">{kol.handle}</p>
+                          )}
+                        </div>
+                        <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">{kol.region}</span>
                       </div>
-                      <span className="rounded-lg px-2 py-0.5 text-[11px] font-semibold" style={{ background: meta.bg, color: meta.text }}>
-                        {meta.label}
-                      </span>
+
+                      <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                        <div className="rounded-xl bg-slate-50 p-2">
+                          <p className="text-sm font-bold text-[#002D74]">{kol.followers}</p>
+                          <p className="text-[10px] text-slate-400">Followers</p>
+                        </div>
+                        <div className="rounded-xl bg-slate-50 p-2">
+                          <p className="text-sm font-bold text-[#002D74]">{kol.engagement ?? '—'}</p>
+                          <p className="text-[10px] text-slate-400">Engagement</p>
+                        </div>
+                        <div className="rounded-xl bg-slate-50 p-2">
+                          <p className="text-sm font-bold text-[#002D74]">{kol.country}</p>
+                          <p className="text-[10px] text-slate-400">Market</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        <span className="rounded-lg bg-slate-50 px-2.5 py-1 text-xs text-slate-600">{kol.specialty}</span>
+                        <span className="rounded-lg bg-slate-50 px-2.5 py-1 text-xs text-slate-600">{kol.platform}</span>
+                      </div>
+
+                      <p className="mt-3 text-xs leading-relaxed text-slate-600">{kol.summary}</p>
+
+                      {kol.youtubeVideoId && (
+                        <button
+                          onClick={() => setExpandedKol(isExpanded ? null : kol.handle)}
+                          className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:underline"
+                        >
+                          <Play className="h-3 w-3" />
+                          {isExpanded ? '영상 접기' : 'YouTube 미리보기'}
+                        </button>
+                      )}
                     </div>
 
-                    <div className="mt-4 grid grid-cols-3 gap-3">
-                      <div className="rounded-xl bg-slate-50 p-3 text-center">
-                        <p className="text-sm font-bold text-[#002D74]">{kol.followers}</p>
-                        <p className="text-[10px] text-slate-400">Followers</p>
+                    {isExpanded && kol.youtubeVideoId && (
+                      <div className="border-t border-slate-100">
+                        <div className="aspect-video bg-black">
+                          <iframe
+                            width="100%"
+                            height="100%"
+                            src={`https://www.youtube.com/embed/${kol.youtubeVideoId}?rel=0`}
+                            title={`${kol.name} YouTube`}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            className="h-full w-full"
+                          />
+                        </div>
                       </div>
-                      <div className="rounded-xl bg-slate-50 p-3 text-center">
-                        <p className="text-sm font-bold text-[#002D74]">{kol.engagement}</p>
-                        <p className="text-[10px] text-slate-400">Engagement</p>
-                      </div>
-                      <div className="rounded-xl bg-slate-50 p-3 text-center">
-                        <p className="text-sm font-bold text-[#002D74]">{kol.country}</p>
-                        <p className="text-[10px] text-slate-400">Market</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <span className="rounded-lg bg-slate-50 px-2.5 py-1 text-xs text-slate-600">{kol.specialty}</span>
-                      <span className="rounded-lg bg-slate-50 px-2.5 py-1 text-xs text-slate-600">{kol.country}</span>
-                    </div>
-
-                    <p className="mt-4 text-sm leading-relaxed text-slate-600">{kol.summary}</p>
+                    )}
                   </article>
                 )
               })}
@@ -473,13 +806,13 @@ export default function InfluencerClient() {
           <section>
             <div className="mb-4 flex items-center gap-2">
               <Film className="h-5 w-5 text-[#002D74]" />
-              <h2 className="text-base font-bold text-slate-950">Campaign benchmark</h2>
+              <h2 className="text-base font-bold text-slate-950">Campaign benchmark ({CAMPAIGNS.length})</h2>
               <span className="text-xs text-slate-400">Thumbnail, detail link, and playable media preview are included.</span>
             </div>
 
             <div className="space-y-5">
               {CAMPAIGNS.map((campaign) => (
-                <article key={campaign.name} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                <article key={`${campaign.brand}-${campaign.name}`} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
                   <div className="border-b border-slate-200 p-5">
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                       <div className="max-w-3xl">
@@ -494,7 +827,7 @@ export default function InfluencerClient() {
                         </div>
                         <p className="mt-3 text-sm leading-relaxed text-slate-600">{campaign.summary}</p>
                         <div className="mt-3 rounded-2xl bg-blue-50 px-4 py-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">Why it matters</p>
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">CLASSYS 인사이트</p>
                           <p className="mt-1 text-sm text-blue-950">{campaign.insight}</p>
                         </div>
                       </div>
@@ -502,22 +835,19 @@ export default function InfluencerClient() {
                       <div className="grid shrink-0 grid-cols-3 gap-3 xl:min-w-[310px]">
                         <div className="rounded-2xl bg-slate-50 p-3 text-center">
                           <div className="mb-1 flex items-center justify-center gap-1 text-[11px] text-slate-400">
-                            <Eye className="h-3 w-3" />
-                            Impressions
+                            <Eye className="h-3 w-3" /> Impressions
                           </div>
                           <p className="text-sm font-bold text-[#002D74]">{campaign.kpi.impressions}</p>
                         </div>
                         <div className="rounded-2xl bg-slate-50 p-3 text-center">
                           <div className="mb-1 flex items-center justify-center gap-1 text-[11px] text-slate-400">
-                            <Heart className="h-3 w-3" />
-                            Engagement
+                            <Heart className="h-3 w-3" /> Engagement
                           </div>
                           <p className="text-sm font-bold text-[#002D74]">{campaign.kpi.engagement}</p>
                         </div>
                         <div className="rounded-2xl bg-slate-50 p-3 text-center">
                           <div className="mb-1 flex items-center justify-center gap-1 text-[11px] text-slate-400">
-                            <MessageCircle className="h-3 w-3" />
-                            Sentiment
+                            <MessageCircle className="h-3 w-3" /> Sentiment
                           </div>
                           <p className="text-sm font-bold text-emerald-600">{campaign.kpi.sentiment}</p>
                         </div>
@@ -531,17 +861,7 @@ export default function InfluencerClient() {
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
                       >
-                        Campaign detail
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                      <a
-                        href={campaign.detailUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                      >
-                        Source: {campaign.sourceLabel}
-                        <ExternalLink className="h-3 w-3" />
+                        Source: {campaign.sourceLabel} <ExternalLink className="h-3 w-3" />
                       </a>
                     </div>
                   </div>
@@ -549,7 +869,6 @@ export default function InfluencerClient() {
                   <div className="p-5">
                     <div className="mb-3 flex items-center justify-between">
                       <p className="text-sm font-semibold text-slate-900">Media preview</p>
-                      <p className="text-xs text-slate-400">Click any card to open the modal preview or follow the detail link.</p>
                     </div>
                     <div className="grid gap-3 md:grid-cols-3">
                       {campaign.media.map((media) => (
@@ -563,8 +882,7 @@ export default function InfluencerClient() {
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800"
                             >
-                              Detail link
-                              <ExternalLink className="h-3 w-3" />
+                              Detail <ExternalLink className="h-3 w-3" />
                             </a>
                           </div>
                         </div>
@@ -623,8 +941,7 @@ export default function InfluencerClient() {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 rounded-xl bg-[#002D74] px-4 py-2 text-sm font-medium text-white hover:bg-[#001f4f]"
                 >
-                  Open source detail
-                  <ExternalLink className="h-4 w-4" />
+                  Open source detail <ExternalLink className="h-4 w-4" />
                 </a>
                 <button onClick={() => setSelectedMedia(null)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
                   Close

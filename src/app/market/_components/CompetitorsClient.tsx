@@ -43,7 +43,10 @@ type Competitor = {
     trainingStrength: number
     innovationSpeed: number
     socialPresence: number
+    clinicalEvidence: number
+    digitalMarketing: number
   }
+  deviceTimeline?: { year: number; devices: string[] }[]
 }
 
 const SEGMENT_LABELS: Record<Segment, string> = {
@@ -108,12 +111,18 @@ const COMPETITORS: Competitor[] = [
       { name: '싱가포르·UAE 선도 피부과 KOL', type: 'kol', description: '아시아·중동 핵심 시장 KOL 파트너십, 울트라포머 임상 데이터 공동 발표.', platform: '학회/YouTube' },
     ],
     social: {
-      youtubeChannelUrl: 'https://www.youtube.com/@classys_kr',
-      instagramHandle: '@classys_kr',
-      instagramUrl: 'https://www.instagram.com/classys_kr/',
+      youtubeChannelUrl: 'https://www.youtube.com/@classys_official',
+      youtubeVideoId: 'VkfVOFKX5q4',
+      instagramHandle: '@classys_official',
+      instagramUrl: 'https://www.instagram.com/classys_official/',
       websiteUrl: 'https://www.classys.com/',
     },
-    benchmark: { portfolioBreadth: 82, premiumPower: 90, globalScale: 84, trainingStrength: 87, innovationSpeed: 88, socialPresence: 80 },
+    benchmark: { portfolioBreadth: 82, premiumPower: 90, globalScale: 84, trainingStrength: 87, innovationSpeed: 88, socialPresence: 80, clinicalEvidence: 85, digitalMarketing: 78 },
+    deviceTimeline: [
+      { year: 2023, devices: ['Shurink Universe'] },
+      { year: 2024, devices: ['Ultraformer MPT', 'VOLNEWMER'] },
+      { year: 2025, devices: ['Shurink Universe Pro (예정)'] },
+    ],
   },
   {
     id: 'merz',
@@ -153,12 +162,17 @@ const COMPETITORS: Competitor[] = [
     ],
     social: {
       youtubeChannelUrl: 'https://www.youtube.com/@MerzAesthetics',
-      youtubeVideoId: 'X1lg5tS9W9o',
+      youtubeVideoId: 'oLsreHEfkFk',
       instagramHandle: '@merzaesthetics',
       instagramUrl: 'https://www.instagram.com/merzaesthetics/',
       websiteUrl: 'https://www.merz-aesthetics.com/',
     },
-    benchmark: { portfolioBreadth: 88, premiumPower: 95, globalScale: 92, trainingStrength: 93, innovationSpeed: 85, socialPresence: 82 },
+    benchmark: { portfolioBreadth: 88, premiumPower: 95, globalScale: 92, trainingStrength: 93, innovationSpeed: 85, socialPresence: 82, clinicalEvidence: 90, digitalMarketing: 86 },
+    deviceTimeline: [
+      { year: 2023, devices: ['Xeomin Plus', 'Belotero Revive'] },
+      { year: 2024, devices: ['Ultherapy PRIME'] },
+      { year: 2026, devices: ['Ultherapy PRIME 2nd Gen (예정)'] },
+    ],
   },
   {
     id: 'solta',
@@ -195,11 +209,17 @@ const COMPETITORS: Competitor[] = [
     ],
     social: {
       youtubeChannelUrl: 'https://www.youtube.com/@SoltaMedical',
+      youtubeVideoId: '7zp1TbLFPp8',
       instagramHandle: '@soltamedical',
       instagramUrl: 'https://www.instagram.com/soltamedical/',
       websiteUrl: 'https://www.soltamedical.com/',
     },
-    benchmark: { portfolioBreadth: 90, premiumPower: 92, globalScale: 90, trainingStrength: 87, innovationSpeed: 80, socialPresence: 78 },
+    benchmark: { portfolioBreadth: 90, premiumPower: 92, globalScale: 90, trainingStrength: 87, innovationSpeed: 80, socialPresence: 78, clinicalEvidence: 88, digitalMarketing: 80 },
+    deviceTimeline: [
+      { year: 2023, devices: ['Clear + Brilliant Touch'] },
+      { year: 2024, devices: ['Thermage FLX 5th Gen'] },
+      { year: 2026, devices: ['Thermage FLX 아시아 론칭'] },
+    ],
   },
   {
     id: 'inmode',
@@ -238,13 +258,17 @@ const COMPETITORS: Competitor[] = [
       { name: 'Dr. Jason Diamond', type: 'kol', description: '할리우드 성형외과 전문의, InMode 글로벌 교육 이사.', platform: 'Instagram/YouTube' },
     ],
     social: {
-      youtubeChannelUrl: 'https://www.youtube.com/@InModeMD',
-      youtubeVideoId: 'iz6myiMzRsM',
-      instagramHandle: '@inmodeaesthetics',
-      instagramUrl: 'https://www.instagram.com/inmodeaesthetics/',
+      youtubeChannelUrl: 'https://www.youtube.com/@INmodeAesthetics',
+      youtubeVideoId: 'lXIl2QLLOMU',
+      instagramHandle: '@inmode.aesthetics',
+      instagramUrl: 'https://www.instagram.com/inmode.aesthetics/',
       websiteUrl: 'https://inmodemd.com/',
     },
-    benchmark: { portfolioBreadth: 85, premiumPower: 84, globalScale: 86, trainingStrength: 79, innovationSpeed: 90, socialPresence: 95 },
+    benchmark: { portfolioBreadth: 85, premiumPower: 84, globalScale: 86, trainingStrength: 79, innovationSpeed: 90, socialPresence: 95, clinicalEvidence: 80, digitalMarketing: 93 },
+    deviceTimeline: [
+      { year: 2023, devices: ['EvolveX', 'Morpheus8 Launch Global'] },
+      { year: 2024, devices: ['Morpheus8 Body', 'Optimus'] },
+    ],
   },
   {
     id: 'cynosure',
@@ -283,7 +307,7 @@ const COMPETITORS: Competitor[] = [
       instagramUrl: 'https://www.instagram.com/cynosurelasers/',
       websiteUrl: 'https://cynosurelutronic.com/',
     },
-    benchmark: { portfolioBreadth: 89, premiumPower: 83, globalScale: 88, trainingStrength: 82, innovationSpeed: 78, socialPresence: 75 },
+    benchmark: { portfolioBreadth: 89, premiumPower: 83, globalScale: 88, trainingStrength: 82, innovationSpeed: 78, socialPresence: 75, clinicalEvidence: 82, digitalMarketing: 76 },
   },
   {
     id: 'lutronic',
@@ -324,7 +348,7 @@ const COMPETITORS: Competitor[] = [
       instagramUrl: 'https://www.instagram.com/lutronic.korea/',
       websiteUrl: 'https://www.lutronic.com/',
     },
-    benchmark: { portfolioBreadth: 86, premiumPower: 79, globalScale: 82, trainingStrength: 84, innovationSpeed: 80, socialPresence: 68 },
+    benchmark: { portfolioBreadth: 86, premiumPower: 79, globalScale: 82, trainingStrength: 84, innovationSpeed: 80, socialPresence: 68, clinicalEvidence: 82, digitalMarketing: 70 },
   },
   {
     id: 'jeisys',
@@ -365,7 +389,7 @@ const COMPETITORS: Competitor[] = [
       instagramUrl: 'https://www.instagram.com/jeisysmedical/',
       websiteUrl: 'https://www.jeisys.com/eng/',
     },
-    benchmark: { portfolioBreadth: 78, premiumPower: 76, globalScale: 74, trainingStrength: 77, innovationSpeed: 82, socialPresence: 65 },
+    benchmark: { portfolioBreadth: 78, premiumPower: 76, globalScale: 74, trainingStrength: 77, innovationSpeed: 82, socialPresence: 65, clinicalEvidence: 75, digitalMarketing: 68 },
   },
   {
     id: 'wontech',
@@ -403,7 +427,7 @@ const COMPETITORS: Competitor[] = [
       instagramUrl: 'https://www.instagram.com/wontech_laser/',
       websiteUrl: 'https://wontech.co.kr/en/',
     },
-    benchmark: { portfolioBreadth: 74, premiumPower: 69, globalScale: 70, trainingStrength: 68, innovationSpeed: 75, socialPresence: 58 },
+    benchmark: { portfolioBreadth: 74, premiumPower: 69, globalScale: 70, trainingStrength: 68, innovationSpeed: 75, socialPresence: 58, clinicalEvidence: 66, digitalMarketing: 60 },
   },
   {
     id: 'candela',
@@ -442,7 +466,7 @@ const COMPETITORS: Competitor[] = [
       instagramUrl: 'https://www.instagram.com/candelamedical/',
       websiteUrl: 'https://candelamedical.com/',
     },
-    benchmark: { portfolioBreadth: 87, premiumPower: 88, globalScale: 90, trainingStrength: 85, innovationSpeed: 76, socialPresence: 72 },
+    benchmark: { portfolioBreadth: 87, premiumPower: 88, globalScale: 90, trainingStrength: 85, innovationSpeed: 76, socialPresence: 72, clinicalEvidence: 86, digitalMarketing: 74 },
   },
   // ── 국내 추가 경쟁사 ────────────────────────────────────────────
   {
@@ -483,7 +507,7 @@ const COMPETITORS: Competitor[] = [
       instagramUrl: 'https://www.instagram.com/asterasys_medical/',
       websiteUrl: 'https://www.asterasys.com/',
     },
-    benchmark: { portfolioBreadth: 66, premiumPower: 70, globalScale: 65, trainingStrength: 72, innovationSpeed: 74, socialPresence: 60 },
+    benchmark: { portfolioBreadth: 66, premiumPower: 70, globalScale: 65, trainingStrength: 72, innovationSpeed: 74, socialPresence: 60, clinicalEvidence: 64, digitalMarketing: 58 },
   },
   {
     id: 'tentech',
@@ -520,7 +544,7 @@ const COMPETITORS: Competitor[] = [
       instagramUrl: 'https://www.instagram.com/tentech.kr/',
       websiteUrl: 'https://www.tentech.co.kr/',
     },
-    benchmark: { portfolioBreadth: 58, premiumPower: 65, globalScale: 55, trainingStrength: 66, innovationSpeed: 70, socialPresence: 52 },
+    benchmark: { portfolioBreadth: 58, premiumPower: 65, globalScale: 55, trainingStrength: 66, innovationSpeed: 70, socialPresence: 52, clinicalEvidence: 55, digitalMarketing: 50 },
   },
   {
     id: 'viol',
@@ -560,7 +584,7 @@ const COMPETITORS: Competitor[] = [
       instagramUrl: 'https://www.instagram.com/viol.official/',
       websiteUrl: 'https://www.viol.co.kr/',
     },
-    benchmark: { portfolioBreadth: 60, premiumPower: 72, globalScale: 62, trainingStrength: 70, innovationSpeed: 78, socialPresence: 62 },
+    benchmark: { portfolioBreadth: 60, premiumPower: 72, globalScale: 62, trainingStrength: 70, innovationSpeed: 78, socialPresence: 62, clinicalEvidence: 72, digitalMarketing: 60 },
   },
   {
     id: 'pharmaresearch',
@@ -601,7 +625,7 @@ const COMPETITORS: Competitor[] = [
       instagramUrl: 'https://www.instagram.com/rejuran.global.official/',
       websiteUrl: 'https://www.pharmaresearch.co.kr/',
     },
-    benchmark: { portfolioBreadth: 62, premiumPower: 84, globalScale: 76, trainingStrength: 74, innovationSpeed: 80, socialPresence: 72 },
+    benchmark: { portfolioBreadth: 62, premiumPower: 84, globalScale: 76, trainingStrength: 74, innovationSpeed: 80, socialPresence: 72, clinicalEvidence: 82, digitalMarketing: 70 },
   },
   {
     id: 'vaim',
@@ -637,7 +661,7 @@ const COMPETITORS: Competitor[] = [
       instagramUrl: 'https://www.instagram.com/vaim_medical/',
       websiteUrl: 'https://www.vaim.co.kr/',
     },
-    benchmark: { portfolioBreadth: 55, premiumPower: 64, globalScale: 48, trainingStrength: 60, innovationSpeed: 68, socialPresence: 52 },
+    benchmark: { portfolioBreadth: 55, premiumPower: 64, globalScale: 48, trainingStrength: 60, innovationSpeed: 68, socialPresence: 52, clinicalEvidence: 50, digitalMarketing: 48 },
   },
   // ── 해외 추가 경쟁사 ────────────────────────────────────────────
   {
@@ -680,7 +704,12 @@ const COMPETITORS: Competitor[] = [
       instagramUrl: 'https://www.instagram.com/alma.lasers.international/',
       websiteUrl: 'https://www.almalasers.com/',
     },
-    benchmark: { portfolioBreadth: 91, premiumPower: 83, globalScale: 89, trainingStrength: 82, innovationSpeed: 83, socialPresence: 74 },
+    benchmark: { portfolioBreadth: 91, premiumPower: 83, globalScale: 89, trainingStrength: 82, innovationSpeed: 83, socialPresence: 74, clinicalEvidence: 80, digitalMarketing: 76 },
+    deviceTimeline: [
+      { year: 2022, devices: ['Accent Prime'] },
+      { year: 2023, devices: ['Opus Plasma'] },
+      { year: 2024, devices: ['Soprano Titanium'] },
+    ],
   },
   {
     id: 'cutera',
@@ -721,11 +750,16 @@ const COMPETITORS: Competitor[] = [
       instagramUrl: 'https://www.instagram.com/cuterainc/',
       websiteUrl: 'https://cutera.com/',
     },
-    benchmark: { portfolioBreadth: 82, premiumPower: 78, globalScale: 76, trainingStrength: 74, innovationSpeed: 84, socialPresence: 70 },
+    benchmark: { portfolioBreadth: 82, premiumPower: 78, globalScale: 76, trainingStrength: 74, innovationSpeed: 84, socialPresence: 70, clinicalEvidence: 78, digitalMarketing: 72 },
+    deviceTimeline: [
+      { year: 2022, devices: ['AviClear'] },
+      { year: 2023, devices: ['enlighten SR'] },
+      { year: 2024, devices: ['truSculpt iD 2024'] },
+    ],
   },
 ]
 
-type Tab = 'overview' | 'marketing' | 'social' | 'events'
+type Tab = 'overview' | 'marketing' | 'social' | 'events' | 'timeline'
 
 const BENCHMARK_LABELS: Record<keyof Competitor['benchmark'], string> = {
   portfolioBreadth: '포트폴리오',
@@ -734,6 +768,8 @@ const BENCHMARK_LABELS: Record<keyof Competitor['benchmark'], string> = {
   trainingStrength: '교육 역량',
   innovationSpeed: '혁신 속도',
   socialPresence: '소셜 존재감',
+  clinicalEvidence: '임상 근거',
+  digitalMarketing: '디지털 마케팅',
 }
 
 const BENCHMARK_COLORS: Record<keyof Competitor['benchmark'], string> = {
@@ -743,6 +779,8 @@ const BENCHMARK_COLORS: Record<keyof Competitor['benchmark'], string> = {
   trainingStrength: '#059669',
   innovationSpeed: '#f59e0b',
   socialPresence: '#ec4899',
+  clinicalEvidence: '#0d9488',
+  digitalMarketing: '#f97316',
 }
 
 export default function CompetitorsClient() {
@@ -816,7 +854,7 @@ export default function CompetitorsClient() {
           <div className="flex items-center gap-2 mb-4">
             <Radar className="h-5 w-5 text-blue-700" />
             <h2 className="text-base font-bold text-slate-950">경쟁사 종합 벤치마크</h2>
-            <span className="text-xs text-slate-400">(포트폴리오·프리미엄·글로벌·교육·혁신·소셜 6개 지표 합산)</span>
+            <span className="text-xs text-slate-400">(포트폴리오·프리미엄·글로벌·교육·혁신·소셜·임상근거·디지털 8개 지표 합산)</span>
           </div>
           <BenchmarkChart companies={filtered} />
         </div>
@@ -891,7 +929,7 @@ export default function CompetitorsClient() {
                   <div className="border-t border-slate-100">
                     {/* 탭 */}
                     <div className="flex overflow-x-auto border-b border-slate-100 bg-slate-50">
-                      {(['overview', 'marketing', 'social', 'events'] as Tab[]).map(t => (
+                      {(['overview', 'marketing', 'social', 'events', 'timeline'] as Tab[]).map(t => (
                         <button
                           key={t}
                           onClick={() => setTab(company.id, t)}
@@ -905,6 +943,7 @@ export default function CompetitorsClient() {
                           {t === 'marketing' && '마케팅 & 캠페인'}
                           {t === 'social' && 'SNS & 미디어'}
                           {t === 'events' && '학회 & 활동'}
+                          {t === 'timeline' && 'Device Timeline'}
                         </button>
                       ))}
                     </div>
@@ -969,7 +1008,7 @@ export default function CompetitorsClient() {
                             <div className="mt-4 border-t border-slate-200 pt-4">
                               <div className="flex justify-between items-center">
                                 <span className="text-xs text-slate-400">종합 점수</span>
-                                <span className="text-xl font-bold text-[#002D74]">{composite} / 600</span>
+                                <span className="text-xl font-bold text-[#002D74]">{composite} / 800</span>
                               </div>
                             </div>
                           </div>
@@ -1138,6 +1177,69 @@ export default function CompetitorsClient() {
                               </div>
                             </div>
                           ))}
+                        </div>
+                      )}
+
+                      {/* Device Timeline 탭 */}
+                      {tab === 'timeline' && (
+                        <div>
+                          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-4">신제품 출시 타임라인 (2022–2026)</h4>
+                          {company.deviceTimeline && company.deviceTimeline.length > 0 ? (
+                            <div className="overflow-x-auto">
+                              <table className="w-full min-w-[400px] border-collapse text-sm">
+                                <thead>
+                                  <tr className="border-b border-slate-200">
+                                    <th className="py-2 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 w-20">Year</th>
+                                    <th className="py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Devices</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {company.deviceTimeline.map(row => (
+                                    <tr key={row.year} className="border-b border-slate-100 last:border-0">
+                                      <td className="py-3 pr-4 font-bold text-[#002D74]">{row.year}</td>
+                                      <td className="py-3">
+                                        <div className="flex flex-wrap gap-2">
+                                          {row.devices.map(d => (
+                                            <span key={d} className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-100">{d}</span>
+                                          ))}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : (
+                            <div className="rounded-2xl bg-slate-50 p-6 text-center text-sm text-slate-400">
+                              타임라인 데이터가 없습니다.
+                            </div>
+                          )}
+                          <div className="mt-6">
+                            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">전체 장비 라인업</h4>
+                            <div className="overflow-x-auto">
+                              <table className="w-full min-w-[500px] border-collapse text-sm">
+                                <thead>
+                                  <tr className="border-b border-slate-200 bg-slate-50">
+                                    <th className="py-2 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Device</th>
+                                    <th className="py-2 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Category</th>
+                                    <th className="py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Year</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {company.recentDevices.map(d => (
+                                    <tr key={d.name} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                                      <td className="py-2.5 pr-4 font-semibold text-slate-800">
+                                        {d.name}
+                                        {d.isNew && <span className="ml-2 rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold text-white">NEW</span>}
+                                      </td>
+                                      <td className="py-2.5 pr-4 text-slate-500">{d.category}</td>
+                                      <td className="py-2.5 text-slate-500">{d.year}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
