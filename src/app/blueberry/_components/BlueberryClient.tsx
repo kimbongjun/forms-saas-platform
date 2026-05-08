@@ -195,7 +195,7 @@ function buildRelatedKeywords(
     })
 
     return base.sort((a, b) => {
-      const scoreGap = (b.metrics?.relevanceScore ?? 0) - (a.metrics?.relevanceScore ?? 0)
+      const scoreGap = (b.metrics?.trendRatio ?? 0) - (a.metrics?.trendRatio ?? 0)
       if (scoreGap !== 0) return scoreGap
       return b.displayVolume - a.displayVolume
     })
@@ -218,7 +218,7 @@ function buildRelatedKeywords(
     })
 
     return base.sort((a, b) => {
-      const scoreGap = (b.metrics?.relevanceScore ?? 0) - (a.metrics?.relevanceScore ?? 0)
+      const scoreGap = (b.metrics?.trendRatio ?? 0) - (a.metrics?.trendRatio ?? 0)
       if (scoreGap !== 0) return scoreGap
       return b.displayVolume - a.displayVolume
     })
