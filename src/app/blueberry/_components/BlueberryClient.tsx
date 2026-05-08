@@ -1,53 +1,20 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState, useTransition } from 'react'
-import dynamic from 'next/dynamic'
+import React, { useState, useRef, useEffect, useTransition } from 'react'
 import {
-  ArrowUpRight,
-  BarChart3,
-  Copy,
-  ExternalLink,
-  FileText,
-  Flame,
-  Grape,
-  LayoutGrid,
-  Loader2,
-  Monitor,
-  Search,
-  Sparkles,
-  TrendingUp,
-  Trophy,
-  Wifi,
+  Search, TrendingUp, FileText, MessageSquare, RefreshCw, Grape,
+  Download, Monitor, Smartphone, Calendar, Plus, X, Info, Wifi, WifiOff, Copy, Check,
+  Bookmark, BookmarkCheck, Image as ImageIcon, TrendingDown,
+  ArrowUpRight, BarChart3, ExternalLink, Flame, LayoutGrid, Loader2, Sparkles, Trophy,
 } from 'lucide-react'
 import DatalabForm from './DatalabForm'
-
-const ReactWordcloud = dynamic(
-  () => import('react-wordcloud').then((module) => module.default as React.ComponentType<ReactWordcloudProps>),
-  {
-    ssr: false,
-    loading: () => <div className="h-[320px] animate-pulse rounded-2xl bg-gray-100" />,
-  },
-)
-
-type Platform = 'naver' | 'google'
-type RelatedView = 'table' | 'cloud'
-
-interface ReactWordcloudWord {
-  text: string
-  value: number
-}
-
-interface ReactWordcloudProps {
-  words: ReactWordcloudWord[]
-  options?: Record<string, unknown>
-  callbacks?: Record<string, unknown>
-  size?: [number, number]
-}
+import WordCloudView from './WordCloudView'
 
 interface NaverRelatedKeyword {
   keyword: string
   monthlyPc: number
   monthlyMobile: number
+  relevanceScore: number
 }
 
 interface NaverKeywordResult {
@@ -74,12 +41,8 @@ interface RelatedKeywordData {
   monthlyPc: number | null
   monthlyMobile: number | null
   blogCount: number
-  contentCount: number
+  /** avg(최근30일) / avg(이전30일). 1.0=변화없음, >1=상승 */
   trendRatio: number
-  ctrScore: number
-  lexicalScore: number
-  saturationScore: number
-  relevanceScore: number
 }
 
 type RelatedKeywordMap = Record<string, RelatedKeywordData>
@@ -453,47 +416,48 @@ function TrendChart({
   )
 }
 
+// ── 경쟁도 ───────────────────────────────────────────────────────
+const COMP_STYLE = {
+  high: 'bg-red-50 text-red-600',
+  mid: 'bg-amber-50 text-amber-600',
+  low: 'bg-emerald-50 text-emerald-700',
+}
+const COMP_LABEL = { high: '경쟁 높음', mid: '경쟁 보통', low: '경쟁 낮음' }
+
+type Platform = 'naver' | 'google'
+
+// trendRatio → competition 변환 (WordCloudView용)
+function trendToCompetition(trendRatio: number | undefined): 'high' | 'mid' | 'low' {
+  const r = trendRatio ?? 1
+  if (r >= 1.3) return 'high'
+  if (r >= 1.0) return 'mid'
+  return 'low'
+}
+
+// ── 메인 컴포넌트 ─────────────────────────────────────────────────
 export default function BlueberryClient() {
-  const [platform, setPlatform] = useState<Platform>('naver')
   const [input, setInput] = useState('')
   const [keyword, setKeyword] = useState('')
+  const [platform, setPlatform] = useState<Platform>('naver')
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(false)
   const [relatedLoading, setRelatedLoading] = useState(false)
   const [smartBlockLoading, setSmartBlockLoading] = useState(false)
-  const [relatedView, setRelatedView] = useState<RelatedView>('table')
+  const [relatedView, setRelatedView] = useState<'table' | 'cloud'>('table')
   const [showAllRelated, setShowAllRelated] = useState(false)
-  const [wordcloudError, setWordcloudError] = useState(false)
-  const [wordcloudWidth, setWordcloudWidth] = useState(0)
   const [naverData, setNaverData] = useState<NaverKeywordResult | null>(null)
   const [googleData, setGoogleData] = useState<GoogleTrendsResult | null>(null)
   const [relatedMap, setRelatedMap] = useState<RelatedKeywordMap>({})
   const [smartBlocks, setSmartBlocks] = useState<SmartBlockResult[]>([])
   const [trendPoints, setTrendPoints] = useState<{ label: string; value: number }[]>([])
   const [isPending, startTransition] = useTransition()
-  const wordcloudContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    setWordcloudError(false)
-  }, [keyword, platform, relatedView])
-
-  useEffect(() => {
-    if (relatedView !== 'cloud') return
-    const element = wordcloudContainerRef.current
-    if (!element) return
-
-    const updateWidth = () => {
-      const nextWidth = Math.max(320, Math.floor(element.getBoundingClientRect().width))
-      setWordcloudWidth(nextWidth)
-    }
-
-    updateWidth()
-    const observer = new ResizeObserver(updateWidth)
-    observer.observe(element)
-
-    return () => observer.disconnect()
-  }, [keyword, relatedView, platform])
+    if (!copied) return
+    const timer = window.setTimeout(() => setCopied(false), 1600)
+    return () => window.clearTimeout(timer)
+  }, [copied])
 
   useEffect(() => {
     if (!keyword) {
@@ -531,7 +495,6 @@ export default function BlueberryClient() {
           const [relatedResult, smartBlockResult, datalabResult] = await Promise.all([
             candidateKeywords.length > 0
               ? postJson<RelatedKeywordMap>('/api/blueberry/related-keywords', {
-                  seedKeyword: keyword,
                   keywords: candidateKeywords,
                 })
               : Promise.resolve({}),
@@ -570,7 +533,6 @@ export default function BlueberryClient() {
           const candidateKeywords = keywordResult.relatedQueries.map((item) => normalizeKeyword(item.query)).filter(Boolean)
           const relatedResult = candidateKeywords.length > 0
             ? await postJson<RelatedKeywordMap>('/api/blueberry/related-keywords', {
-                seedKeyword: keyword,
                 keywords: candidateKeywords,
               })
             : {}
@@ -596,30 +558,22 @@ export default function BlueberryClient() {
     }
   }, [keyword, platform])
 
-  useEffect(() => {
-    if (!copied) return
-    const timer = window.setTimeout(() => setCopied(false), 1600)
-    return () => window.clearTimeout(timer)
-  }, [copied])
-
-  const relatedKeywords = useMemo(
+  const relatedKeywords = React.useMemo(
     () => buildRelatedKeywords(platform, keyword, naverData, googleData, relatedMap),
     [platform, keyword, naverData, googleData, relatedMap],
   )
 
-  const displayedRelatedKeywords = useMemo(
+  const displayedRelatedKeywords = React.useMemo(
     () => (showAllRelated ? relatedKeywords : relatedKeywords.slice(0, 7)),
     [relatedKeywords, showAllRelated],
   )
 
-  const cloudWords = useMemo(
+  const cloudWords = React.useMemo(
     () =>
       relatedKeywords.slice(0, 20).map((item) => ({
         text: item.keyword,
-        value: Math.max(
-          10,
-          Math.round((item.metrics?.relevanceScore ?? 20) / 2 + Math.log10(Math.max(item.displayVolume, 10)) * 8),
-        ),
+        value: Math.max(1, item.displayVolume),
+        competition: trendToCompetition(item.metrics?.trendRatio),
       })),
     [relatedKeywords],
   )
@@ -677,25 +631,6 @@ export default function BlueberryClient() {
     if (!keyword) return
     void navigator.clipboard.writeText(keyword)
     setCopied(true)
-  }
-
-  const wordcloudOptions = useMemo(
-    () => ({
-      rotations: 2,
-      rotationAngles: [-20, 0, 20],
-      fontSizes: [18, 48],
-      fontFamily: 'Pretendard, Apple SD Gothic Neo, sans-serif',
-      deterministic: true,
-      padding: 2,
-      spiral: 'archimedean',
-      enableTooltip: true,
-    }),
-    [],
-  )
-
-  const wordcloudCallbacks = {
-    getWordTooltip: (word: ReactWordcloudWord) => `${word.text}`,
-    onWordClick: (word: ReactWordcloudWord) => handleSearch(word.text),
   }
 
   return (
@@ -963,24 +898,18 @@ export default function BlueberryClient() {
                 연관 키워드를 아직 확보하지 못했습니다.
               </div>
             ) : relatedView === 'cloud' ? (
-              <div ref={wordcloudContainerRef} className="rounded-3xl border border-gray-100 bg-gray-50 p-4">
-                {cloudWords.length > 0 && wordcloudWidth > 0 && !wordcloudError ? (
-                  <WordcloudErrorBoundary onError={() => setWordcloudError(true)}>
-                    <ReactWordcloud
-                      key={`${keyword}-${platform}-${wordcloudWidth}-${cloudWords.length}`}
-                      words={cloudWords}
-                      size={[wordcloudWidth, 320]}
-                      options={wordcloudOptions}
-                      callbacks={wordcloudCallbacks}
-                    />
-                  </WordcloudErrorBoundary>
-                ) : wordcloudError ? (
-                  <div className="flex h-[320px] items-center justify-center rounded-2xl bg-white text-sm text-gray-500">
-                    워드클라우드 렌더링에 실패했습니다. 표 보기로 전환해 주세요.
-                  </div>
+              <div className="rounded-3xl border border-gray-100 bg-gray-50 p-4">
+                {cloudWords.length > 0 ? (
+                  <WordCloudView
+                    words={cloudWords}
+                    onWordClick={(text) => handleSearch(text)}
+                  />
                 ) : (
                   <div className="h-[320px] animate-pulse rounded-2xl bg-white" />
                 )}
+                <p className="mt-1 text-center text-[10px] text-gray-400">
+                  크기 = 검색량 · 색상 = 트렌드(빨강=급상승, 주황=상승, 초록=안정) · 클릭 시 해당 키워드 분석
+                </p>
               </div>
             ) : (
               <div className="overflow-hidden rounded-3xl border border-gray-100">
@@ -989,10 +918,8 @@ export default function BlueberryClient() {
                     <thead className="bg-gray-50">
                       <tr className="text-left text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">
                         <th className="px-4 py-3">키워드</th>
-                        <th className="px-4 py-3 text-right">연관도</th>
                         <th className="px-4 py-3 text-right">검색량</th>
-                        <th className="px-4 py-3 text-right">CTR 점수</th>
-                        <th className="px-4 py-3 text-right">콘텐츠 수</th>
+                        <th className="px-4 py-3 text-right">블로그 발행량</th>
                         <th className="px-4 py-3 text-right">30일 트렌드</th>
                       </tr>
                     </thead>
@@ -1025,15 +952,9 @@ export default function BlueberryClient() {
                                 ) : null}
                               </div>
                             </td>
-                            <td className="px-4 py-3.5 text-right font-semibold text-[#002D74]">
-                              {metrics ? `${metrics.relevanceScore.toFixed(1)}점` : '-'}
-                            </td>
                             <td className="px-4 py-3.5 text-right text-gray-700">{formatNumber(item.displayVolume)}</td>
                             <td className="px-4 py-3.5 text-right text-gray-700">
-                              {metrics ? `${Math.round(metrics.ctrScore * 100)}점` : '-'}
-                            </td>
-                            <td className="px-4 py-3.5 text-right text-gray-700">
-                              {metrics ? formatNumber(metrics.contentCount) : '-'}
+                              {metrics ? formatNumber(metrics.blogCount) : '-'}
                             </td>
                             <td className="px-4 py-3.5 text-right">
                               {metrics ? (
@@ -1061,20 +982,20 @@ export default function BlueberryClient() {
                     </tbody>
                   </table>
                 </div>
+
+                {relatedKeywords.length > 7 ? (
+                  <div className="mt-4 flex justify-center p-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowAllRelated((current) => !current)}
+                      className="rounded-full border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-500 transition-colors hover:border-[#002D74] hover:text-[#002D74]"
+                    >
+                      {showAllRelated ? '상위 7개만 보기' : `전체 ${relatedKeywords.length}개 보기`}
+                    </button>
+                  </div>
+                ) : null}
               </div>
             )}
-
-            {relatedKeywords.length > 7 ? (
-              <div className="mt-4 flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => setShowAllRelated((current) => !current)}
-                  className="rounded-full border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-500 transition-colors hover:border-[#002D74] hover:text-[#002D74]"
-                >
-                  {showAllRelated ? '상위 7개만 보기' : `전체 ${relatedKeywords.length}개 보기`}
-                </button>
-              </div>
-            ) : null}
           </section>
 
           {platform === 'naver' ? (
