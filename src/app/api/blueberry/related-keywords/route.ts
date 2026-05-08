@@ -17,90 +17,42 @@ export type RelatedKeywordData = {
 
 export type RelatedKeywordMap = Record<string, RelatedKeywordData>
 
-function parseQcCnt(value: number | string | undefined | null) {
-  if (value === null || value === undefined) return 0
-  if (typeof value === 'number') return Math.round(value)
-  const trimmed = String(value).trim()
-  if (trimmed.startsWith('<')) return 0
-  const parsed = parseInt(trimmed.replace(/,/g, ''), 10)
-  return Number.isNaN(parsed) ? 0 : parsed
-}
-
-function normalizeKeyword(value: string) {
-  return value.trim().normalize('NFC').toLowerCase()
-}
-
-function tokenize(value: string) {
-  return normalizeKeyword(value)
-    .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
-    .split(/\s+/)
-    .filter((token) => token.length > 0)
-}
-
-function buildCharacterBigrams(value: string) {
-  const normalized = normalizeKeyword(value).replace(/\s+/g, '')
-  const result = new Set<string>()
-  for (let i = 0; i < normalized.length - 1; i += 1) {
-    result.add(normalized.slice(i, i + 2))
-  }
-  return result
-}
-
-function computeLexicalScore(seedKeyword: string, candidateKeyword: string) {
-  const seed = normalizeKeyword(seedKeyword)
-  const candidate = normalizeKeyword(candidateKeyword)
-  if (!seed || !candidate) return 0
-  if (seed === candidate) return 1
-
-  const directContainment = candidate.includes(seed) ? 1 : seed.includes(candidate) ? 0.8 : 0
-
-  const seedTokens = tokenize(seedKeyword)
-  const candidateTokens = tokenize(candidateKeyword)
-  const seedTokenSet = new Set(seedTokens)
-  const candidateTokenSet = new Set(candidateTokens)
-  const overlapCount = [...candidateTokenSet].filter((token) => seedTokenSet.has(token)).length
-  const tokenOverlap =
-    seedTokenSet.size === 0 && candidateTokenSet.size === 0
-      ? 0
-      : overlapCount / Math.max(seedTokenSet.size, candidateTokenSet.size, 1)
-
-  const seedBigrams = buildCharacterBigrams(seedKeyword)
-  const candidateBigrams = buildCharacterBigrams(candidateKeyword)
-  const bigramOverlapCount = [...candidateBigrams].filter((token) => seedBigrams.has(token)).length
-  const bigramScore =
-    seedBigrams.size === 0 && candidateBigrams.size === 0
-      ? 0
-      : bigramOverlapCount / Math.max(seedBigrams.size, candidateBigrams.size, 1)
-
-  return Math.max(directContainment, 0.55 * tokenOverlap + 0.45 * bigramScore)
+function parseQcCnt(v: number | string | undefined | null): number {
+  if (v === null || v === undefined) return 0
+  if (typeof v === 'number') return Math.round(v)
+  const s = String(v).trim()
+  if (s.startsWith('<')) return 0
+  const n = parseInt(s.replace(/,/g, ''), 10)
+  return isNaN(n) ? 0 : n
 }
 
 async function fetchBatchAdVolume(
   keywords: string[],
   customerId: string,
   accessLicense: string,
-  secretKey: string
+  secretKey: string,
 ): Promise<Record<string, { pc: number; mobile: number }>> {
   const timestamp = Date.now()
   const method = 'GET'
   const path = '/keywordstool'
   const message = `${timestamp}.${method}.${path}`
   const signature = createHmac('sha256', secretKey).update(message).digest('base64')
+  const hintParam = keywords.map(k => encodeURIComponent(k)).join(',')
   try {
-    const hintParam = keywords.map((keyword) => encodeURIComponent(keyword)).join(',')
-    const response = await fetch(`https://api.naver.com${path}?hintKeywords=${hintParam}&showDetail=1`, {
-      headers: {
-        'X-Timestamp': String(timestamp),
-        'X-API-KEY': accessLicense,
-        'X-Customer': customerId,
-        'X-Signature': signature,
+    const res = await fetch(
+      `https://api.naver.com${path}?hintKeywords=${hintParam}&showDetail=1`,
+      {
+        headers: {
+          'X-Timestamp': String(timestamp),
+          'X-API-KEY': accessLicense,
+          'X-Customer': customerId,
+          'X-Signature': signature,
+        },
+        signal: AbortSignal.timeout(10000),
       },
-      signal: AbortSignal.timeout(10000),
-    })
-
-    if (!response.ok) return {}
-
-    const json = (await response.json()) as {
+    )
+    if (!res.ok) return {}
+    const json = await res.json() as {
       keywordList?: { relKeyword: string; monthlyPcQcCnt: number | string; monthlyMobileQcCnt: number | string }[]
     }
     const result: Record<string, { pc: number; mobile: number }> = {}
@@ -114,16 +66,15 @@ async function fetchBatchAdVolume(
 
 async function fetchBlogCount(keyword: string, clientId: string, clientSecret: string): Promise<number> {
   try {
-    const response = await fetch(
+    const res = await fetch(
       `https://openapi.naver.com/v1/search/blog.json?query=${encodeURIComponent(keyword)}&display=1`,
       {
         headers: { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret },
         signal: AbortSignal.timeout(5000),
-      }
+      },
     )
-
-    if (!response.ok) return 0
-    const json = (await response.json()) as { total?: number }
+    if (!res.ok) return 0
+    const json = await res.json() as { total?: number }
     return json.total ?? 0
   } catch { return 0 }
 }
@@ -204,9 +155,8 @@ async function fetchKeywordTrends(
 export async function POST(req: NextRequest) {
   const clientId = process.env.NAVER_CLIENT_ID
   const clientSecret = process.env.NAVER_CLIENT_SECRET
-
   if (!clientId || !clientSecret) {
-    return NextResponse.json({ error: 'NAVER_CLIENT_ID / NAVER_CLIENT_SECRET is not configured.' }, { status: 503 })
+    return NextResponse.json({ error: 'NAVER_CLIENT_ID / NAVER_CLIENT_SECRET 미설정' }, { status: 503 })
   }
 
   const body = await req.json() as { keywords?: string[]; period?: Period }
@@ -214,7 +164,7 @@ export async function POST(req: NextRequest) {
   const period: Period = body.period ?? '1m'
 
   if (!Array.isArray(keywords) || keywords.length === 0) {
-    return NextResponse.json({ error: 'keywords array is required.' }, { status: 400 })
+    return NextResponse.json({ error: 'keywords 배열이 필요합니다.' }, { status: 400 })
   }
 
   const normalized = keywords.map(k => k.trim().normalize('NFC')).filter(Boolean)
@@ -227,7 +177,7 @@ export async function POST(req: NextRequest) {
   const adCustomerId = process.env.NAVER_AD_CUSTOMER_ID?.trim()
   const adAccessLicense = process.env.NAVER_AD_ACCESS_LICENSE?.trim()
   const adSecretKey = process.env.NAVER_AD_SECRET_KEY?.trim()
-  const hasAdApi = Boolean(adCustomerId && adAccessLicense && adSecretKey)
+  const hasAdApi = !!(adCustomerId && adAccessLicense && adSecretKey)
 
   const [adVolumes, trendMap, ...blogCounts] = await Promise.all([
     hasAdApi
