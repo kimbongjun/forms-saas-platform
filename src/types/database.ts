@@ -217,12 +217,24 @@ export interface MonitorSitemapRun {
   pages: SitemapPageResult[]
 }
 
+// Web Vitals 임계값 (Google 기준)
+export interface VitalsThreshold {
+  good: number
+  needsImprovement: number
+}
+export const VITALS_THRESHOLDS = {
+  lcp:  { good: 2500,  needsImprovement: 4000  },  // ms
+  inp:  { good: 200,   needsImprovement: 500   },  // ms
+  cls:  { good: 0.1,   needsImprovement: 0.25  },  // score
+  ttfb: { good: 800,   needsImprovement: 1800  },  // ms
+} satisfies Record<string, VitalsThreshold>
+
 // ── Market Intelligence ────────────────────────────────────────────
 export type MarketCategory = 'tech_ai' | 'marketing_kol' | 'events' | 'daily'
 export type PriorityTier = 'top' | 'standard' | 'low'
 export type MarketSourceType = 'rss' | 'naver' | 'google_news' | 'youtube'
 
-export type SnsplatformType = 'instagram' | 'youtube' | 'linkedin' | 'tiktok' | 'threads' | 'facebook'
+export type SnsPlatformType = 'instagram' | 'youtube' | 'linkedin' | 'tiktok' | 'threads' | 'facebook'
 
 export interface MarketArticle {
   id: string
@@ -246,7 +258,7 @@ export interface MarketInfluencer {
   id: string
   name: string
   handle: string | null
-  platform: SnsplatformType
+  platform: SnsPlatformType
   profile_url: string | null
   avatar_url: string | null
   follower_count: number | null
@@ -281,18 +293,6 @@ export interface MarketReportCache {
   generated_at: string
   expires_at: string | null
 }
-
-// Web Vitals 임계값 (Google 기준)
-export interface VitalsThreshold {
-  good: number
-  needsImprovement: number
-}
-export const VITALS_THRESHOLDS = {
-  lcp:  { good: 2500,  needsImprovement: 4000  },  // ms
-  inp:  { good: 200,   needsImprovement: 500   },  // ms
-  cls:  { good: 0.1,   needsImprovement: 0.25  },  // score
-  ttfb: { good: 800,   needsImprovement: 1800  },  // ms
-} satisfies Record<string, VitalsThreshold>
 
 export interface MarketRefreshLog {
   id: string
