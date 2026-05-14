@@ -158,19 +158,9 @@ function InsightsPanel({
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-violet-500" />
           <h2 className="text-base font-bold text-gray-900">AI 종합 인사이트</h2>
-          {insights && (
-            <span className={[
-              'flex items-center gap-1 rounded-full px-2 py-0.5 text-xs',
-              insights.generated_by === 'groq_fallback'
-                ? 'bg-amber-50 text-amber-700'
-                : 'bg-violet-50 text-violet-700',
-            ].join(' ')}>
-              {insights.generated_by === 'groq_fallback' ? '⚠ 기본 분석 모드' : '✦ Claude 분석'}
-              {insights.generated_at && (
-                <span className="text-gray-400">
-                  · {Math.round((Date.now() - new Date(insights.generated_at).getTime()) / 60000)}분 전
-                </span>
-              )}
+          {insights?.generated_at && (
+            <span className="flex items-center gap-1 rounded-full bg-gray-50 px-2 py-0.5 text-xs text-gray-500">
+              AI 분석 · {Math.round((Date.now() - new Date(insights.generated_at).getTime()) / 60000)}분 전
             </span>
           )}
         </div>

@@ -36,7 +36,6 @@
     ]
   },
   "enabledPlugins": {
-    "claude-mem@thedotmack": true,
-    "oh-my-claudecode@omc": true
+    "claude-mem@thedotmack": true
   }
 }

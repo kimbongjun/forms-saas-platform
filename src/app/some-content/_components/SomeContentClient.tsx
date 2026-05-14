@@ -5,7 +5,7 @@ import {
   TrendingUp, Settings, RefreshCw,
   Plus, Trash2, ExternalLink, BarChart3,
   CheckCircle2, XCircle, ChevronDown,
-  Download, ChevronUp, Cpu, AlertCircle, Info,
+  Download, ChevronUp, Cpu, AlertCircle, Info, Layers,
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import type { ScKeyword, ScMentionSummary, ScPost, ScKeywordCategory, ScChannel } from '@/types/database'
@@ -13,7 +13,7 @@ import type { TrendExportState } from './TrendAnalysisView'
 
 const TrendAnalysisView = dynamic(() => import('./TrendAnalysisView'), { ssr: false })
 
-type Tab = 'dashboard' | 'trend' | 'settings'
+type Tab = 'dashboard' | 'channel' | 'trend' | 'settings'
 
 // ── 채널 메타데이터 ────────────────────────────────────────────────
 type DataSource = 'real' | 'crawled' | 'estimated'
@@ -987,6 +987,7 @@ export default function SomeContentClient() {
 
   const TABS = [
     { key: 'dashboard' as Tab, label: '대시보드',   icon: BarChart3 },
+    { key: 'channel'  as Tab, label: '채널 탐색',  icon: Layers },
     { key: 'trend'     as Tab, label: '트렌드 분석', icon: TrendingUp },
     { key: 'settings'  as Tab, label: '설정',       icon: Settings },
   ]
@@ -1088,6 +1089,16 @@ export default function SomeContentClient() {
         ) : (
           <>
             {activeTab === 'dashboard' && <DashboardTab mentions={mentions} keywords={keywords} />}
+            {activeTab === 'channel' && (
+              <ChannelTab
+                posts={posts}
+                keywords={keywords}
+                selectedChannel={selectedChannel}
+                setSelectedChannel={setSelectedChannel}
+                selectedKeyword={selectedKeyword}
+                setSelectedKeyword={setSelectedKeyword}
+              />
+            )}
             {activeTab === 'trend' && (
               <TrendAnalysisView keywords={keywords} onExportDataChange={setTrendExportData} />
             )}

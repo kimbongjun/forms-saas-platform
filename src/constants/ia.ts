@@ -1,5 +1,5 @@
 export interface WorkspaceHub {
-  key: 'dashboard' | 'projects' | 'blueberry' | 'monitoring' | 'some-content' | 'market'
+  key: 'dashboard' | 'projects' | 'blueberry' | 'monitoring' | 'some-content'
   href: string
   label: string
   description: string
@@ -47,12 +47,6 @@ export const WORKSPACE_HUBS: WorkspaceHub[] = [
     href: '/some-content',
     label: '썸콘텐츠',
     description: '소셜 빅데이터 인사이트',
-  },
-  {
-    key: 'market',
-    href: '/market',
-    label: '시장조사',
-    description: '글로벌 의료기기 시장 동향',
   },
 ]
 
