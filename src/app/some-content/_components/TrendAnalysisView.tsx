@@ -168,11 +168,6 @@ function InsightsPanel({
         )}
       </div>
 
-      {insights?.warning && (
-        <div className="mb-3">
-          <QuotaAlert message={insights.warning} />
-        </div>
-      )}
 
       <div className="rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-white p-6">
         {loading ? (
