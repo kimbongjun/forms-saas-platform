@@ -16,6 +16,8 @@ import {
   X,
 } from 'lucide-react'
 import MarketNav from './MarketNav'
+import { useMarketArticles } from '@/hooks/queries/useMarketArticles'
+import type { MarketArticle } from '@/types/database'
 
 type PlatformKey = 'instagram' | 'tiktok' | 'youtube' | 'linkedin'
 type TabKey = 'all' | 'sns' | 'kol' | 'campaign'
@@ -603,6 +605,7 @@ export default function InfluencerClient() {
   const [selectedMedia, setSelectedMedia] = useState<CampaignMedia | null>(null)
   const [selectedRegion, setSelectedRegion] = useState<string>('all')
   const [expandedKol, setExpandedKol] = useState<string | null>(null)
+  const { data: kolArticles = [], isLoading: isKolLoading } = useMarketArticles({ category: 'marketing_kol', limit: 20 })
 
   async function handleRefresh() {
     setRefreshing(true)
@@ -710,8 +713,43 @@ export default function InfluencerClient() {
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-blue-700" />
-                <h2 className="text-base font-bold text-slate-950">Global KOL Watch — 15인</h2>
+                <h2 className="text-base font-bold text-slate-950">KOL & Marketing 실시간 인사이트</h2>
               </div>
+            </div>
+            {isKolLoading ? (
+              <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-32 animate-pulse rounded-xl bg-gray-100" />
+                ))}
+              </div>
+            ) : kolArticles.length > 0 ? (
+              <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {kolArticles.map((article: MarketArticle) => (
+                  <a
+                    key={article.id}
+                    href={article.original_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex gap-3 rounded-xl border border-gray-100 bg-white p-4 hover:border-pink-200 hover:shadow-sm transition-all"
+                  >
+                    {article.thumbnail_url && (
+                      <img src={article.thumbnail_url} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 line-clamp-2 text-sm">{article.title}</p>
+                      <p className="mt-1 text-xs text-gray-500 line-clamp-1">{article.source_name}</p>
+                      {article.key_insight && (
+                        <p className="mt-1 text-xs text-gray-400 line-clamp-1">💡 {article.key_insight}</p>
+                      )}
+                    </div>
+                  </a>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="mb-4 mt-6 flex items-center gap-2">
+              <Users className="h-5 w-5 text-blue-700" />
+              <h3 className="text-base font-bold text-slate-950">Global KOL Watch — 15인</h3>
             </div>
             {/* Region filter */}
             <div className="mb-4 flex flex-wrap gap-2">
