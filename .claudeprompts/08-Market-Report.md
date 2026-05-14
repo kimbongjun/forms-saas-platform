@@ -1,54 +1,190 @@
-# "시장 분석(Market Intelligence)" 메뉴 신설
+# 📋 플랫폼 개발 요청
+## 시장조사(Market Report) 페이지
+---
 
-## 제작 개요
-1. Project Overview
-Purpose: 글로벌 피부미용의료기기 시장 트렌드를 매일 분석하고, 웹사이트 대시보드 및 리포트 형태로 제공하는 자동화 시스템 구축.
-Target: 클래시스 마케팅본부 및 마케팅커뮤니케이션팀, 시장 분석가, 피부 미용 의료기기 업계 종사자.
-Core Objective: AI 기반 데이터 수집 및 분석을 통해 인플루언서 동향부터 학술 정보까지 망라한 인사이트 리포트 생성.
+## 1. 프로젝트 개요
 
-2. Analysis Scopes & Domains
-Technology Trends: 차세대 피부미용의료기기 기술, 규제 승인(FDA/CE 등) 현황, 신소재 및 하드웨어 혁신.
-AI Applications: 미용의료기기 내 AI 내장(Software as a Medical Device, SaMD), 진단 보조 AI, 데이터 분석 솔루션 적용 사례.
-Marketing & Campaigns: 글로벌 미용의료기기 기업들의 디지털 캠페인 전략, 브랜딩 캠페인 분석.
-KOL & Influencer: 글로벌 의료 전문 인플루언서(HCP), 앰배서더 모델 섭외 현황 및 영향력 분석.
-Exhibitions & Conferences: 주요 학회(RSNA, MEDICA, KIMES 등) 일정, 주요 발표 내용, 전시 부스 트렌드.
-SNS Feed Trends: Instagram, threads, Facebook, LinkedIn, YouTube 기반의 의료기기 해시태그 및 피드 콘텐츠 동향.
-Global Policy: 국가별 미용의료 정책 변화 및 시장 진입 장벽 관련 뉴스.
+| 항목 | 내용 |
+|------|------|
+| **프로젝트명** | 시장조사(마켓인텔리전스) 플랫폼 |
+| **요청 부서** | 클래시스 마케팅본부 |
+| **목적** | 국내외 경쟁사 분석·정보수집·인사이트 도출을 통한 연간 마케팅 전략 수립 지원 |
+| **플랫폼 유형** | 인터랙티브 웹 대시보드 (단일 페이지 애플리케이션, SPA) |
+| **주요 사용자** | 마케팅본부 내부 팀원 |
+---
 
-3. Technical Requirements
-A. Data Pipeline (Scraping & Ingestion)
-Google News API, PubMed, LinkedIn API, Instagram Graph API 연동.
+## 2. 핵심 기능 요구사항
 
-주요 미용의료기기 전문지(Fierce Biotech, Lasers in Surgery and Medicine, MassDevice,Aesthetic Medical Partnership,Aesthetic Authority 등) RSS 피드 수집.
+### 2-1. 필터 & 인터랙션 컨트롤
 
-B. AI Analysis Logic (LLM Integration)
-Summarization: 대량의 뉴스를 섹션별로 요약.
+사용자가 아래 조건을 **독립적으로 또는 복합적으로** 선택하면 전체 화면이 동적으로 갱신되어야 합니다.
 
-Insight Extraction: 단순 정보 나열이 아닌 '비즈니스 시사점' 도출.
+#### 📍 지역 필터 (단일/복수 선택)
+- [ ] 국내 (Korea)
+- [ ] 해외 – 북미 (North America)
+- [ ] 해외 – 유럽 (Europe)
+- [ ] 해외 – 중국 (China)
+- [ ] 해외 – 동남아 (SEA)
+- [ ] 해외 – 기타 (Others)
 
-Classification: 기술/마케팅/전시 등 카테고리 자동 분류.
+#### 🔧 기기 카테고리 필터 (단일/복수 선택)
+- [ ] HIFU (집속 초음파)
+- [ ] RF (고주파)
+- [ ] Needle RF (미세침 고주파)
+- [ ] Laser / IPL
+- [ ] Body (체형 관리)
+- [ ] Injection (주사)
+- [ ] 복합기기 (Combination)
+- [ ] 기타 (Injectables 등)
 
-C. UI/UX (Frontend Update)
-Daily Dashboard: 섹션별 카드 레이아웃 형태의 동향 요약.
-PDF/MD Export: 리포트를 문서 형태로 다운로드할 수 있는 기능.
-Visual Elements: 트렌드 키워드 워드클라우드 및 차트 시각화.
+#### 🏷️ 추가 세그먼트 옵션 *(선택 사항)*
+- [ ] 경쟁사 티어 (Tier 1 / Tier 2 / 신규진입)
+- [ ] 연도 범위 슬라이더 (예: 2020–2026)
+- [ ] 클래시스 제품 대비 비교 모드 ON/OFF 토글
 
-4. Implementation Instructions for AI
-AI 코딩 도구는 다음의 우선순위에 따라 코드를 작성한다.
+---
 
-Data Schema: 위 7개 영역을 저장할 수 있는 데이터베이스 스키마(PostgreSQL/NoSQL 등) 정의.
-Backend Logic: 지정된 시간에 데이터를 수집하는 Cron Job 및 LLM 프롬프트 체인 구축.
-Frontend Component: 리포트 페이지 생성. (미니멀하고 모던한 디자인 스타일 적용)
+### 2-2. 주요 화면 모듈 (섹션 구성)
 
-배경: #FFFFFF, 텍스트: #2C3E50
-포인트 컬러: #002D74, #0084C9
+각 모듈은 필터 변경 시 **애니메이션과 함께 동적으로 업데이트**되어야 합니다.
 
-Search & Filter: 날짜별, 카테고리별 아카이브 검색 기능 구현.
+#### 📊 Module A. 경쟁사 Overview 카드
+- 경쟁사별 카드 형태 표시 (로고, 본사 국가, 핵심 기기 카테고리, 주력 시장)
+- 선택된 필터에 해당하지 않는 카드는 **dimming(흐림) 처리** 또는 숨김
+- 카드 클릭 시 → 해당 경쟁사 상세 패널(드로어 또는 모달) 슬라이드인
 
+#### 📈 Module B. 시장 포지셔닝 맵
+- X축: 가격 포지셔닝 (Premium ↔ Value)
+- Y축: 기술 복잡도 또는 클리닉 채택률
+- 버블 크기: 추정 매출 규모 또는 시술 건수
+- 클래시스 포지션은 **항상 강조 표시** (고정 레이어)
+- 필터 변경 시 해당 경쟁사만 **하이라이트**, 나머지는 투명도 조절
 
-## 메뉴 하이어라키
-대메뉴: Market Intelligence (또는 시장 분석)
-소메뉴 1: Daily Report (오늘의 동향 요약)
-소메뉴 2: Tech & AI Watch (기술 및 AI 동향)
-소메뉴 3: Marketing & Influencer (캠페인 및 인플루언서)
-소메뉴 4: Event & Congress (전시/학회 일정)
+#### 📉 Module C. 매출 / 성장 트렌드 차트
+- 경쟁사별 연도별 매출 추이 (꺾은선 또는 막대 차트)
+- 클래시스 실적 라인을 기준선으로 **오버레이**
+- 호버(Hover) 시 툴팁으로 상세 수치 표시
+- 데이터 출처 표시 (공시, 추정, 업계보고서 등 구분)
+
+#### 🔍 Module D. 제품 스펙 비교 테이블
+- 선택된 기기 카테고리 내 경쟁 제품 스펙 비교
+- 항목 예시: 에너지 유형, 핸드피스 수, 적응증, 가격대, 출시연도, FDA/CE 인증 여부
+- 클래시스 제품 행은 **색상 강조** 고정
+- 정렬 및 컬럼 필터 기능 포함
+
+#### 🗓️ Module E. 경쟁사 주요 이벤트 타임라인
+- 신제품 출시, 임상 결과 발표, M&A, 파트너십, SNS이벤트, 연예인/인플루언서/엠버서더 선정 등
+- 필터에 따라 해당 경쟁사/기기 관련 이벤트만 노출
+- 타임라인 형태 (수평 스크롤 or 수직 스크롤 선택)
+
+#### 📰 Module F. 인사이트 & 리포트 열람
+- 조사 담당자가 작성한 인사이트 카드 (태그 기반 분류)
+- 태그: 경쟁사명, 지역, 기기 유형, 분기, 전략 키워드
+- 필터와 연동하여 관련 인사이트 우선 노출 및 강조
+- PDF/PPT 원본 첨부 파일 다운로드 링크 포함
+
+---
+
+### 2-3. 인터랙션 & UX 상세 요건
+
+| UX 요소 | 요구사항 |
+|---------|---------|
+| **필터 적용 애니메이션** | 필터 변경 시 0.3s 이내 부드러운 전환 (fade / slide) |
+| **강조 방식** | 선택된 항목: 컬러 풀 표시 / 비선택 항목: 20–30% 투명도 dimming |
+| **클래시스 고정 레이어** | 어떤 필터 조합에서도 클래시스 데이터는 항상 강조 표시 |
+| **툴팁** | 모든 차트·맵의 데이터 포인트에 호버 툴팁 제공 |
+| **모바일 반응형** | 태블릿(iPad) 이상 해상도 대응 필수, 모바일은 선택 사항 |
+| **다크/라이트 모드** | 선택 사항 (기본: 라이트 모드) |
+| **데이터 내보내기** | 현재 필터 상태 기준 PNG/PDF 스냅샷 내보내기 버튼 |
+
+---
+
+## 3. 데이터 구조 요건
+
+### 3-1. 경쟁사 마스터 데이터 (JSON 기준)
+
+```json
+{
+  "competitor_id": "string",
+  "company_name": "string",
+  "hq_country": "string",
+  "tier": "Tier1 | Tier2 | Emerging",
+  "markets": ["Korea", "NA", "EU", "China", "SEA"],
+  "device_categories": ["HIFU", "RF", "Laser", "Body", "Combo"],
+  "products": [
+    {
+      "product_name": "string",
+      "category": "string",
+      "launch_year": "number",
+      "price_tier": "Premium | Mid | Value",
+      "certifications": ["FDA", "CE", "KFDA"],
+      "specs": {}
+    }
+  ],
+  "financials": [
+    { "year": "number", "revenue_usd_M": "number", "source": "string" }
+  ],
+  "events": [
+    { "date": "YYYY-MM", "type": "Launch | MA | Partnership | Clinical", "description": "string" }
+  ],
+  "insights": []
+}
+```
+
+### 3-2. 데이터 입력 방식
+**Naver, Google 검색엔진 및 유/무료 LLM(gloq, claude 등)을 활용하여 데이터 검색, 검증, 우선순위 설정 등을 통해 정립 후 데이터 배포
+
+---
+
+## 4. 기술 스택 제안
+
+**차트 라이브러리** | D3.js / Chart.js | Recharts / Nivo |
+
+---
+
+## 5. 우선순위 및 개발 단계
+
+### Phase 1 – MVP (4주)
+- [ ] 필터 UI (지역 + 기기 카테고리) 구현
+- [ ] Module A: 경쟁사 카드 + 상세 패널
+- [ ] Module B: 포지셔닝 맵 (정적 데이터)
+- [ ] Module D: 스펙 비교 테이블
+
+### Phase 2 – 고도화 (4주)
+- [ ] Module C: 매출 트렌드 차트 (연도 슬라이더 포함)
+- [ ] Module E: 이벤트 타임라인
+- [ ] 데이터 내보내기 (PNG/PDF)
+- [ ] 전체 애니메이션 정교화
+
+### Phase 3 – 운영 체계 (추후)
+- [ ] Module F: 인사이트 카드 + 첨부파일
+- [ ] 관리자 CMS 또는 외부 데이터 연동
+- [ ] 사용자 인증 (사내 접근 제어)
+- [ ] 모바일 최적화
+
+---
+
+## 6. 참고 디자인 & 벤치마크
+
+> 아래 항목에 해당하는 레퍼런스 URL 또는 이미지를 첨부해주세요.
+
+| 항목 | 레퍼런스 / 메모 |
+|------|---------------|
+| 전체 UI 톤앤무드 | *(예: 다크 대시보드, 클린 화이트, 클래시스 브랜드 컬러 적용 등)* |
+| 포지셔닝 맵 스타일 | *(예: Gartner Magic Quadrant 스타일 등)* |
+| 카드 레이아웃 | *(예: Notion, Linear 스타일 등)* |
+| 타임라인 스타일 | *(예: 수평 스크롤, 수직 피드 등)* |
+| 경쟁 벤치마크 툴 | *(예: Crayon, Klue, G2 Compare 등)* |
+
+---
+
+## 7. 제약사항 및 주의사항
+
+- **데이터 보안**: 경쟁사 매출 추정치 및 전략 인사이트는 **사내 기밀**로 외부 공개 불가 → 접근 제어 필수 검토
+- **데이터 출처 표기**: 공시 데이터, 추정치, 업계 보고서 등 출처를 반드시 구분 표시
+- **업데이트 주기**: 경쟁사 데이터 주 1회 이상 업데이트 가능한 구조 필요
+- **브라우저 호환성**: Chrome 최신 버전 기준, Safari/Edge 대응 필요
+- **클래시스 브랜드 가이드라인**: 컬러, 폰트 등 브랜드 아이덴티티 준수
+
+---
+
