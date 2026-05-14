@@ -2,11 +2,10 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Building2, CalendarDays, Cpu, LayoutDashboard, Users } from 'lucide-react'
+import { CalendarDays, Cpu, LayoutDashboard, Users } from 'lucide-react'
 
 const TABS = [
   { href: '/market', label: 'Daily Report', icon: LayoutDashboard },
-  { href: '/market/competitors', label: 'Competitors', icon: Building2 },
   { href: '/market/tech-ai', label: 'Tech & AI', icon: Cpu },
   { href: '/market/events', label: 'Events', icon: CalendarDays },
   { href: '/market/marketing-influencer', label: 'KOL & Campaigns', icon: Users },
@@ -16,7 +15,7 @@ export default function MarketNav() {
   const pathname = usePathname()
   return (
     <nav className="border-b border-gray-200 bg-white">
-      <div className="flex overflow-x-auto px-6">
+      <div className="flex overflow-x-auto px-2 sm:px-6">
         {TABS.map(({ href, label, icon: Icon }) => {
           const active = href === '/market' ? pathname === '/market' : pathname.startsWith(href)
           return (

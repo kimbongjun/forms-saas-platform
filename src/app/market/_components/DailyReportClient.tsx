@@ -19,6 +19,8 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import MarketNav from './MarketNav'
+import { useMarketArticles } from '@/hooks/queries/useMarketArticles'
+import type { MarketArticle } from '@/types/database'
 
 const REPORT_DATE = '2026.05.07'
 const LAST_UPDATED = '2026-05-07 09:10'
@@ -151,6 +153,9 @@ export default function DailyReportClient() {
   const [lastUpdated, setLastUpdated] = useState(LAST_UPDATED)
   const [showAllSignals, setShowAllSignals] = useState(false)
 
+  const { data: dailyArticles = [], isLoading: isDailyLoading } = useMarketArticles({ category: 'daily', limit: 20 })
+  const { data: topArticles = [] } = useMarketArticles({ tier: 'top', limit: 6 })
+
   async function handleRefresh() {
     setRefreshing(true)
     await new Promise((resolve) => setTimeout(resolve, 900))
@@ -261,27 +266,66 @@ export default function DailyReportClient() {
               </a>
             </div>
           </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            {visibleSignals.map(signal => (
-              <div key={signal.title} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                      signal.classsysRelevance === 'high' ? 'bg-red-100 text-red-700' :
-                      signal.classsysRelevance === 'mid' ? 'bg-amber-100 text-amber-700' :
-                      'bg-slate-100 text-slate-500'
-                    }`}>
-                      {signal.classsysRelevance.toUpperCase()}
-                    </span>
-                    <span className="text-[11px] text-slate-400">{signal.category}</span>
+          {isDailyLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-20 animate-pulse rounded-lg bg-gray-100" />
+              ))}
+            </div>
+          ) : dailyArticles.length > 0 ? (
+            <div className="space-y-3">
+              {dailyArticles.map((article: MarketArticle) => (
+                <a
+                  key={article.id}
+                  href={article.original_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block rounded-lg border border-gray-200 bg-white p-4 hover:border-[#002D74] hover:shadow-sm transition-all"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={[
+                          'shrink-0 rounded-full px-2 py-0.5 text-xs font-medium',
+                          article.priority_tier === 'top' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600',
+                        ].join(' ')}>
+                          {article.priority_tier === 'top' ? '주요' : '일반'}
+                        </span>
+                        <span className="text-xs text-gray-400 truncate">{article.source_name}</span>
+                      </div>
+                      <p className="font-medium text-gray-900 line-clamp-2 text-sm">{article.title}</p>
+                      {article.key_insight && (
+                        <p className="mt-1 text-xs text-gray-500 line-clamp-1">💡 {article.key_insight}</p>
+                      )}
+                    </div>
+                    <ExternalLink className="h-4 w-4 shrink-0 text-gray-300 mt-1" />
                   </div>
-                  <span className="text-[11px] text-slate-400">{signal.date}</span>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {visibleSignals.map(signal => (
+                <div key={signal.title} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        signal.classsysRelevance === 'high' ? 'bg-red-100 text-red-700' :
+                        signal.classsysRelevance === 'mid' ? 'bg-amber-100 text-amber-700' :
+                        'bg-slate-100 text-slate-500'
+                      }`}>
+                        {signal.classsysRelevance.toUpperCase()}
+                      </span>
+                      <span className="text-[11px] text-slate-400">{signal.category}</span>
+                    </div>
+                    <span className="text-[11px] text-slate-400">{signal.date}</span>
+                  </div>
+                  <p className="text-sm font-semibold leading-snug text-slate-800">{signal.title}</p>
+                  <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{signal.detail}</p>
                 </div>
-                <p className="text-sm font-semibold leading-snug text-slate-800">{signal.title}</p>
-                <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{signal.detail}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Panel 3: Event Radar */}
