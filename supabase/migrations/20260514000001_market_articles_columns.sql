@@ -18,4 +18,4 @@ CREATE POLICY IF NOT EXISTS "authenticated_read" ON market_articles
   FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY IF NOT EXISTS "service_insert" ON market_articles
-  FOR INSERT TO authenticated USING (true);
+  FOR INSERT TO authenticated WITH CHECK (true);
