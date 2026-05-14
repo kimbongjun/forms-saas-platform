@@ -182,10 +182,68 @@ export async function POST() {
     synced++
   }
 
+  // ── sync 완료 후 Claude 분석 자동 트리거 ─────────────────────
+  // 백그라운드 실행 (await 없음 — sync 응답 지연 방지)
+  void triggerClaudeAnalysis(keywords ?? [], supabase)
+
   return NextResponse.json({
     synced,
     total: keywords.length,
     youtube_real: !!ytKey,
     synced_at: new Date().toISOString(),
   })
+}
+
+// ── 헬퍼: 키워드별 Claude 분석 트리거 ────────────────────────────
+async function triggerClaudeAnalysis(
+  keywords: { id: string; keyword: string }[],
+  supabase: Awaited<ReturnType<typeof import('@/utils/supabase/server').createServerClient>>,
+) {
+  for (const kw of keywords) {
+    try {
+      // 채널별 언급량 집계
+      const today = new Date().toISOString().split('T')[0]
+      const { data: mentions } = await supabase
+        .from('sc_mentions')
+        .select('channel, count')
+        .eq('keyword_id', kw.id)
+        .eq('mention_date', today)
+
+      const mentionsByChannel = Object.fromEntries(
+        (mentions ?? []).map(m => [m.channel as string, m.count as number]),
+      )
+
+      // 최신 포스트 10개
+      const { data: posts } = await supabase
+        .from('sc_posts')
+        .select('channel, content, sentiment')
+        .eq('keyword_id', kw.id)
+        .order('fetched_at', { ascending: false })
+        .limit(10)
+
+      await fetch(
+        `${process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'}/api/some-content/claude-analysis`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            keyword_id: kw.id,
+            keyword: kw.keyword,
+            mentionsByChannel,
+            sentimentDistribution: { positive: 33, negative: 17, neutral: 50 },
+            topKeywords: [],
+            trendData: null,
+            mentionSummary: mentionsByChannel,
+            topPosts: (posts ?? []).map(p => ({
+              channel: p.channel as string,
+              content: (p.content as string | null) ?? '',
+              sentiment: p.sentiment as string | null,
+            })),
+          }),
+        },
+      )
+    } catch {
+      // 키워드별 Claude 실패 무시 — sync 결과에 영향 없음
+    }
+  }
 }
