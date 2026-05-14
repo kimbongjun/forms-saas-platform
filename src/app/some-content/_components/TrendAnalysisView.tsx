@@ -111,11 +111,13 @@ function WordCloud({ words, baseColor, emptyMsg }: {
 // 인사이트 패널
 // ─────────────────────────────────────────────
 function InsightsPanel({
-  keyword, trendData, sentimentData,
+  keyword, keywordId, trendData, sentimentData, mentionsByChannel,
 }: {
   keyword: string
+  keywordId: string
   trendData: TrendResult | null
   sentimentData: SentimentResult | null
+  mentionsByChannel?: Partial<Record<string, number>>
 }) {
   const [insights, setInsights] = useState<InsightsResult | null>(null)
   const [loading, setLoading] = useState(false)
@@ -131,10 +133,12 @@ function InsightsPanel({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           keyword,
+          keyword_id: keywordId,
           metrics: trendData?.metrics,
           sentimentSummary: sentimentData?.summary,
           positive: sentimentData?.positive?.slice(0, 5),
           negative: sentimentData?.negative?.slice(0, 5),
+          mentionsByChannel,
         }),
       })
       if (res.ok) setInsights(await res.json())
@@ -144,7 +148,7 @@ function InsightsPanel({
       }
     } catch (e) { setError(String(e)) }
     finally { setLoading(false) }
-  }, [keyword, trendData, sentimentData])
+  }, [keyword, keywordId, trendData, sentimentData, mentionsByChannel])
 
   useEffect(() => { run() }, [run])
 
@@ -154,9 +158,21 @@ function InsightsPanel({
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-violet-500" />
           <h2 className="text-base font-bold text-gray-900">AI 종합 인사이트</h2>
-          <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-700">
-            Groq · Llama 3.3
-          </span>
+          {insights && (
+            <span className={[
+              'flex items-center gap-1 rounded-full px-2 py-0.5 text-xs',
+              insights.generated_by === 'groq_fallback'
+                ? 'bg-amber-50 text-amber-700'
+                : 'bg-violet-50 text-violet-700',
+            ].join(' ')}>
+              {insights.generated_by === 'groq_fallback' ? '⚠ 기본 분석 모드' : '✦ Claude 분석'}
+              {insights.generated_at && (
+                <span className="text-gray-400">
+                  · {Math.round((Date.now() - new Date(insights.generated_at).getTime()) / 60000)}분 전
+                </span>
+              )}
+            </span>
+          )}
         </div>
         {!loading && (trendData || sentimentData) && (
           <button
@@ -183,49 +199,51 @@ function InsightsPanel({
             />
           </div>
         ) : insights ? (
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-5">
             {insights.trend_summary && (
-              <div className="lg:col-span-4">
+              <div>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-gray-400">트렌드 요약</p>
                 <p className="text-sm leading-relaxed text-gray-700">{insights.trend_summary}</p>
               </div>
             )}
-            {insights.opportunities?.length > 0 && (
-              <div className="rounded-xl bg-green-50 p-4">
-                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-green-700">기회 요인</p>
-                <ul className="space-y-1.5">
-                  {insights.opportunities.map((o, i) => (
-                    <li key={i} className="flex gap-2 text-sm text-gray-700">
-                      <span className="mt-0.5 shrink-0 text-green-500">▸</span>{o}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {insights.risks?.length > 0 && (
-              <div className="rounded-xl bg-red-50 p-4">
-                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-red-600">리스크</p>
-                <ul className="space-y-1.5">
-                  {insights.risks.map((r, i) => (
-                    <li key={i} className="flex gap-2 text-sm text-gray-700">
-                      <span className="mt-0.5 shrink-0 text-red-400">▸</span>{r}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {insights.recommendations?.length > 0 && (
-              <div className="rounded-xl bg-blue-50 p-4">
-                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-blue-700">추천 액션</p>
-                <ul className="space-y-1.5">
-                  {insights.recommendations.map((r, i) => (
-                    <li key={i} className="flex gap-2 text-sm text-gray-700">
-                      <span className="mt-0.5 shrink-0 text-blue-500">▸</span>{r}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {insights.opportunities?.length > 0 && (
+                <div className="rounded-xl bg-green-50 p-4">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-green-700">기회 요인</p>
+                  <ul className="space-y-1.5">
+                    {insights.opportunities.map((o, i) => (
+                      <li key={i} className="flex gap-2 text-sm text-gray-700">
+                        <span className="mt-0.5 shrink-0 text-green-500">▸</span>{o}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {insights.risks?.length > 0 && (
+                <div className="rounded-xl bg-red-50 p-4">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-red-600">리스크</p>
+                  <ul className="space-y-1.5">
+                    {insights.risks.map((r, i) => (
+                      <li key={i} className="flex gap-2 text-sm text-gray-700">
+                        <span className="mt-0.5 shrink-0 text-red-400">▸</span>{r}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {insights.recommendations?.length > 0 && (
+                <div className="rounded-xl bg-blue-50 p-4">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-blue-700">추천 액션</p>
+                  <ul className="space-y-1.5">
+                    {insights.recommendations.map((r, i) => (
+                      <li key={i} className="flex gap-2 text-sm text-gray-700">
+                        <span className="mt-0.5 shrink-0 text-blue-500">▸</span>{r}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <p className="py-6 text-center text-sm text-gray-400">
@@ -347,8 +365,23 @@ export default function TrendAnalysisView({ keywords, onExportDataChange }: {
             Naver 검색광고 API · 실시간
           </span>
         </div>
-        <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm" style={{ minHeight: '560px' }}>
+        {/* 마인드맵 — 모바일: 리스트 폴백 */}
+        <div className="hidden md:block overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm" style={{ minHeight: '560px' }}>
           {selected && <KeywordMindMap centerKeyword={selected.keyword} onNodesChange={handleMindmapNodesChange} />}
+        </div>
+        <div className="block md:hidden rounded-xl border border-gray-100 bg-white p-4">
+          <p className="mb-3 text-xs font-medium text-gray-500">연관 키워드 (PC에서 마인드맵 전체 보기)</p>
+          {mindmapNodes.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {mindmapNodes.slice(0, 15).map(node => (
+                <span key={node.keyword} className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700">
+                  {node.keyword}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400">연관 키워드를 불러오는 중입니다...</p>
+          )}
         </div>
         <p className="mt-3 text-center text-xs text-gray-400">
           노드 클릭 시 해당 키워드로 탐색 · 검색량 기준 노드 크기 · 전체화면 버튼으로 크게 보기
@@ -523,7 +556,7 @@ export default function TrendAnalysisView({ keywords, onExportDataChange }: {
       </section>
 
       {/* ── SECTION 4: AI 종합 인사이트 ── */}
-      <InsightsPanel keyword={selKw} trendData={trendData} sentimentData={sentimentData} />
+      <InsightsPanel keyword={selKw} keywordId={selId} trendData={trendData} sentimentData={sentimentData} />
 
     </div>
   )

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import {
-  TrendingUp, Globe, Settings, RefreshCw,
+  TrendingUp, Settings, RefreshCw,
   Plus, Trash2, ExternalLink, BarChart3,
   CheckCircle2, XCircle, ChevronDown,
   Download, ChevronUp, Cpu, AlertCircle, Info,
@@ -13,7 +13,7 @@ import type { TrendExportState } from './TrendAnalysisView'
 
 const TrendAnalysisView = dynamic(() => import('./TrendAnalysisView'), { ssr: false })
 
-type Tab = 'dashboard' | 'trend' | 'channel' | 'settings'
+type Tab = 'dashboard' | 'trend' | 'settings'
 
 // ── 채널 메타데이터 ────────────────────────────────────────────────
 type DataSource = 'real' | 'crawled' | 'estimated'
@@ -185,6 +185,24 @@ function DashboardTab({ mentions, keywords }: { mentions: ScMentionSummary[]; ke
             })}
           </div>
         </section>
+      )}
+
+      {/* 채널별 상세 — 아코디언 */}
+      {totalMentions > 0 && (
+        <details className="mt-6 rounded-xl border border-gray-200 bg-white">
+          <summary className="cursor-pointer px-6 py-4 text-sm font-medium text-gray-700 hover:bg-gray-50 list-none flex items-center justify-between">
+            <span>채널별 상세 언급량</span>
+            <ChevronDown className="h-4 w-4 text-gray-400" />
+          </summary>
+          <div className="grid grid-cols-2 gap-3 p-6 sm:grid-cols-4">
+            {CHANNEL_ORDER.filter(ch => (channelTotals[ch] ?? 0) > 0).map(ch => (
+              <div key={ch} className="rounded-lg bg-gray-50 p-3 text-center">
+                <p className="text-xs text-gray-500 truncate">{CHANNEL_META[ch]?.label ?? ch}</p>
+                <p className="mt-1 text-lg font-bold text-gray-900">{(channelTotals[ch] ?? 0).toLocaleString()}</p>
+              </div>
+            ))}
+          </div>
+        </details>
       )}
     </div>
   )
@@ -970,7 +988,6 @@ export default function SomeContentClient() {
   const TABS = [
     { key: 'dashboard' as Tab, label: '대시보드',   icon: BarChart3 },
     { key: 'trend'     as Tab, label: '트렌드 분석', icon: TrendingUp },
-    { key: 'channel'   as Tab, label: '채널 탐색',  icon: Globe },
     { key: 'settings'  as Tab, label: '설정',       icon: Settings },
   ]
 
@@ -1073,13 +1090,6 @@ export default function SomeContentClient() {
             {activeTab === 'dashboard' && <DashboardTab mentions={mentions} keywords={keywords} />}
             {activeTab === 'trend' && (
               <TrendAnalysisView keywords={keywords} onExportDataChange={setTrendExportData} />
-            )}
-            {activeTab === 'channel' && (
-              <ChannelTab
-                posts={posts} keywords={keywords}
-                selectedChannel={selectedChannel} setSelectedChannel={setSelectedChannel}
-                selectedKeyword={selectedKeyword} setSelectedKeyword={setSelectedKeyword}
-              />
             )}
             {activeTab === 'settings' && (
               <SettingsTab
