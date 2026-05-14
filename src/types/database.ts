@@ -295,3 +295,52 @@ export const VITALS_THRESHOLDS = {
   cls:  { good: 0.1,   needsImprovement: 0.25  },  // score
   ttfb: { good: 800,   needsImprovement: 1800  },  // ms
 } satisfies Record<string, VitalsThreshold>
+
+// ── Market Intelligence ───────────────────────────────────────────
+
+export type MarketCategoryNew = 'tech_ai' | 'marketing_kol' | 'events' | 'daily'
+export type PriorityTier = 'top' | 'standard' | 'low'
+export type MarketSourceType = 'rss' | 'naver' | 'google_news' | 'youtube'
+
+export interface MarketArticleV2 {
+  id: string
+  source_type: MarketSourceType
+  category: MarketCategoryNew
+  title: string
+  summary_ko: string | null
+  key_insight: string | null
+  original_url: string
+  source_name: string | null
+  thumbnail_url: string | null
+  published_at: string | null
+  credibility_score: number
+  priority_tier: PriorityTier
+  tags: string[]
+  fetched_at: string
+  created_at: string
+}
+
+export interface MarketRefreshLog {
+  id: string
+  triggered_by: 'cron' | 'admin'
+  articles_fetched: number
+  articles_saved: number
+  claude_tokens_used: number
+  status: 'success' | 'partial' | 'failed'
+  error_detail: string | null
+  created_at: string
+}
+
+// ── SomeContent Claude Insights ───────────────────────────────────
+
+export interface ScClaudeInsight {
+  id: string
+  keyword_id: string
+  keyword: string
+  insight_type: 'comprehensive' | 'cross_channel'
+  payload: Record<string, unknown>
+  token_used: number
+  model: string
+  generated_at: string
+  expires_at: string
+}
