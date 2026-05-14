@@ -7,6 +7,8 @@ import {
   RefreshCw, ShieldCheck, Star, Users, X,
 } from 'lucide-react'
 import MarketNav from './MarketNav'
+import { useMarketArticles } from '@/hooks/queries/useMarketArticles'
+import type { MarketArticle } from '@/types/database'
 
 type RegionFilter = 'all' | 'asia' | 'europe' | 'americas'
 type ViewMode = 'calendar' | 'list' | 'gantt'
@@ -484,6 +486,7 @@ export default function EventsClient() {
   const [currentYear, setCurrentYear] = useState(today.getFullYear())
   const [currentMonth, setCurrentMonth] = useState(today.getMonth())
   const [selectedEvent, setSelectedEvent] = useState<MarketEvent | null>(null)
+  const { data: eventArticles = [], isLoading: isEventsLoading } = useMarketArticles({ category: 'events', limit: 20 })
 
   const filtered = useMemo(
     () => region === 'all' ? EVENTS : EVENTS.filter(e => e.region === region),
@@ -671,25 +674,41 @@ export default function EventsClient() {
               </div>
             </div>
           ) : viewMode === 'list' ? (
-            <div className="mt-6 grid gap-8 xl:grid-cols-[0.9fr,1.1fr]">
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <CalendarDays className="h-4 w-4 text-blue-700" />
-                  <h3 className="text-sm font-semibold text-slate-900">예정 / 진행 중 ({upcoming.length})</h3>
+            <div className="mt-6">
+              {isEventsLoading ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {[1,2,3,4,5,6].map(i => (
+                    <div key={i} className="h-40 animate-pulse rounded-xl bg-gray-100" />
+                  ))}
                 </div>
-                <div className="space-y-3">
-                  {upcoming.map(ev => <EventCard key={ev.id} event={ev} onOpen={setSelectedEvent} />)}
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {eventArticles.map((article: MarketArticle) => (
+                    <a
+                      key={article.id}
+                      href={article.original_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-col gap-2 rounded-xl border border-gray-100 bg-white p-4 hover:border-indigo-200 hover:shadow-sm transition-all"
+                    >
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4 text-indigo-500 shrink-0" />
+                        <span className="text-xs text-gray-400">
+                          {article.published_at ? new Date(article.published_at).toLocaleDateString('ko-KR') : '날짜 미상'}
+                        </span>
+                      </div>
+                      <p className="font-medium text-gray-900 line-clamp-2 text-sm">{article.title}</p>
+                      {article.key_insight && (
+                        <p className="text-xs text-gray-500 line-clamp-2">{article.key_insight}</p>
+                      )}
+                      <span className="mt-auto text-xs text-gray-400">{article.source_name}</span>
+                    </a>
+                  ))}
+                  {eventArticles.length === 0 && (
+                    <p className="col-span-3 text-center text-sm text-gray-400 py-12">이벤트 데이터를 불러오는 중입니다.</p>
+                  )}
                 </div>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <CheckCircle2 className="h-4 w-4 text-slate-400" />
-                  <h3 className="text-sm font-semibold text-slate-900">완료된 행사 ({past.length})</h3>
-                </div>
-                <div className="space-y-3">
-                  {past.map(ev => <EventCard key={ev.id} event={ev} onOpen={setSelectedEvent} />)}
-                </div>
-              </div>
+              )}
             </div>
           ) : (
             <GanttView events={filtered} onOpen={setSelectedEvent} />

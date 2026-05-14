@@ -16,6 +16,8 @@ import {
   Zap,
 } from 'lucide-react'
 import MarketNav from './MarketNav'
+import { useMarketArticles } from '@/hooks/queries/useMarketArticles'
+import type { MarketArticle } from '@/types/database'
 
 type FilterKey = 'all' | 'tech' | 'ai' | 'regulatory'
 
@@ -469,6 +471,7 @@ export default function TechAiClient() {
   const [refreshing, setRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState('2026-05-07 09:10')
   const [detailArticle, setDetailArticle] = useState<Article | null>(null)
+  const { data: articles = [], isLoading } = useMarketArticles({ category: 'tech_ai', limit: 30 })
 
   const filtered = filter === 'all' ? ARTICLES : ARTICLES.filter((article) => article.category === filter)
 
@@ -532,65 +535,50 @@ export default function TechAiClient() {
             ))}
           </div>
 
-          <div className="space-y-4">
-            {filtered.map((article) => (
-              <article key={article.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                <div className="mb-3 flex items-start justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={['rounded-full px-2.5 py-1 text-[11px] font-semibold', CATEGORY_COLORS[article.category]].join(' ')}>
-                      {CATEGORY_LABELS[article.category]}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-xs text-slate-400">
-                      <Globe className="h-3 w-3" />
-                      {article.region}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-xs text-slate-400">
-                      <Calendar className="h-3 w-3" />
-                      {article.date}
-                    </span>
-                    <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:text-blue-800">
-                      {article.source}
-                    </a>
+          {isLoading ? (
+            <div className="space-y-4">
+              {[1,2,3,4,5].map(i => (
+                <div key={i} className="h-24 animate-pulse rounded-xl bg-gray-100" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {articles.map((article: MarketArticle) => (
+                <a
+                  key={article.id}
+                  href={article.original_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex gap-4 rounded-xl border border-gray-100 bg-white p-4 hover:border-blue-200 hover:shadow-sm transition-all"
+                >
+                  {article.thumbnail_url && (
+                    <img
+                      src={article.thumbnail_url}
+                      alt=""
+                      className="h-16 w-16 shrink-0 rounded-lg object-cover"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      {article.tags.slice(0, 2).map(tag => (
+                        <span key={tag} className="rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-700">{tag}</span>
+                      ))}
+                    </div>
+                    <p className="font-medium text-gray-900 line-clamp-2 text-sm">{article.title}</p>
+                    {article.summary_ko && (
+                      <p className="mt-1 text-xs text-gray-500 line-clamp-2">{article.summary_ko}</p>
+                    )}
+                    <p className="mt-1 text-xs text-gray-400">
+                      {article.source_name} · {article.published_at ? new Date(article.published_at).toLocaleDateString('ko-KR') : ''}
+                    </p>
                   </div>
-                  <button
-                    onClick={() => setDetailArticle(article)}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    Detail
-                  </button>
-                </div>
-
-                <h2 className="text-base font-bold leading-snug text-slate-950">{article.title}</h2>
-                <p className="mt-3 text-sm leading-relaxed text-slate-600">{article.summary}</p>
-
-                <div className="mt-4 rounded-2xl bg-slate-50 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Business interpretation</p>
-                  <p className="mt-1 text-sm leading-relaxed text-slate-700">{article.insight}</p>
-                </div>
-
-                <div className="mt-3 rounded-2xl bg-blue-50 p-3 flex items-start gap-2">
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                    article.relevance === 'high' ? 'bg-red-100 text-red-700' :
-                    article.relevance === 'mid' ? 'bg-amber-100 text-amber-700' :
-                    'bg-slate-100 text-slate-500'
-                  }`}>
-                    {article.relevance === 'high' ? 'HIGH' : article.relevance === 'mid' ? 'MID' : 'LOW'}
-                  </span>
-                  <p className="text-xs leading-relaxed text-blue-900">{article.classsysActionPoint}</p>
-                </div>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {article.tags.map((tag) => (
-                    <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                      <Tag className="h-3 w-3" />
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </article>
-            ))}
-          </div>
+                </a>
+              ))}
+              {articles.length === 0 && (
+                <p className="text-center text-sm text-gray-400 py-12">기사 데이터를 불러오는 중입니다. 관리자가 새로고침을 실행해 주세요.</p>
+              )}
+            </div>
+          )}
         </div>
 
         <aside className="space-y-4">
