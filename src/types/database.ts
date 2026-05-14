@@ -218,30 +218,28 @@ export interface MonitorSitemapRun {
 }
 
 // ── Market Intelligence ────────────────────────────────────────────
-export type MarketCategory =
-  | 'tech'        // Technology Trends
-  | 'ai'          // AI / SaMD
-  | 'marketing'   // Campaign & Branding
-  | 'influencer'  // KOL & Influencer
-  | 'events'      // Exhibitions & Conferences
-  | 'sns'         // SNS Feed Trends
-  | 'policy'      // Global Policy
+export type MarketCategory = 'tech_ai' | 'marketing_kol' | 'events' | 'daily'
+export type PriorityTier = 'top' | 'standard' | 'low'
+export type MarketSourceType = 'rss' | 'naver' | 'google_news' | 'youtube'
 
 export type SnsplatformType = 'instagram' | 'youtube' | 'linkedin' | 'tiktok' | 'threads' | 'facebook'
 
 export interface MarketArticle {
   id: string
+  source_type: MarketSourceType
   category: MarketCategory
   title: string
-  source: string
-  url: string | null
-  summary: string | null
-  insight: string | null
+  summary_ko: string | null
+  key_insight: string | null
+  original_url: string
+  source_name: string | null
+  thumbnail_url: string | null
   published_at: string | null
-  fetched_at: string
-  image_url: string | null
+  credibility_score: number
+  priority_tier: PriorityTier
   tags: string[]
-  metadata: Record<string, unknown> | null
+  fetched_at: string
+  created_at: string
 }
 
 export interface MarketInfluencer {
@@ -295,30 +293,6 @@ export const VITALS_THRESHOLDS = {
   cls:  { good: 0.1,   needsImprovement: 0.25  },  // score
   ttfb: { good: 800,   needsImprovement: 1800  },  // ms
 } satisfies Record<string, VitalsThreshold>
-
-// ── Market Intelligence ───────────────────────────────────────────
-
-export type MarketCategoryNew = 'tech_ai' | 'marketing_kol' | 'events' | 'daily'
-export type PriorityTier = 'top' | 'standard' | 'low'
-export type MarketSourceType = 'rss' | 'naver' | 'google_news' | 'youtube'
-
-export interface MarketArticleV2 {
-  id: string
-  source_type: MarketSourceType
-  category: MarketCategoryNew
-  title: string
-  summary_ko: string | null
-  key_insight: string | null
-  original_url: string
-  source_name: string | null
-  thumbnail_url: string | null
-  published_at: string | null
-  credibility_score: number
-  priority_tier: PriorityTier
-  tags: string[]
-  fetched_at: string
-  created_at: string
-}
 
 export interface MarketRefreshLog {
   id: string
