@@ -9,6 +9,10 @@
       "schedule": "0 17 * * *"
     },
     {
+      "path": "/api/cron/geo-tech",
+      "schedule": "30 17 * * *"
+    },
+    {
       "path": "/api/cron/geo-community",
       "schedule": "0 18 * * *"
     },
