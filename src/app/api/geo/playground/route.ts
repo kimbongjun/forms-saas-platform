@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/utils/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
-import { GoogleGenerativeAI } from '@google/generative-ai'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const openai    = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-const genAI     = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? '')
 
 export interface BrandVisibility {
   brand:      string
@@ -77,20 +75,31 @@ export async function POST(req: NextRequest) {
 
   // ── 3개 AI 모델 병렬 호출 ──────────────────────────────────────────────────
   const [gptRes, geminiRes, claudeRes] = await Promise.allSettled([
-    // ChatGPT (GPT-4o)
+    // ChatGPT (GPT-4o-mini)
     openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       max_tokens: 512,
       messages: [
         { role: 'system', content: QUERY_SYSTEM },
         { role: 'user',   content: userMessage },
       ],
     }),
-    // Gemini 1.5 Pro
+    // Gemini 2.0 Flash — REST API 직접 호출 (SDK fetch 이슈 우회)
     (async () => {
-      const model  = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' })
-      const result = await model.generateContent(QUERY_SYSTEM + '\n\n' + userMessage)
-      return result.response.text()
+      const apiKey = process.env.GEMINI_API_KEY ?? ''
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: QUERY_SYSTEM }] },
+          contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+          generationConfig: { maxOutputTokens: 512 },
+        }),
+      })
+      if (!res.ok) throw new Error(`Gemini API ${res.status}: ${await res.text()}`)
+      const data = await res.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] }
+      return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '응답을 받지 못했습니다.'
     })(),
     // Claude Sonnet
     anthropic.messages.create({
@@ -121,7 +130,7 @@ export async function POST(req: NextRequest) {
       system:     ANALYSIS_SYSTEM,
       messages:   [{
         role:    'user',
-        content: `질문: "${query.trim()}"\n\n[ChatGPT (GPT-4o) 답변]\n${chatgptAnswer}\n\n[Gemini (1.5 Pro) 답변]\n${geminiAnswer}\n\n[Claude (Sonnet) 답변]\n${claudeAnswer}\n\n위 3개 AI 모델의 실제 답변을 종합 분석하여 GEO 분석 JSON을 반환해주세요.`,
+        content: `질문: "${query.trim()}"\n\n[ChatGPT (GPT-4o mini) 답변]\n${chatgptAnswer}\n\n[Gemini (2.0 Flash) 답변]\n${geminiAnswer}\n\n[Claude (Sonnet) 답변]\n${claudeAnswer}\n\n위 3개 AI 모델의 실제 답변을 종합 분석하여 GEO 분석 JSON을 반환해주세요.`,
       }],
     })
 
@@ -137,8 +146,8 @@ export async function POST(req: NextRequest) {
     const result: PlaygroundResult = {
       query:          query.trim(),
       perspective,
-      model_chatgpt:  { name: 'ChatGPT (GPT-4o)',      answer: chatgptAnswer },
-      model_gemini:   { name: 'Gemini (1.5 Pro)',       answer: geminiAnswer },
+      model_chatgpt:  { name: 'ChatGPT (GPT-4o mini)',   answer: chatgptAnswer },
+      model_gemini:   { name: 'Gemini (2.0 Flash)',      answer: geminiAnswer },
       model_claude:   { name: 'Claude (Sonnet)',        answer: claudeAnswer },
       brand_visibility,
       geo_insights,
