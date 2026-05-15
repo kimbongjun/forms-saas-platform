@@ -1127,14 +1127,19 @@ function GeoPlayground() {
 
   async function runPlayground() {
     if (!query.trim() || loading) return
-    setLoading(true); setError(null); setResult(null)
+    setLoading(true); setError(null)
     try {
       const res = await fetch('/api/geo/playground', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: query.trim(), perspective }),
       })
       if (!res.ok) { const b = await res.json() as { error?: string }; throw new Error(b.error ?? `HTTP ${res.status}`) }
-      setResult((await res.json()) as PlaygroundResult)
+      const data = (await res.json()) as PlaygroundResult
+      const entry: HistoryEntry = { ...data, id: crypto.randomUUID() }
+      const updated = [entry, ...history].slice(0, HISTORY_MAX)
+      setHistory(updated)
+      saveHistory(updated)
+      setActiveIdx(0)
     } catch (err) {
       setError(err instanceof Error ? err.message : '분석 실패')
     } finally { setLoading(false) }
