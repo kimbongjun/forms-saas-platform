@@ -1167,8 +1167,61 @@ function GeoPlayground() {
   const prominenceCls: Record<string, string> = { primary: 'bg-emerald-600', secondary: 'bg-amber-500', not_mentioned: 'bg-slate-200' }
   const prominenceLabel: Record<string, string> = { primary: '1순위 노출', secondary: '부차적 언급', not_mentioned: '미노출' }
 
+  const activeEntry = activeIdx !== null ? history[activeIdx] : null
+
   return (
     <div className="space-y-6">
+      {/* 히스토리 탭 행 */}
+      <div className="flex items-center gap-0 border-b border-slate-200 overflow-x-auto">
+        {/* 새 시뮬레이션 탭 */}
+        <button
+          onClick={() => setActiveIdx(null)}
+          className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-all shrink-0 ${
+            activeIdx === null
+              ? 'text-slate-900 border-slate-900'
+              : 'text-slate-400 border-transparent hover:text-slate-600 hover:border-slate-300'
+          }`}
+        >
+          <span className="text-base leading-none">+</span>
+          새 시뮬레이션
+        </button>
+
+        {/* 히스토리 탭 목록 */}
+        {history.map((entry, i) => (
+          <button
+            key={entry.id}
+            onClick={() => setActiveIdx(i)}
+            className={`group flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-all shrink-0 ${
+              activeIdx === i
+                ? 'text-slate-900 border-slate-900'
+                : 'text-slate-400 border-transparent hover:text-slate-600 hover:border-slate-300'
+            }`}
+          >
+            <span className="max-w-[140px] truncate">
+              {entry.query.length > 20 ? entry.query.slice(0, 20) + '…' : entry.query}
+            </span>
+            <span
+              onClick={(e) => deleteEntry(i, e)}
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500 leading-none text-base"
+              role="button"
+              aria-label={`${entry.query} 삭제`}
+            >
+              ×
+            </span>
+          </button>
+        ))}
+
+        {/* 전체 초기화 — 히스토리가 있을 때만 표시 */}
+        {history.length > 0 && (
+          <button
+            onClick={clearAll}
+            className="ml-auto shrink-0 px-3 py-2.5 text-xs text-slate-400 hover:text-red-500 transition-colors whitespace-nowrap"
+          >
+            전체 초기화
+          </button>
+        )}
+      </div>
+
       <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
         <p className="text-base font-bold text-slate-800 mb-1">AI 시뮬레이션 분석 도구</p>
         <p className="text-sm text-slate-500 leading-relaxed">
