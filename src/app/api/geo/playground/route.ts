@@ -6,6 +6,18 @@ import OpenAI from 'openai'
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const openai    = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
+function sanitizeGeoJson(raw: string): string {
+  // 마크다운 코드 펜스 제거
+  let s = raw.replace(/```(?:json)?\s*/g, '').replace(/```/g, '').trim()
+  // 가장 바깥 JSON 객체 추출
+  const m = s.match(/\{[\s\S]*\}/)
+  if (!m) return '{}'
+  s = m[0]
+  // 후행 콤마 제거 (, 다음에 } 또는 ] 가 오는 경우)
+  s = s.replace(/,(\s*[}\]])/g, '$1')
+  return s
+}
+
 export interface BrandVisibility {
   brand:      string
   mentioned:  boolean
@@ -133,42 +145,51 @@ export async function POST(req: NextRequest) {
     ? (claudeRes.value.content[0].type === 'text' ? claudeRes.value.content[0].text : '응답을 받지 못했습니다.')
     : `Claude 호출 오류: ${claudeRes.reason instanceof Error ? claudeRes.reason.message : 'API 오류'}`
 
-  // ── Claude로 3개 답변 종합 GEO 분석 ──────────────────────────────────────
-  try {
-    const analysisMsg = await anthropic.messages.create({
-      model:      'claude-sonnet-4-6',
-      max_tokens: 1024,
-      system:     ANALYSIS_SYSTEM,
-      messages:   [{
-        role:    'user',
-        content: `질문: "${query.trim()}"\n\n[ChatGPT (GPT-4o mini) 답변]\n${chatgptAnswer}\n\n[Gemini (2.0 Flash) 답변]\n${geminiAnswer}\n\n[Claude (Sonnet) 답변]\n${claudeAnswer}\n\n위 3개 AI 모델의 실제 답변을 종합 분석하여 GEO 분석 JSON을 반환해주세요.`,
-      }],
-    })
+  // ── Claude로 3개 답변 종합 GEO 분석 (최대 3회 재시도) ────────────────────
+  const analysisPrompt = `질문: "${query.trim()}"\n\n[ChatGPT (GPT-4o mini) 답변]\n${chatgptAnswer}\n\n[Gemini (2.0 Flash) 답변]\n${geminiAnswer}\n\n[Claude (Sonnet) 답변]\n${claudeAnswer}\n\n위 3개 AI 모델의 실제 답변을 종합 분석하여 GEO 분석 JSON을 반환해주세요.`
 
-    const raw       = analysisMsg.content[0].type === 'text' ? analysisMsg.content[0].text : '{}'
-    const jsonMatch = raw.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) throw new Error('GEO 분석 JSON 파싱 실패')
+  let analysisResult: { brand_visibility: BrandVisibility[]; geo_insights: string[] } | null = null
+  let lastError = ''
 
-    const { brand_visibility, geo_insights } = JSON.parse(jsonMatch[0]) as {
-      brand_visibility: BrandVisibility[]
-      geo_insights:     string[]
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const analysisMsg = await anthropic.messages.create({
+        model:      'claude-sonnet-4-6',
+        max_tokens: 2048,
+        system:     ANALYSIS_SYSTEM,
+        messages:   [{ role: 'user', content: analysisPrompt }],
+      })
+
+      const raw     = analysisMsg.content[0].type === 'text' ? analysisMsg.content[0].text : '{}'
+      const cleaned = sanitizeGeoJson(raw)
+      const parsed  = JSON.parse(cleaned) as { brand_visibility: BrandVisibility[]; geo_insights: string[] }
+
+      if (!Array.isArray(parsed.brand_visibility) || !Array.isArray(parsed.geo_insights)) {
+        throw new Error('brand_visibility 또는 geo_insights 필드 누락')
+      }
+      analysisResult = parsed
+      break
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : String(e)
+      console.warn(`[geo/playground] GEO 분석 파싱 실패 (${attempt + 1}/3): ${lastError}`)
     }
-
-    const result: PlaygroundResult = {
-      query:          query.trim(),
-      perspective,
-      model_chatgpt:  { name: 'ChatGPT (GPT-4o mini)',   answer: chatgptAnswer },
-      model_gemini:   { name: 'Gemini (2.0 Flash)',      answer: geminiAnswer },
-      model_claude:   { name: 'Claude (Sonnet)',        answer: claudeAnswer },
-      brand_visibility,
-      geo_insights,
-      generated_at:   new Date().toISOString(),
-    }
-
-    return NextResponse.json(result)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error('[geo/playground] error:', msg)
-    return NextResponse.json({ error: `분석 실패: ${msg}` }, { status: 500 })
   }
+
+  if (!analysisResult) {
+    console.error('[geo/playground] 3회 재시도 후 최종 실패:', lastError)
+    return NextResponse.json({ error: `GEO 분석 실패: ${lastError}` }, { status: 500 })
+  }
+
+  const result: PlaygroundResult = {
+    query:          query.trim(),
+    perspective,
+    model_chatgpt:  { name: 'ChatGPT (GPT-4o mini)', answer: chatgptAnswer },
+    model_gemini:   { name: 'Gemini (2.0 Flash)',    answer: geminiAnswer },
+    model_claude:   { name: 'Claude (Sonnet)',       answer: claudeAnswer },
+    brand_visibility: analysisResult.brand_visibility,
+    geo_insights:     analysisResult.geo_insights,
+    generated_at:   new Date().toISOString(),
+  }
+
+  return NextResponse.json(result)
 }

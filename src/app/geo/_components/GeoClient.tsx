@@ -253,7 +253,7 @@ function OverviewTab() {
       <div className="bg-white rounded-lg border border-slate-200 p-6">
         <SectionTitle sub={`${GEO_DATA.length}개 브랜드 비교 · 2026-05 기준`}>전체 GEO 점수 순위</SectionTitle>
         <div className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={288}>
             <BarChart data={rankingChartData} layout="vertical" margin={{ top: 0, right: 40, bottom: 0, left: 64 }}>
               <CartesianGrid horizontal={false} stroke="#F1F5F9" />
               <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 13, fill: '#64748B' }} tickLine={false} axisLine={false} />
@@ -276,7 +276,7 @@ function OverviewTab() {
       <div className="bg-white rounded-lg border border-slate-200 p-6">
         <SectionTitle sub="볼뉴머 vs 시장 1위(써마지) · 5개 분석 차원">차원별 경쟁 격차 분석</SectionTitle>
         <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={256}>
             <BarChart data={dimensionGapData} layout="vertical" margin={{ top: 0, right: 40, bottom: 0, left: 56 }}>
               <CartesianGrid horizontal={false} stroke="#F1F5F9" />
               <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 13, fill: '#64748B' }} tickLine={false} axisLine={false} />
@@ -294,7 +294,7 @@ function OverviewTab() {
       <div className="bg-white rounded-lg border border-slate-200 p-6">
         <SectionTitle sub="커뮤니티 Share of Voice · 전 브랜드">시장 내 커뮤니티 점유율 비교</SectionTitle>
         <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={256}>
             <BarChart data={sovChartData} layout="vertical" margin={{ top: 0, right: 40, bottom: 0, left: 64 }}>
               <CartesianGrid horizontal={false} stroke="#F1F5F9" />
               <XAxis type="number" domain={[0, 50]} tick={{ fontSize: 13, fill: '#64748B' }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} />
@@ -555,7 +555,7 @@ function AiBenchmarkTab({ aeo }: { aeo: AeoBenchmark }) {
       <div className="bg-white rounded-lg border border-slate-200 p-5">
         <SectionTitle sub="질문 10회당 언급 횟수 기준">AI 플랫폼별 노출 빈도</SectionTitle>
         <div className="h-52">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={208}>
             <BarChart data={platformData} margin={{ top: 4, right: 20, bottom: 0, left: 0 }}>
               <CartesianGrid vertical={false} stroke="#F1F5F9" />
               <XAxis dataKey="name" tick={{ fontSize: 15, fill: '#374151', fontWeight: 600 }} tickLine={false} axisLine={false} />
@@ -744,7 +744,7 @@ function ScoreTrendChart({ brandId, brandColor }: { brandId: string; brandColor:
         <span className="text-sm text-slate-400">평균 {avg}점</span>
       </div>
       <div className="h-48">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height={192}>
           <LineChart data={chartData} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
             <CartesianGrid stroke="#F1F5F9" />
             <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#94A3B8' }} tickLine={false} axisLine={false} />
@@ -941,7 +941,7 @@ function CommunityTab({ community, youtubeQuery, brandId }: { community: Communi
         <div className="lg:col-span-3 bg-white rounded-lg border border-slate-200 p-5">
           <SectionTitle sub="월간 언급량 기준">플랫폼별 언급 현황</SectionTitle>
           <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={208}>
               <BarChart data={platformData} margin={{ top: 4, right: 10, bottom: 0, left: 0 }}>
                 <CartesianGrid vertical={false} stroke="#F1F5F9" />
                 <XAxis dataKey="name" tick={{ fontSize: 15, fill: '#374151', fontWeight: 600 }} tickLine={false} axisLine={false} />
@@ -958,7 +958,7 @@ function CommunityTab({ community, youtubeQuery, brandId }: { community: Communi
           <SectionTitle>긍정 감성 비율</SectionTitle>
           <div className="flex items-center gap-4">
             <div className="relative h-44 flex-1">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={176}>
                 <PieChart>
                   <Pie data={sentimentData} cx="50%" cy="50%" innerRadius={52} outerRadius={72}
                     startAngle={90} endAngle={-270} dataKey="value" strokeWidth={0}>
@@ -1028,7 +1028,7 @@ function EarnedMediaTab({ media, brandId }: { media: EarnedMedia; brandId: strin
         <div className="bg-white rounded-lg border border-slate-200 p-5">
           <SectionTitle>보도자료 · 학술논문 추이</SectionTitle>
           <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={208}>
               <BarChart data={pressData} margin={{ top: 4, right: 10, bottom: 0, left: 0 }}>
                 <CartesianGrid vertical={false} stroke="#F1F5F9" />
                 <XAxis dataKey="name" tick={{ fontSize: 15, fill: '#374151', fontWeight: 600 }} tickLine={false} axisLine={false} />
