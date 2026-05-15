@@ -1,0 +1,98 @@
+name: GEO Cron Jobs
+
+on:
+  schedule:
+    - cron: '0 17 * * *'    # geo-scores:     매일 02:00 KST (UTC+9)
+    - cron: '0 18 * * *'    # geo-community:  매일 03:00 KST (UTC+9)
+    - cron: '0 0 * * MON'   # geo-alerts:     매주 월요일 09:00 KST (UTC+9)
+  workflow_dispatch:
+    inputs:
+      job:
+        description: '수동으로 실행할 job'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - geo-scores
+          - geo-community
+          - geo-alerts
+
+jobs:
+  geo-scores:
+    name: GEO Score Snapshots (매일 02:00 KST)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: |
+      github.event.schedule == '0 17 * * *' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (github.event.inputs.job == 'geo-scores' || github.event.inputs.job == 'all'))
+
+    steps:
+      - name: Run geo-scores cron
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/geo-scores")
+
+          echo "Response status: $response"
+
+          if [ "$response" != "200" ]; then
+            echo "geo-scores cron failed with status $response"
+            exit 1
+          fi
+
+          echo "geo-scores cron completed successfully"
+
+  geo-community:
+    name: GEO Community Cache (매일 03:00 KST)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: |
+      github.event.schedule == '0 18 * * *' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (github.event.inputs.job == 'geo-community' || github.event.inputs.job == 'all'))
+
+    steps:
+      - name: Run geo-community cron
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/geo-community")
+
+          echo "Response status: $response"
+
+          if [ "$response" != "200" ]; then
+            echo "geo-community cron failed with status $response"
+            exit 1
+          fi
+
+          echo "geo-community cron completed successfully"
+
+  geo-alerts:
+    name: GEO Weekly Alert Email (매주 월요일 09:00 KST)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: |
+      github.event.schedule == '0 0 * * MON' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (github.event.inputs.job == 'geo-alerts' || github.event.inputs.job == 'all'))
+
+    steps:
+      - name: Run geo-alerts cron
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/geo-alerts")
+
+          echo "Response status: $response"
+
+          if [ "$response" != "200" ]; then
+            echo "geo-alerts cron failed with status $response"
+            exit 1
+          fi
+
+          echo "geo-alerts cron completed successfully"
