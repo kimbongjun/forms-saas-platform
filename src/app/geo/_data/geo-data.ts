@@ -90,7 +90,7 @@ export const GEO_DATA: BrandGeoData[] = [
     id: 'volnewmer',
     name: '볼뉴머',
     name_en: 'Volnewmer',
-    company: 'Classys',
+    company: '클래시스',
     color: '#B4221B',
     device_type: 'Monopolar RF',
     geo_score: 62,
@@ -246,8 +246,8 @@ export const GEO_DATA: BrandGeoData[] = [
   {
     id: 'densiti',
     name: '덴서티',
-    name_en: 'Densiti',
-    company: 'Denox',
+    name_en: 'Density',
+    company: '제이시스',
     color: '#0C3A47',
     device_type: 'Bipolar RF',
     geo_score: 58,
@@ -402,7 +402,7 @@ export const GEO_DATA: BrandGeoData[] = [
     id: 'tenthermo',
     name: '텐써마',
     name_en: 'TenTherma',
-    company: 'Tera Bio',
+    company: '텐텍',
     color: '#33348D',
     device_type: 'Capacitive RF',
     geo_score: 48,
@@ -477,7 +477,7 @@ export const GEO_DATA: BrandGeoData[] = [
     id: 'xerf',
     name: 'XERF',
     name_en: 'XERF',
-    company: 'XR Aesthetics',
+    company: '루트로닉',
     color: '#F37964',
     device_type: 'Fractional RF',
     geo_score: 41,
@@ -736,7 +736,8 @@ export const SAMPLE_QUERIES = [
 ]
 
 export const PERSPECTIVES = [
-  { value: 'general', label: '일반 소비자', desc: '뷰티/시술 비전문가, 30~40대' },
-  { value: 'young', label: '20대 직장인', desc: '첫 리프팅 시술 고려 중' },
-  { value: 'medical', label: '피부과 원장', desc: '장비 도입 검토 의사결정자' },
+  { value: 'general', label: '일반',        desc: '미용·시술에 관심 있는 일반인' },
+  { value: 'young',   label: '20-30대',     desc: '20~30대 미용 관심 직장인·학생' },
+  { value: 'middle',  label: '40-50대',     desc: '40~50대 안티에이징 관심 소비자' },
+  { value: 'expert',  label: '시술 고관여자', desc: '시술 경험 많고 제품 꼼꼼히 비교하는 소비자' },
 ]

@@ -1114,16 +1114,21 @@ function saveHistory(entries: HistoryEntry[]): void {
 }
 
 function GeoPlayground() {
-  const [history, setHistory]         = useState<HistoryEntry[]>([])
-  const [activeIdx, setActiveIdx]     = useState<number | null>(null)
-  const [query, setQuery]             = useState('')
-  const [perspective, setPerspective] = useState('general')
-  const [loading, setLoading]         = useState(false)
-  const [error, setError]             = useState<string | null>(null)
+  const [history, setHistory]           = useState<HistoryEntry[]>([])
+  const [activeIdx, setActiveIdx]       = useState<number | null>(null)
+  const [selectedModelIdx, setSelectedModelIdx] = useState(0)
+  const [query, setQuery]               = useState('')
+  const [perspective, setPerspective]   = useState('general')
+  const [loading, setLoading]           = useState(false)
+  const [error, setError]               = useState<string | null>(null)
 
   useEffect(() => {
     setHistory(loadHistory())
   }, [])
+
+  useEffect(() => {
+    setSelectedModelIdx(0)
+  }, [activeIdx])
 
   async function runPlayground() {
     if (!query.trim() || loading) return
@@ -1286,23 +1291,42 @@ function GeoPlayground() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[activeEntry.model_chatgpt, activeEntry.model_gemini, activeEntry.model_claude].map((model, i) => {
+          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            {(() => {
+              const models = [activeEntry.model_chatgpt, activeEntry.model_gemini, activeEntry.model_claude]
               const badges = [
-                { label: 'OpenAI', cls: 'bg-green-50 text-green-700 border-green-300' },
-                { label: 'Google', cls: 'bg-blue-50 text-blue-700 border-blue-300' },
-                { label: 'Anthropic', cls: 'bg-amber-50 text-amber-700 border-amber-300' },
+                { label: 'OpenAI',     cls: 'bg-green-50 text-green-700 border-green-300' },
+                { label: 'Google',     cls: 'bg-blue-50 text-blue-700 border-blue-300' },
+                { label: 'Anthropic',  cls: 'bg-amber-50 text-amber-700 border-amber-300' },
               ]
               return (
-                <div key={i} className="bg-white rounded-lg border border-slate-200 p-5">
-                  <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-100">
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded border ${badges[i].cls}`}>{badges[i].label}</span>
-                    <span className="text-base font-bold text-slate-700">{model.name}</span>
+                <>
+                  {/* 모델 선택 탭 */}
+                  <div className="flex border-b border-slate-200">
+                    {models.map((model, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setSelectedModelIdx(i)}
+                        className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold transition-all border-b-2 ${
+                          selectedModelIdx === i
+                            ? 'border-slate-900 text-slate-900 bg-white'
+                            : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className={`text-xs font-bold px-1.5 py-0.5 rounded border ${badges[i].cls}`}>{badges[i].label}</span>
+                        {model.name}
+                      </button>
+                    ))}
                   </div>
-                  <p className="text-base text-slate-700 leading-relaxed whitespace-pre-wrap">{model.answer}</p>
-                </div>
+                  {/* 선택된 모델 답변 */}
+                  <div className="p-5">
+                    <p className="text-base text-slate-700 leading-relaxed whitespace-pre-wrap">
+                      {models[selectedModelIdx].answer}
+                    </p>
+                  </div>
+                </>
               )
-            })}
+            })()}
           </div>
 
           <div className="bg-white rounded-lg border border-slate-200 p-5">
