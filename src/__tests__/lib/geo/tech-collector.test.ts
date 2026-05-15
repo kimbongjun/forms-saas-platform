@@ -65,3 +65,102 @@ describe('parseFaqSchema', () => {
     expect(parseFaqSchema('<html><body></body></html>')).toBe(false)
   })
 })
+
+import { parsePageSpeedResult, computeEeeatScore } from '@/lib/geo/tech-collector'
+
+const mockPsiGood = {
+  lighthouseResult: {
+    categories: { performance: { score: 0.78 } },
+    audits: {
+      'largest-contentful-paint': { numericValue: 2300 },
+      'cumulative-layout-shift':  { numericValue: 0.08 },
+      'is-on-https':              { score: 1 },
+    },
+  },
+}
+
+const mockPsiBad = {
+  lighthouseResult: {
+    categories: { performance: { score: 0.42 } },
+    audits: {
+      'largest-contentful-paint': { numericValue: 6500 },
+      'cumulative-layout-shift':  { numericValue: 0.32 },
+      'is-on-https':              { score: 0 },
+    },
+  },
+}
+
+describe('parsePageSpeedResult', () => {
+  it('mobile_score는 score * 100 반올림', () => {
+    expect(parsePageSpeedResult(mockPsiGood).mobile_score).toBe(78)
+  })
+
+  it('lcp_ms는 numericValue 정수 반올림', () => {
+    expect(parsePageSpeedResult(mockPsiGood).lcp_ms).toBe(2300)
+  })
+
+  it('cls는 numericValue 소수점 3자리', () => {
+    expect(parsePageSpeedResult(mockPsiGood).cls).toBeCloseTo(0.08, 2)
+  })
+
+  it('https: is-on-https score=1이면 true', () => {
+    expect(parsePageSpeedResult(mockPsiGood).https).toBe(true)
+  })
+
+  it('https: is-on-https score=0이면 false', () => {
+    expect(parsePageSpeedResult(mockPsiBad).https).toBe(false)
+  })
+
+  it('성능 저하 케이스 파싱', () => {
+    const r = parsePageSpeedResult(mockPsiBad)
+    expect(r.mobile_score).toBe(42)
+    expect(r.lcp_ms).toBe(6500)
+  })
+})
+
+describe('computeEeeatScore', () => {
+  it('모든 지표 최대 시 100', () => {
+    const score = computeEeeatScore({
+      mobile_score: 100,
+      https:        true,
+      sitemap:      true,
+      schema_types: ['Product', 'FAQPage', 'Organization', 'BreadcrumbList', 'WebPage'],
+      faq_schema:   true,
+    })
+    expect(score).toBe(100)
+  })
+
+  it('모든 지표 0/false 시 0', () => {
+    const score = computeEeeatScore({
+      mobile_score: 0,
+      https:        false,
+      sitemap:      false,
+      schema_types: [],
+      faq_schema:   false,
+    })
+    expect(score).toBe(0)
+  })
+
+  it('일반적인 케이스 계산 검증 (mobile=80, https, sitemap, 2 schemas, faq)', () => {
+    // mobile: round(80*0.30)=24, https:20, sitemap:10, schemas:2*7=14, faq:5 → 73
+    const score = computeEeeatScore({
+      mobile_score: 80,
+      https:        true,
+      sitemap:      true,
+      schema_types: ['Product', 'FAQPage'],
+      faq_schema:   true,
+    })
+    expect(score).toBe(73)
+  })
+
+  it('100 초과 시 100으로 클램핑', () => {
+    const score = computeEeeatScore({
+      mobile_score: 100,
+      https:        true,
+      sitemap:      true,
+      schema_types: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
+      faq_schema:   true,
+    })
+    expect(score).toBeLessThanOrEqual(100)
+  })
+})
