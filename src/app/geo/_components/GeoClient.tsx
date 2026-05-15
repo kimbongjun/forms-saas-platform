@@ -1145,6 +1145,25 @@ function GeoPlayground() {
     } finally { setLoading(false) }
   }
 
+  function deleteEntry(idx: number, e: React.MouseEvent) {
+    e.stopPropagation()
+    const updated = history.filter((_, i) => i !== idx)
+    setHistory(updated)
+    saveHistory(updated)
+    if (activeIdx === null) return
+    if (activeIdx === idx) {
+      setActiveIdx(updated.length === 0 ? null : Math.min(idx, updated.length - 1))
+    } else if (activeIdx > idx) {
+      setActiveIdx(activeIdx - 1)
+    }
+  }
+
+  function clearAll() {
+    setHistory([])
+    saveHistory([])
+    setActiveIdx(null)
+  }
+
   const prominenceCls: Record<string, string> = { primary: 'bg-emerald-600', secondary: 'bg-amber-500', not_mentioned: 'bg-slate-200' }
   const prominenceLabel: Record<string, string> = { primary: '1순위 노출', secondary: '부차적 언급', not_mentioned: '미노출' }
 
