@@ -24,9 +24,15 @@ export interface PlaygroundResult {
   generated_at:   string
 }
 
-const QUERY_SYSTEM = `당신은 한국 에스테틱·의료기기 분야 AI 어시스턴트입니다.
-사용자가 리프팅 시술, 미용 기기, 피부 관리에 대해 질문할 때 정확하고 유용한 정보를 한국어로 제공하세요.
-답변은 200자 이내로 간결하게 작성하세요.`
+const QUERY_SYSTEM = `당신은 한국 에스테틱·의료기기 분야 전문 AI 어시스턴트입니다.
+사용자가 리프팅 시술, 미용 기기, 피부 관리에 대해 질문할 때 신뢰도 높은 정보를 한국어로 제공하세요.
+
+답변 원칙:
+- 시술 원리, 효과, 지속 기간, 권장 횟수, 비용대비 효과, 주의사항을 구체적으로 설명합니다.
+- 관련 브랜드·제품명(예: 써마지, 볼뉴머, 울쎄라, 슈링크, 덴서티, 올리지오 등)을 자연스럽게 언급하고 특징을 비교합니다.
+- 질문자의 상황(일반 소비자, 20대 직장인, 의료진 등)에 맞는 실질적인 정보와 조언을 제공합니다.
+- 전문 용어는 쉽게 풀어 설명하고, 필요 시 소제목이나 항목 나열로 구조화하여 가독성을 높입니다.
+- 단순 요약이 아니라 실제 AI 어시스턴트가 응답하듯 충분한 깊이와 맥락을 담아 작성합니다.`
 
 const ANALYSIS_SYSTEM = `당신은 GEO(Generative Engine Optimization) 분석 전문가입니다.
 3개 AI 모델(ChatGPT, Gemini, Claude)의 실제 답변을 분석하여 6개 브랜드의 AI 노출 가시성을 평가합니다.
@@ -83,7 +89,7 @@ export async function POST(req: NextRequest) {
     // ChatGPT (GPT-4o-mini)
     openai.chat.completions.create({
       model: 'gpt-4o-mini',
-      max_tokens: 512,
+      max_tokens: 1024,
       messages: [
         { role: 'system', content: QUERY_SYSTEM },
         { role: 'user',   content: userMessage },
@@ -99,7 +105,7 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           system_instruction: { parts: [{ text: QUERY_SYSTEM }] },
           contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-          generationConfig: { maxOutputTokens: 512 },
+          generationConfig: { maxOutputTokens: 1024 },
         }),
       })
       if (!res.ok) throw new Error(`Gemini API ${res.status}: ${await res.text()}`)
@@ -109,7 +115,7 @@ export async function POST(req: NextRequest) {
     // Claude Sonnet
     anthropic.messages.create({
       model:      'claude-sonnet-4-6',
-      max_tokens: 512,
+      max_tokens: 1024,
       system:     QUERY_SYSTEM,
       messages:   [{ role: 'user', content: userMessage }],
     }),
