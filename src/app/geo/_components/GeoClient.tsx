@@ -386,9 +386,202 @@ function OverviewTab() {
   )
 }
 
+// ─── Schema Defs & Modal ─────────────────────────────────────────────────────
+
+interface SchemaDef {
+  label:               string
+  definition:          string
+  geoImpact:           string
+  example:             string
+  activeStatus:        string
+  activeImprovements:  string[]
+  inactiveStatus:      string
+  inactiveImprovements: string[]
+}
+
+const SCHEMA_DEFS: Record<string, SchemaDef> = {
+  MedicalProcedure: {
+    label:       'MedicalProcedure',
+    definition:  '의료·미용 시술의 명칭, 시술 부위, 준비 사항, 회복 기간, 주의사항 등을 AI가 이해할 수 있도록 구조화한 스키마입니다.',
+    geoImpact:   'AI 검색 엔진이 "리프팅 시술", "RF 시술" 등의 쿼리에 응답할 때 브랜드의 시술 정보를 직접 인용할 가능성을 높입니다. 볼뉴머·써마지 등 경쟁 키워드에서 AI 답변 내 브랜드 언급 빈도를 향상시키는 핵심 스키마입니다.',
+    example:     `{\n  "@context": "https://schema.org",\n  "@type": "MedicalProcedure",\n  "name": "볼뉴머 리프팅 시술",\n  "procedureType": "모노폴라 RF(고주파) 피부 리프팅",\n  "bodyLocation": "얼굴, 목, 데콜테",\n  "preparation": "시술 전 상담 및 피부 상태 확인",\n  "followup": "시술 후 보습 관리 권장",\n  "howPerformed": "집속형 고주파 에너지로 진피층 콜라겐 재생 유도"\n}`,
+    activeStatus:        '현재 MedicalProcedure 스키마가 적용되어 있습니다. AI 검색 엔진이 시술 관련 쿼리에서 브랜드 정보를 구조화된 데이터로 인식하고 있습니다.',
+    activeImprovements:  [
+      '시술명에 브랜드명을 포함하여 구체성을 높이세요 (예: "볼뉴머 HIFU 리프팅").',
+      'followup 필드에 권장 횟수·간격 정보를 추가하면 FAQ 답변 생성 시 인용 가능성이 높아집니다.',
+      'contraindication(금기 사항) 필드를 추가하면 E-E-A-T 신뢰도 점수가 개선됩니다.',
+    ],
+    inactiveStatus:      '현재 MedicalProcedure 스키마가 적용되어 있지 않습니다. AI 검색 엔진이 시술 정보를 텍스트로만 파악하므로 경쟁 브랜드 대비 인용 순위가 낮아질 수 있습니다.',
+    inactiveImprovements: [
+      '주요 시술 페이지(볼뉴머, HIFU 등)에 MedicalProcedure JSON-LD를 즉시 추가하세요.',
+      'name, procedureType, bodyLocation, preparation, followup 필드를 우선 구성하세요.',
+      '적용 후 Google Rich Results Test로 유효성을 검증하고, Search Console에서 인덱싱 상태를 모니터링하세요.',
+    ],
+  },
+  Product: {
+    label:      'Product',
+    definition: '제품의 이름, 브랜드, 설명, 가격, 리뷰, 평점 등을 구조화하는 스키마로, 미용 기기·의료기기 제품 정보를 AI가 명확하게 식별하도록 돕습니다.',
+    geoImpact:  'AI가 제품 추천·비교 쿼리에 응답할 때 구조화된 Product 데이터를 직접 참조합니다. 볼뉴머 vs 써마지 비교 쿼리에서 제품 특성(가격, 효과, 지속 기간)이 정확하게 인용될 가능성을 높입니다.',
+    example:    `{\n  "@context": "https://schema.org",\n  "@type": "Product",\n  "name": "볼뉴머",\n  "brand": { "@type": "Brand", "name": "Classys" },\n  "description": "모노폴라 RF 기술 기반 비침습 리프팅 의료기기",\n  "aggregateRating": {\n    "@type": "AggregateRating",\n    "ratingValue": "4.7",\n    "reviewCount": "320"\n  }\n}`,
+    activeStatus:        '현재 Product 스키마가 적용되어 있습니다. AI 검색 엔진이 제품 비교 쿼리에서 볼뉴머의 상세 정보를 구조화 데이터로 참조하고 있습니다.',
+    activeImprovements:  [
+      'aggregateRating을 주기적으로 업데이트하여 최신 리뷰 수와 평점을 반영하세요.',
+      'offers 필드에 시술 비용 범위를 추가하면 가격 비교 쿼리에서 인용 가능성이 높아집니다.',
+      'image 필드에 고해상도 제품 이미지 URL을 추가하세요.',
+    ],
+    inactiveImprovements: [
+      '제품 소개 페이지에 Product JSON-LD를 추가하고, brand 필드에 "Classys"를 명시하세요.',
+      'aggregateRating을 포함하면 신뢰도 신호가 강화됩니다.',
+      'description 필드에 핵심 USP(모노폴라 RF, 비침습, 콜라겐 재생)를 포함하세요.',
+    ],
+    inactiveStatus: '현재 Product 스키마가 적용되어 있지 않습니다. 제품 비교 쿼리에서 경쟁 제품 대비 구조화 정보가 부족합니다.',
+  },
+  FAQPage: {
+    label:      'FAQPage',
+    definition: '자주 묻는 질문(FAQ)과 답변 쌍을 구조화하는 스키마입니다. AI 검색 엔진은 FAQPage 데이터를 직접 답변 생성에 활용합니다.',
+    geoImpact:  'GEO 최적화에서 가장 직접적인 효과를 내는 스키마입니다. "볼뉴머 효과는?", "볼뉴머 vs 써마지 차이" 같은 쿼리에 대해 AI가 FAQ 답변 내용을 그대로 인용할 가능성이 높습니다.',
+    example:    `{\n  "@context": "https://schema.org",\n  "@type": "FAQPage",\n  "mainEntity": [{\n    "@type": "Question",\n    "name": "볼뉴머와 써마지의 차이는 무엇인가요?",\n    "acceptedAnswer": {\n      "@type": "Answer",\n      "text": "볼뉴머는 모노폴라 RF 기술을 사용하며..."\n    }\n  }]\n}`,
+    activeStatus:        '현재 FAQPage 스키마가 적용되어 있습니다. AI가 FAQ 답변을 직접 인용할 수 있는 최적 상태입니다.',
+    activeImprovements:  [
+      '"볼뉴머 vs 써마지", "볼뉴머 가격", "볼뉴머 효과 지속 기간" 등 경쟁 키워드 쿼리를 FAQ에 추가하세요.',
+      '각 답변에 구체적인 수치(지속 기간, 권장 횟수, 시술 시간)를 포함하세요.',
+      '분기별로 FAQ를 검토하고 최신 트렌드 쿼리를 반영하세요.',
+    ],
+    inactiveStatus:      '현재 FAQPage 스키마가 적용되어 있지 않습니다. AI 응답 생성 시 경쟁사의 구조화된 FAQ 내용이 우선 인용될 수 있습니다.',
+    inactiveImprovements: [
+      '"볼뉴머란?", "볼뉴머 효과는?", "볼뉴머 시술 비용은?" 등 핵심 쿼리 10~20개를 FAQ로 작성하세요.',
+      '볼뉴머 제품 페이지와 블로그 포스트에 FAQPage JSON-LD를 즉시 추가하세요.',
+      '각 답변은 200자 이상, 구체적인 수치를 포함하여 AI 인용 가능성을 높이세요.',
+    ],
+  },
+  Organization: {
+    label:      'Organization',
+    definition: '기업·브랜드의 공식 이름, 로고, 설립 연도, SNS 채널, 연락처, 동일 브랜드 외부 참조(sameAs) 등을 구조화하는 스키마입니다.',
+    geoImpact:  'AI가 "Classys", "볼뉴머 제조사" 같은 브랜드/기업 쿼리에 응답할 때 신뢰도 있는 기업 정보를 제공합니다. sameAs 필드로 위키피디아, 나무위키 등 권위 있는 출처와 연결하면 E-E-A-T 점수가 크게 향상됩니다.',
+    example:    `{\n  "@context": "https://schema.org",\n  "@type": "Organization",\n  "name": "Classys",\n  "url": "https://www.classys.com",\n  "logo": "https://www.classys.com/logo.png",\n  "sameAs": [\n    "https://en.wikipedia.org/wiki/Classys",\n    "https://www.instagram.com/classys_official"\n  ]\n}`,
+    activeStatus:        '현재 Organization 스키마가 적용되어 있습니다. AI가 기업·브랜드 쿼리에서 Classys를 신뢰도 있는 출처로 인식하고 있습니다.',
+    activeImprovements:  [
+      'sameAs 필드에 위키피디아, 나무위키, LinkedIn 등 추가 권위 있는 링크를 확충하세요.',
+      'foundingDate와 numberOfEmployees를 추가하면 기업 신뢰도 신호가 강화됩니다.',
+      'contactPoint 필드에 고객 지원 연락처를 추가하세요.',
+    ],
+    inactiveStatus:      '현재 Organization 스키마가 적용되어 있지 않습니다. AI가 브랜드·기업 쿼리에서 Classys를 식별하기 어렵습니다.',
+    inactiveImprovements: [
+      '홈페이지에 Organization JSON-LD를 추가하고 name, url, logo 필드를 필수로 포함하세요.',
+      'sameAs에 공식 SNS 채널(Instagram, YouTube, LinkedIn)을 연결하세요.',
+      '위키피디아 또는 나무위키에 Classys/볼뉴머 항목을 생성하고 sameAs에 추가하세요.',
+    ],
+  },
+  BreadcrumbList: {
+    label:      'BreadcrumbList',
+    definition: '페이지의 탐색 경로(홈 > 제품 > 볼뉴머)를 구조화하는 스키마로, 웹사이트 계층 구조를 AI와 검색 엔진이 이해할 수 있도록 합니다.',
+    geoImpact:  '직접적인 AI 인용 효과보다는 사이트 구조 파악에 기여합니다. AI가 정보 출처를 추적할 때 어떤 페이지가 어느 카테고리에 속하는지 명확히 인식하게 됩니다. 크롤링 효율성을 높여 최신 콘텐츠가 AI 학습 데이터에 포함될 가능성을 높입니다.',
+    example:    `{\n  "@context": "https://schema.org",\n  "@type": "BreadcrumbList",\n  "itemListElement": [\n    { "@type": "ListItem", "position": 1, "name": "홈", "item": "https://www.classys.com" },\n    { "@type": "ListItem", "position": 2, "name": "제품", "item": "https://www.classys.com/products" },\n    { "@type": "ListItem", "position": 3, "name": "볼뉴머", "item": "https://www.classys.com/products/volnewmer" }\n  ]\n}`,
+    activeStatus:        '현재 BreadcrumbList 스키마가 적용되어 있습니다. AI와 검색 엔진이 사이트 구조를 명확히 파악하고 있습니다.',
+    activeImprovements:  [
+      '모든 하위 페이지(시술 유형별 페이지 등)에 BreadcrumbList가 일관되게 적용되어 있는지 확인하세요.',
+      'item URL이 실제 페이지와 정확히 일치하는지 주기적으로 검증하세요.',
+    ],
+    inactiveStatus:      '현재 BreadcrumbList 스키마가 적용되어 있지 않습니다. 사이트 계층 구조 파악이 어려워 크롤링 효율이 낮아질 수 있습니다.',
+    inactiveImprovements: [
+      '모든 주요 내부 페이지에 BreadcrumbList JSON-LD를 추가하세요.',
+      'CMS 또는 Next.js 레이아웃 컴포넌트에서 자동 생성하도록 구현하면 유지 관리가 쉽습니다.',
+    ],
+  },
+  WebPage: {
+    label:      'WebPage',
+    definition: '개별 웹 페이지의 제목, 설명, 작성자, 작성일, 수정일 등 메타 정보를 구조화하는 스키마입니다.',
+    geoImpact:  'AI가 콘텐츠의 최신성과 신뢰성을 판단하는 데 활용됩니다. dateModified 필드가 최신 날짜로 업데이트되면 AI가 해당 페이지를 최신 정보 출처로 선호합니다. author 필드에 전문가 정보를 포함하면 E-E-A-T 신호가 강화됩니다.',
+    example:    `{\n  "@context": "https://schema.org",\n  "@type": "WebPage",\n  "name": "볼뉴머 리프팅 시술 완전 가이드",\n  "description": "볼뉴머의 원리, 효과, 비용, 주의사항을 전문의가 설명합니다.",\n  "datePublished": "2024-01-15",\n  "dateModified": "2026-05-01",\n  "author": {\n    "@type": "Person",\n    "name": "김지원 피부과 전문의"\n  }\n}`,
+    activeStatus:        '현재 WebPage 스키마가 적용되어 있습니다. AI가 콘텐츠 출처의 신뢰성과 최신성을 인식하고 있습니다.',
+    activeImprovements:  [
+      'dateModified를 콘텐츠 업데이트 시마다 갱신하여 최신 콘텐츠임을 알리세요.',
+      'author 필드에 실제 전문가(피부과 전문의, 에스테틱 전문가) 정보를 추가하세요.',
+      'speakable 속성을 추가하면 음성 검색 AI 인용 가능성이 높아집니다.',
+    ],
+    inactiveStatus:      '현재 WebPage 스키마가 적용되어 있지 않습니다. AI가 페이지의 최신성과 작성 권위를 판단하기 어렵습니다.',
+    inactiveImprovements: [
+      '주요 콘텐츠 페이지에 WebPage JSON-LD를 추가하고 dateModified를 항상 최신으로 유지하세요.',
+      'author 필드에 전문가 정보를 포함하여 E-E-A-T 신뢰도를 높이세요.',
+      'speakable 속성으로 AI 음성 답변 인용 가능성을 확보하세요.',
+    ],
+  },
+}
+
+function SchemaDetailModal({ schema, active, onClose }: { schema: string; active: boolean; onClose: () => void }) {
+  const def = SCHEMA_DEFS[schema]
+  if (!def) return null
+  const improvements = active ? def.activeImprovements : def.inactiveImprovements
+  const status       = active ? def.activeStatus       : def.inactiveStatus
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[85vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className={`flex items-center justify-between px-6 py-4 rounded-t-2xl ${active ? 'bg-emerald-50 border-b border-emerald-200' : 'bg-slate-50 border-b border-slate-200'}`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-3 h-3 rounded-full shrink-0 ${active ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+            <span className="font-bold text-slate-800 text-base">{def.label}</span>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>
+              {active ? '적용됨' : '미적용'}
+            </span>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors text-xl leading-none">&times;</button>
+        </div>
+
+        <div className="px-6 py-5 space-y-5">
+          {/* Definition */}
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">스키마 정의</p>
+            <p className="text-sm text-slate-700 leading-relaxed">{def.definition}</p>
+          </div>
+
+          {/* GEO Impact */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">GEO 영향도</p>
+            <p className="text-sm text-blue-800 leading-relaxed">{def.geoImpact}</p>
+          </div>
+
+          {/* Example */}
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">JSON-LD 예시</p>
+            <pre className="bg-slate-900 text-emerald-300 text-xs rounded-lg p-4 overflow-x-auto whitespace-pre leading-relaxed">{def.example}</pre>
+          </div>
+
+          {/* Current Status */}
+          <div className={`rounded-lg p-4 border ${active ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+            <p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${active ? 'text-emerald-600' : 'text-amber-600'}`}>현재 적용 상태</p>
+            <p className={`text-sm leading-relaxed ${active ? 'text-emerald-800' : 'text-amber-800'}`}>{status}</p>
+          </div>
+
+          {/* Improvements */}
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">개선 사항</p>
+            <ol className="space-y-2">
+              {improvements.map((item, i) => (
+                <li key={i} className="flex gap-3 text-sm text-slate-700">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">{i + 1}</span>
+                  <span className="leading-relaxed">{item}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Tab 1: Tech·AEO ─────────────────────────────────────────────────────────
 
 function TechAeoTab({ tech }: { tech: TechAeo }) {
+  const [selectedSchema, setSelectedSchema] = useState<string | null>(null)
   const vitals = [
     { label: 'LCP', value: `${(tech.lcp_ms / 1000).toFixed(1)}s`, good: tech.lcp_ms <= 2500, hint: '권장 ≤ 2.5s' },
     { label: 'CLS', value: tech.cls.toFixed(2),                    good: tech.cls <= 0.1,     hint: '권장 ≤ 0.1' },
@@ -399,15 +592,22 @@ function TechAeoTab({ tech }: { tech: TechAeo }) {
     <div className="space-y-6">
       {/* Schema */}
       <div>
-        <SectionTitle sub={`적용 ${tech.schema_types.length}개 / 전체 ${allSchemas.length}개`}>스키마 마크업 (JSON-LD)</SectionTitle>
+        <SectionTitle sub={`적용 ${tech.schema_types.length}개 / 전체 ${allSchemas.length}개 · 카드를 클릭하면 상세 정보를 확인할 수 있습니다`}>스키마 마크업 (JSON-LD)</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {allSchemas.map((schema) => {
             const active = tech.schema_types.includes(schema)
             return (
-              <div key={schema} className={`rounded-lg border p-4 flex items-center gap-3 ${active ? 'bg-emerald-50 border-emerald-300' : 'bg-slate-50 border-slate-200 opacity-60'}`}>
+              <button
+                key={schema}
+                onClick={() => setSelectedSchema(schema)}
+                className={`rounded-lg border p-4 flex items-center gap-3 text-left transition-all hover:shadow-md hover:scale-[1.02] cursor-pointer ${active ? 'bg-emerald-50 border-emerald-300 hover:border-emerald-400' : 'bg-slate-50 border-slate-200 opacity-60 hover:opacity-80 hover:border-slate-300'}`}
+              >
                 <div className={`w-3 h-3 rounded-full shrink-0 ${active ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                <span className={`text-sm font-semibold ${active ? 'text-emerald-800' : 'text-slate-400'}`}>{schema}</span>
-              </div>
+                <div>
+                  <span className={`text-sm font-semibold block ${active ? 'text-emerald-800' : 'text-slate-400'}`}>{schema}</span>
+                  <span className="text-xs text-slate-400 mt-0.5 block">상세 보기 &rarr;</span>
+                </div>
+              </button>
             )
           })}
         </div>
@@ -416,6 +616,14 @@ function TechAeoTab({ tech }: { tech: TechAeo }) {
           <StatusBadge text={tech.faq_schema ? '적용됨' : '미적용'} variant={tech.faq_schema ? 'green' : 'red'} />
         </div>
       </div>
+
+      {selectedSchema && (
+        <SchemaDetailModal
+          schema={selectedSchema}
+          active={tech.schema_types.includes(selectedSchema)}
+          onClose={() => setSelectedSchema(null)}
+        />
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         {/* E-E-A-T */}
