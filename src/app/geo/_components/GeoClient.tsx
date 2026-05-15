@@ -1114,11 +1114,16 @@ function saveHistory(entries: HistoryEntry[]): void {
 }
 
 function GeoPlayground() {
-  const [query, setQuery] = useState('')
+  const [history, setHistory]         = useState<HistoryEntry[]>([])
+  const [activeIdx, setActiveIdx]     = useState<number | null>(null)
+  const [query, setQuery]             = useState('')
   const [perspective, setPerspective] = useState('general')
-  const [result, setResult] = useState<PlaygroundResult | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading]         = useState(false)
+  const [error, setError]             = useState<string | null>(null)
+
+  useEffect(() => {
+    setHistory(loadHistory())
+  }, [])
 
   async function runPlayground() {
     if (!query.trim() || loading) return
