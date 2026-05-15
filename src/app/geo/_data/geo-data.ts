@@ -76,6 +76,7 @@ export interface BrandGeoData {
   color: string
   device_type: string
   geo_score: number
+  website_url: string
   youtube_query: string
   tech: TechAeo
   authority: Authority
@@ -88,6 +89,7 @@ export const GEO_DATA: BrandGeoData[] = [
   // ─── 볼뉴머 (Classys — base brand) ────────────────────────────────────────
   {
     id: 'volnewmer',
+    website_url: 'https://www.classys.com',
     name: '볼뉴머',
     name_en: 'Volnewmer',
     company: '클래시스',
@@ -166,6 +168,7 @@ export const GEO_DATA: BrandGeoData[] = [
   // ─── 써마지 ────────────────────────────────────────────────────────────────
   {
     id: 'thermage',
+    website_url: 'https://www.thermage.com',
     name: '써마지',
     name_en: 'Thermage',
     company: 'Solta Medical',
@@ -245,6 +248,7 @@ export const GEO_DATA: BrandGeoData[] = [
   // ─── 덴서티 ────────────────────────────────────────────────────────────────
   {
     id: 'densiti',
+    website_url: 'https://www.lutronic.com',
     name: '덴서티',
     name_en: 'Density',
     company: '제이시스',
@@ -322,6 +326,7 @@ export const GEO_DATA: BrandGeoData[] = [
   // ─── 올리지오 ───────────────────────────────────────────────────────────────
   {
     id: 'oligio',
+    website_url: 'https://oligio.com',
     name: '올리지오',
     name_en: 'Oligio',
     company: '원텍',
@@ -400,6 +405,7 @@ export const GEO_DATA: BrandGeoData[] = [
   // ─── 텐써마 ─────────────────────────────────────────────────────────────────
   {
     id: 'tenthermo',
+    website_url: '',
     name: '텐써마',
     name_en: 'TenTherma',
     company: '텐텍',
@@ -475,6 +481,7 @@ export const GEO_DATA: BrandGeoData[] = [
   // ─── XERF ─────────────────────────────────────────────────────────────────
   {
     id: 'xerf',
+    website_url: '',
     name: 'XERF',
     name_en: 'XERF',
     company: '루트로닉',
@@ -550,6 +557,7 @@ export const GEO_DATA: BrandGeoData[] = [
   // ─── 울쎄라 ───────────────────────────────────────────────────────────────
   {
     id: 'ulthera',
+    website_url: 'https://www.ultherapy.com',
     name: '울쎄라',
     name_en: 'Ulthera',
     company: 'Merz Aesthetics',
@@ -629,6 +637,7 @@ export const GEO_DATA: BrandGeoData[] = [
   // ─── 슈링크 ───────────────────────────────────────────────────────────────
   {
     id: 'shrink',
+    website_url: 'https://www.hironic.co.kr',
     name: '슈링크',
     name_en: 'Shurink Universe',
     company: '클래시스',
