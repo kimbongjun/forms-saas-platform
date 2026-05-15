@@ -89,6 +89,7 @@
 | Supabase 스코어 스냅샷 DB | 2026-05-15 | geo_score_snapshots 테이블, Vercel Cron(매일 02:00 KST) 자동 저장 |
 | 30일 GEO 트렌드 차트 | 2026-05-15 | 브랜드 분석 뷰 ScoreOverview 하단에 LineChart 추가, Supabase 히스토리 기반 |
 | 주간 GEO 알림 이메일 | 2026-05-15 | Vercel Cron(매주 월요일 09:00 KST) → 7일 전 대비 ±5pts 이상 변동 브랜드 Resend 이메일 발송 |
+| Tech 스냅샷 라이브 연동 | 2026-05-15 | TechAeoTab이 /api/geo/tech-snapshot 호출 → 라이브/정적 소스 배지 표시, 수동 수집 버튼(POST /api/geo/collect) 추가 |
 
 ---
 

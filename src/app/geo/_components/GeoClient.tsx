@@ -580,22 +580,106 @@ function SchemaDetailModal({ schema, active, onClose }: { schema: string; active
 
 // ─── Tab 1: Tech·AEO ─────────────────────────────────────────────────────────
 
-function TechAeoTab({ tech }: { tech: TechAeo }) {
+interface LiveTechSnapshot {
+  schema_types: string[]
+  faq_schema:   boolean
+  eeeat_score:  number
+  lcp_ms:       number
+  cls:          number
+  mobile_score: number
+  https:        boolean
+  sitemap:      boolean
+  collected_at: string
+  error:        string | null
+}
+
+function TechAeoTab({ tech, brandId }: { tech: TechAeo; brandId: string }) {
   const [selectedSchema, setSelectedSchema] = useState<string | null>(null)
+  const [liveSnapshot, setLiveSnapshot]     = useState<LiveTechSnapshot | null>(null)
+  const [liveSource, setLiveSource]         = useState<'live' | 'static' | null>(null)
+  const [collecting, setCollecting]         = useState(false)
+
+  useEffect(() => {
+    setLiveSnapshot(null)
+    setLiveSource(null)
+    fetch(`/api/geo/tech-snapshot?brandId=${brandId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { snapshot: LiveTechSnapshot; source: 'live' | 'static' } | null) => {
+        if (!d) return
+        setLiveSnapshot(d.snapshot)
+        setLiveSource(d.source)
+      })
+      .catch(() => {/* silent — 정적 데이터 폴백 */})
+  }, [brandId])
+
+  async function handleCollect() {
+    setCollecting(true)
+    try {
+      const res = await fetch('/api/geo/collect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandId }),
+      })
+      const data = await res.json() as { ok: boolean; results: Array<{ brand: string; ok: boolean }> }
+      if (data.ok) {
+        // 수집 완료 후 최신 스냅샷 재조회
+        const snap = await fetch(`/api/geo/tech-snapshot?brandId=${brandId}`)
+        if (snap.ok) {
+          const d = await snap.json() as { snapshot: LiveTechSnapshot; source: 'live' | 'static' }
+          setLiveSnapshot(d.snapshot)
+          setLiveSource(d.source)
+        }
+      }
+    } catch { /* silent */ } finally {
+      setCollecting(false)
+    }
+  }
+
+  // 라이브 스냅샷 우선 사용, 없으면 정적 데이터 폴백
+  const t: TechAeo & { collected_at?: string; error?: string | null } = liveSnapshot
+    ? { ...liveSnapshot, checked_at: liveSnapshot.collected_at }
+    : tech
+
   const vitals = [
-    { label: 'LCP', value: `${(tech.lcp_ms / 1000).toFixed(1)}s`, good: tech.lcp_ms <= 2500, hint: '권장 ≤ 2.5s' },
-    { label: 'CLS', value: tech.cls.toFixed(2),                    good: tech.cls <= 0.1,     hint: '권장 ≤ 0.1' },
-    { label: 'Mobile Score', value: `${tech.mobile_score}`,        good: tech.mobile_score >= 80, hint: '권장 ≥ 80' },
+    { label: 'LCP', value: `${(t.lcp_ms / 1000).toFixed(1)}s`, good: t.lcp_ms <= 2500, hint: '권장 ≤ 2.5s' },
+    { label: 'CLS', value: t.cls.toFixed(2),                    good: t.cls <= 0.1,     hint: '권장 ≤ 0.1' },
+    { label: 'Mobile Score', value: `${t.mobile_score}`,        good: t.mobile_score >= 80, hint: '권장 ≥ 80' },
   ]
   const allSchemas = ['MedicalProcedure', 'Product', 'FAQPage', 'Organization', 'BreadcrumbList', 'WebPage']
+
+  const checkedAt = liveSnapshot?.collected_at
+    ? new Date(liveSnapshot.collected_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', dateStyle: 'short', timeStyle: 'short' })
+    : t.checked_at
+
   return (
     <div className="space-y-6">
+      {/* 데이터 소스 / 수집 버튼 */}
+      <div className="flex items-center justify-between gap-3 bg-slate-50 rounded-lg px-4 py-3 border border-slate-200">
+        <div className="flex items-center gap-3">
+          {liveSource === null && <span className="text-sm text-slate-400">데이터 로딩 중…</span>}
+          {liveSource === 'live'   && <StatusBadge text="라이브 데이터" variant="green" />}
+          {liveSource === 'static' && <StatusBadge text="정적 데이터" variant="gray" />}
+          {liveSnapshot?.error && (
+            <span className="text-xs text-amber-600 font-medium truncate max-w-xs" title={liveSnapshot.error}>수집 오류 (일부 지표 제한)</span>
+          )}
+        </div>
+        <button
+          onClick={handleCollect}
+          disabled={collecting}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
+        >
+          {collecting
+            ? <><svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>수집 중…</>
+            : '데이터 수집'}
+        </button>
+      </div>
+
       {/* Schema */}
       <div>
-        <SectionTitle sub={`적용 ${tech.schema_types.length}개 / 전체 ${allSchemas.length}개 · 카드를 클릭하면 상세 정보를 확인할 수 있습니다`}>스키마 마크업 (JSON-LD)</SectionTitle>
+        <SectionTitle sub={`적용 ${t.schema_types.length}개 / 전체 ${allSchemas.length}개 · 카드를 클릭하면 상세 정보를 확인할 수 있습니다`}>스키마 마크업 (JSON-LD)</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {allSchemas.map((schema) => {
-            const active = tech.schema_types.includes(schema)
+            const active = t.schema_types.includes(schema)
             return (
               <button
                 key={schema}
@@ -613,14 +697,14 @@ function TechAeoTab({ tech }: { tech: TechAeo }) {
         </div>
         <div className="flex items-center gap-3 mt-4">
           <span className="text-sm font-medium text-slate-600">FAQ 구조화 데이터</span>
-          <StatusBadge text={tech.faq_schema ? '적용됨' : '미적용'} variant={tech.faq_schema ? 'green' : 'red'} />
+          <StatusBadge text={t.faq_schema ? '적용됨' : '미적용'} variant={t.faq_schema ? 'green' : 'red'} />
         </div>
       </div>
 
       {selectedSchema && (
         <SchemaDetailModal
           schema={selectedSchema}
-          active={tech.schema_types.includes(selectedSchema)}
+          active={t.schema_types.includes(selectedSchema)}
           onClose={() => setSelectedSchema(null)}
         />
       )}
@@ -630,10 +714,10 @@ function TechAeoTab({ tech }: { tech: TechAeo }) {
         <div className="bg-white rounded-lg border border-slate-200 p-5">
           <p className="text-base font-bold text-slate-700 mb-4">E-E-A-T 점수</p>
           <div className="flex items-center gap-5">
-            <ScoreRing score={tech.eeeat_score} size={80} color={getScoreColor(tech.eeeat_score)} />
+            <ScoreRing score={t.eeeat_score} size={80} color={getScoreColor(t.eeeat_score)} />
             <div className="flex-1 space-y-3">
               {[['Experience', 0.9], ['Expertise', 0.95], ['Authority', 0.85], ['Trust', 1.05]].map(([lbl, mul]) => {
-                const val = Math.min(Math.round(tech.eeeat_score * (mul as number)), 100)
+                const val = Math.min(Math.round(t.eeeat_score * (mul as number)), 100)
                 return (
                   <div key={lbl as string} className="flex items-center gap-3">
                     <span className="text-sm text-slate-500 w-20 shrink-0">{lbl as string}</span>
@@ -667,14 +751,14 @@ function TechAeoTab({ tech }: { tech: TechAeo }) {
             <div className="flex items-center justify-between pt-3 border-t border-slate-100">
               <span className="text-sm font-bold text-slate-700">HTTPS / Sitemap</span>
               <div className="flex gap-2">
-                <StatusBadge text={tech.https ? 'HTTPS' : 'HTTP'} variant={tech.https ? 'green' : 'red'} />
-                <StatusBadge text={tech.sitemap ? 'Sitemap 있음' : 'Sitemap 없음'} variant={tech.sitemap ? 'green' : 'red'} />
+                <StatusBadge text={t.https ? 'HTTPS' : 'HTTP'} variant={t.https ? 'green' : 'red'} />
+                <StatusBadge text={t.sitemap ? 'Sitemap 있음' : 'Sitemap 없음'} variant={t.sitemap ? 'green' : 'red'} />
               </div>
             </div>
           </div>
         </div>
       </div>
-      <p className="text-sm text-slate-400">점검 일자: {tech.checked_at}</p>
+      <p className="text-sm text-slate-400">점검 일자: {checkedAt}</p>
     </div>
   )
 }
@@ -1702,7 +1786,7 @@ export default function GeoClient() {
               ))}
             </div>
             <div>
-              {activeTab === 0 && <TechAeoTab tech={brand.tech} />}
+              {activeTab === 0 && <TechAeoTab tech={brand.tech} brandId={brand.id} />}
               {activeTab === 1 && <AuthorityTab authority={brand.authority} />}
               {activeTab === 2 && <AiBenchmarkTab key={brand.id} aeo={brand.aeo} />}
               {activeTab === 3 && <CommunityTab community={brand.community} youtubeQuery={brand.youtube_query} brandId={brand.id} />}

@@ -34,7 +34,9 @@
       "Bash(git commit *)",
       "Bash(git restore *)",
       "Skill(mkt-platform)",
-      "Skill(superpowers:brainstorming)"
+      "Skill(superpowers:brainstorming)",
+      "Bash(find src *)",
+      "Bash(ls .claudeprompts/)"
     ]
   },
   "enabledPlugins": {
