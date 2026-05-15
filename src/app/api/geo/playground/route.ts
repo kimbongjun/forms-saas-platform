@@ -108,10 +108,10 @@ export async function POST(req: NextRequest) {
         { role: 'user',   content: userMessage },
       ],
     }),
-    // Gemini 2.0 Flash — REST API 직접 호출 (SDK fetch 이슈 우회)
+    // Gemini 3.1 Flash-Lite — REST API 직접 호출 (SDK fetch 이슈 우회)
     (async () => {
       const apiKey = process.env.GEMINI_API_KEY ?? ''
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
     : `Claude 호출 오류: ${claudeRes.reason instanceof Error ? claudeRes.reason.message : 'API 오류'}`
 
   // ── Claude로 3개 답변 종합 GEO 분석 (최대 3회 재시도) ────────────────────
-  const analysisPrompt = `질문: "${query.trim()}"\n\n[ChatGPT (GPT-4o mini) 답변]\n${chatgptAnswer}\n\n[Gemini (2.0 Flash) 답변]\n${geminiAnswer}\n\n[Claude (Sonnet) 답변]\n${claudeAnswer}\n\n위 3개 AI 모델의 실제 답변을 종합 분석하여 GEO 분석 JSON을 반환해주세요.`
+  const analysisPrompt = `질문: "${query.trim()}"\n\n[ChatGPT (GPT-4o mini) 답변]\n${chatgptAnswer}\n\n[Gemini (3.1 Flash-Lite) 답변]\n${geminiAnswer}\n\n[Claude (Sonnet) 답변]\n${claudeAnswer}\n\n위 3개 AI 모델의 실제 답변을 종합 분석하여 GEO 분석 JSON을 반환해주세요.`
 
   let analysisResult: { brand_visibility: BrandVisibility[]; geo_insights: string[] } | null = null
   let lastError = ''
@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
     query:          query.trim(),
     perspective,
     model_chatgpt:  { name: 'ChatGPT (GPT-4o mini)', answer: chatgptAnswer },
-    model_gemini:   { name: 'Gemini (2.0 Flash)',     answer: geminiAnswer },
+    model_gemini:   { name: 'Gemini (3.1 Flash-Lite)', answer: geminiAnswer },
     model_claude:   { name: 'Claude (Sonnet)',       answer: claudeAnswer },
     brand_visibility: analysisResult.brand_visibility,
     geo_insights:     analysisResult.geo_insights,
