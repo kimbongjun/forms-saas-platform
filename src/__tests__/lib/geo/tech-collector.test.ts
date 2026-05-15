@@ -164,3 +164,87 @@ describe('computeEeeatScore', () => {
     expect(score).toBeLessThanOrEqual(100)
   })
 })
+
+import { collectTechForBrand } from '@/lib/geo/tech-collector'
+import { vi, beforeEach } from 'vitest'
+
+const SAMPLE_HTML = `<!DOCTYPE html><html><head>
+  <script type="application/ld+json">{"@type":"Organization","name":"Test"}</script>
+  <script type="application/ld+json">{"@type":"FAQPage","mainEntity":[]}</script>
+</head><body>Hello</body></html>`
+
+const MOCK_PSI = {
+  lighthouseResult: {
+    categories: { performance: { score: 0.85 } },
+    audits: {
+      'largest-contentful-paint': { numericValue: 1900 },
+      'cumulative-layout-shift':  { numericValue: 0.05 },
+      'is-on-https':              { score: 1 },
+    },
+  },
+}
+
+describe('collectTechForBrand', () => {
+  beforeEach(() => { vi.restoreAllMocks() })
+
+  it('정상 응답 시 TechSnapshot 반환', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+      if ((url as string).includes('pagespeedonline')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(MOCK_PSI) })
+      }
+      if ((url as string).includes('sitemap.xml')) {
+        return Promise.resolve({ ok: true })
+      }
+      return Promise.resolve({ ok: true, text: () => Promise.resolve(SAMPLE_HTML) })
+    }))
+
+    const result = await collectTechForBrand('volnewmer', 'https://www.classys.com')
+    expect(result.brand_id).toBe('volnewmer')
+    expect(result.schema_types).toContain('Organization')
+    expect(result.schema_types).toContain('FAQPage')
+    expect(result.faq_schema).toBe(true)
+    expect(result.mobile_score).toBe(85)
+    expect(result.lcp_ms).toBe(1900)
+    expect(result.https).toBe(true)
+    expect(result.sitemap).toBe(true)
+    expect(result.eeeat_score).toBeGreaterThan(0)
+    expect(result.collected_at).toBeTruthy()
+    expect(result.error).toBeNull()
+  })
+
+  it('HTML fetch 실패 시 schema 비어있고 error 기록', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+      if ((url as string).includes('pagespeedonline')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(MOCK_PSI) })
+      }
+      if ((url as string).includes('sitemap.xml')) {
+        return Promise.resolve({ ok: false })
+      }
+      return Promise.reject(new Error('Network error'))
+    }))
+
+    const result = await collectTechForBrand('volnewmer', 'https://www.classys.com')
+    expect(result.schema_types).toEqual([])
+    expect(result.faq_schema).toBe(false)
+    expect(result.sitemap).toBe(false)
+    expect(result.error).not.toBeNull()
+  })
+
+  it('PageSpeed API 실패 시 lcp_ms=0, mobile_score=0으로 폴백', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+      if ((url as string).includes('pagespeedonline')) {
+        return Promise.resolve({ ok: false, text: () => Promise.resolve('API Error') })
+      }
+      if ((url as string).includes('sitemap.xml')) {
+        return Promise.resolve({ ok: true })
+      }
+      return Promise.resolve({ ok: true, text: () => Promise.resolve(SAMPLE_HTML) })
+    }))
+
+    const result = await collectTechForBrand('volnewmer', 'https://www.classys.com')
+    expect(result.mobile_score).toBe(0)
+    expect(result.lcp_ms).toBe(0)
+    expect(result.https).toBe(false)
+    expect(result.schema_types).toContain('Organization')
+  })
+})
