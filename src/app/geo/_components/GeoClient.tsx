@@ -1274,18 +1274,18 @@ function GeoPlayground() {
         </div>
       )}
 
-      {result && (
+      {activeEntry && (
         <div className="space-y-5">
           <div className="bg-slate-50 border border-slate-200 rounded-lg px-5 py-3 flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-emerald-500" />
             <p className="text-sm text-slate-600">
-              <span className="font-semibold">실제 API 응답</span> — ChatGPT(GPT-4o), Gemini(1.5 Pro), Claude(Sonnet) 3개 모델에 동일 질문을 입력한 실제 결과입니다.
+              <span className="font-semibold">실제 API 응답</span> — ChatGPT(GPT-4o mini), Gemini(2.0 Flash), Claude(Sonnet) 3개 모델에 동일 질문을 입력한 실제 결과입니다.
               브랜드 가시성 분석은 Claude가 3개 답변을 종합 처리합니다.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[result.model_chatgpt, result.model_gemini, result.model_claude].map((model, i) => {
+            {[activeEntry.model_chatgpt, activeEntry.model_gemini, activeEntry.model_claude].map((model, i) => {
               const badges = [
                 { label: 'OpenAI', cls: 'bg-green-50 text-green-700 border-green-300' },
                 { label: 'Google', cls: 'bg-blue-50 text-blue-700 border-blue-300' },
@@ -1306,7 +1306,7 @@ function GeoPlayground() {
           <div className="bg-white rounded-lg border border-slate-200 p-5">
             <p className="text-base font-bold text-slate-700 mb-5">6개 브랜드 AI 노출 가시성</p>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
-              {result.brand_visibility.map((bv) => {
+              {activeEntry.brand_visibility.map((bv) => {
                 const isOurs = bv.brand === '볼뉴머'
                 return (
                   <div key={bv.brand} className={`flex flex-col items-center gap-2 rounded-lg p-3 ${isOurs ? 'bg-red-50 ring-2 ring-red-200' : 'bg-slate-50'}`}>
@@ -1328,7 +1328,7 @@ function GeoPlayground() {
           <div className="bg-white rounded-lg border border-slate-200 p-5">
             <p className="text-base font-bold text-slate-700 mb-4">GEO 분석 인사이트</p>
             <div className="space-y-4">
-              {result.geo_insights.map((insight, i) => (
+              {activeEntry.geo_insights.map((insight, i) => (
                 <div key={i} className="flex items-start gap-3 pb-4 border-b border-slate-50 last:border-0 last:pb-0">
                   <span className="text-base font-bold text-slate-400 shrink-0 mt-0.5">{i + 1}</span>
                   <p className="text-base text-slate-700 leading-relaxed">{insight}</p>
