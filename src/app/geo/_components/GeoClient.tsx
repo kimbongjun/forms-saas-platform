@@ -1230,6 +1230,7 @@ function GeoPlayground() {
         </p>
       </div>
 
+      {activeIdx === null && (
       <div className="bg-white rounded-lg border border-slate-200 p-5">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1">
@@ -1266,8 +1267,9 @@ function GeoPlayground() {
           }
         </button>
       </div>
+      )}
 
-      {error && (
+      {activeIdx === null && error && (
         <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 text-base rounded-lg px-4 py-3">
           <span className="flex-1">{error}</span>
           <button onClick={runPlayground} className="text-sm underline shrink-0">재시도</button>
