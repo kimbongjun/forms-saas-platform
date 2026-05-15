@@ -630,8 +630,8 @@ export const GEO_DATA: BrandGeoData[] = [
   {
     id: 'shrink',
     name: '슈링크',
-    name_en: 'Shrink Universe',
-    company: '루트로닉',
+    name_en: 'Shurink Universe',
+    company: '클래시스',
     color: '#182D60',
     device_type: 'HIFU',
     geo_score: 69,
