@@ -69,9 +69,45 @@
 
 ## 6. 향후 업데이트
 
-1. **GEO Playground** 기능 신설
-해당 기능은 주요 생성형 AI(ChatGPT, Gemini, Claude)에서 입력한 질문에 대해 각각 어떻게 답변을 하는지 테스트를 하는 기능으로
-질문을 입력하면 생성형 AI API를 통해 주요 AI 모델의 실제 답변들을 도출하는 형태로 제작할 것. 질문하는 유저는 뷰티/성형/피부관리에 관여도가 적은 status를 base로 추정하여 답변을 주는 형태로 logic을 구성할 것
+### ✅ 구현 완료
+
+| 항목 | 일자 | 내용 |
+|---|---|---|
+| Overview 탭 신설 | 2026-05-15 | 볼뉴머 GEO 종합 점수, 경쟁 순위, 차원별 격차 분석, 전략 액션 플랜, 전 브랜드 히트맵 포함 |
+| AI 벤치마크 쿼리 CRUD | 2026-05-15 | 측정 쿼리 추가·수정·삭제 가능한 인터랙티브 테이블 구현 |
+| 브랜드 확장 | 2026-05-15 | 울쎄라(Merz Aesthetics), 슈링크유니버스(루트로닉) 추가 → 총 8개 브랜드 |
+| 볼뉴머 당사 기준 설정 | 2026-05-15 | 볼뉴머를 첫 번째(base brand)로 배치, 「당사」 배지 표기, 빨간 강조 스타일 |
+| 브랜드 색상 시스템 | 2026-05-15 | 블루베리 컴포넌트의 BRAND_COLORS 기반 브랜드별 고유 컬러 적용 |
+| GEO Playground 분리 | 2026-05-15 | 3-Tab 구조(Overview / 브랜드 분석 / GEO Playground)로 전체 영역 독립 사용 |
+| 전문 리포트 레이아웃 | 2026-05-15 | 이모지 전면 제거, 최소 15px(text-base) 타이포그래피, 슬레이트 팔레트 기반 |
+| Recharts 시각화 | 2026-05-15 | 수평 BarChart(순위·SoV), 그룹 BarChart(차원 격차·미디어), Donut PieChart(감성) |
+| GEO Playground 실제 AI API 연동 | 2026-05-15 | ChatGPT(GPT-4o) · Gemini(1.5 Pro) · Claude(Sonnet) 3개 모델 병렬 실제 API 호출, Claude가 3개 답변 종합 GEO 분석 |
+| YouTube 커뮤니티 콘텐츠 | 2026-05-15 | YouTube Data API v3 연동, 브랜드별 youtube_query 기반 최신 영상 6개 썸네일 그리드 표시 |
+| PDF 내보내기 정식 구현 | 2026-05-15 | html-to-image + jsPDF 기반 A4 멀티페이지 PDF 저장(`GEO_분석_{브랜드명}_{날짜}.pdf`) |
+| 학술 인용 링크 연결 | 2026-05-15 | EarnedMedia 탭 notable_citations에 url 필드 있을 경우 외부 링크로 클릭 가능 |
+| 네이버 블로그·뉴스 실콘텐츠 | 2026-05-15 | Vercel Cron(매일 03:00 KST) → Naver Search API → Supabase geo_community_cache, 커뮤니티·미디어 탭 표시 |
+| Supabase 스코어 스냅샷 DB | 2026-05-15 | geo_score_snapshots 테이블, Vercel Cron(매일 02:00 KST) 자동 저장 |
+| 30일 GEO 트렌드 차트 | 2026-05-15 | 브랜드 분석 뷰 ScoreOverview 하단에 LineChart 추가, Supabase 히스토리 기반 |
+| 주간 GEO 알림 이메일 | 2026-05-15 | Vercel Cron(매주 월요일 09:00 KST) → 7일 전 대비 ±5pts 이상 변동 브랜드 Resend 이메일 발송 |
+
+---
+
+### 📋 예정 업데이트
+
+#### ~~[HIGH] GEO Playground — 실제 AI API 직접 연동~~ ✅ 완료
+#### ~~[HIGH] 브랜드 분석 — 커뮤니티·미디어 실콘텐츠 연동~~ ✅ 완료 (YouTube + 네이버 블로그/뉴스)
+#### ~~[MEDIUM] PDF 리포트 내보내기 정식 구현~~ ✅ 완료
+#### ~~[MEDIUM] 데이터 실시간화 — Supabase 연동 + 트렌드 차트~~ ✅ 완료
+#### ~~[LOW] 알림 기능 — 이메일 주간 리포트~~ ✅ 완료
+
+#### [PENDING] 커뮤니티 — 바비톡·강남언니 실콘텐츠
+- **현황:** 네이버 블로그/뉴스 연동 완료. 바비톡·강남언니는 공개 API 없어 Playwright 필요
+- **조건:** 별도 스크래핑 인프라(Playwright Worker or Apify) 구축 후 진행
+- **우선순위 낮음** — 네이버 블로그로 실제 커뮤니티 게시물 대부분 커버 가능
+
+#### [PENDING] 데이터 완전 실시간화
+- **현황:** Supabase 테이블 + Cron 구조 완성. 단, GEO 점수는 여전히 geo-data.ts Mock 값 기반
+- **조건:** 경쟁사 사이트 크롤링 파이프라인 구축 후 DB 값으로 완전 대체
 
 ---
 **주의사항:** 

@@ -1,16 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
   PieChart, Pie, Legend,
+  LineChart, Line, ReferenceLine,
 } from 'recharts'
+import { toPng } from 'html-to-image'
+import jsPDF from 'jspdf'
 import {
   GEO_DATA, DIMENSION_LABELS, SAMPLE_QUERIES, PERSPECTIVES,
   getScoreColor, type BrandGeoData, type AeoBenchmark,
   type TechAeo, type Authority, type Community, type EarnedMedia,
 } from '../_data/geo-data'
 import type { PlaygroundResult } from '@/app/api/geo/playground/route'
+import type { YouTubeVideo } from '@/app/api/geo/youtube/route'
 
 // ─── 공통 헬퍼 ───────────────────────────────────────────────────────────────
 
@@ -257,7 +261,7 @@ function OverviewTab() {
               <Tooltip
                 cursor={{ fill: '#F8FAFC' }}
                 contentStyle={{ fontSize: 14, borderRadius: 8, border: '1px solid #E2E8F0' }}
-                formatter={(v: number) => [`${v}점`, 'GEO 종합']}
+                formatter={(v) => [`${v}점`, 'GEO 종합']}
               />
               <Bar dataKey="score" radius={[0, 4, 4, 0]} maxBarSize={28}>
                 {rankingChartData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
@@ -277,7 +281,7 @@ function OverviewTab() {
               <CartesianGrid horizontal={false} stroke="#F1F5F9" />
               <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 13, fill: '#64748B' }} tickLine={false} axisLine={false} />
               <YAxis type="category" dataKey="dim" tick={{ fontSize: 15, fill: '#1E293B', fontWeight: 500 }} tickLine={false} axisLine={false} width={52} />
-              <Tooltip contentStyle={{ fontSize: 14, borderRadius: 8, border: '1px solid #E2E8F0' }} formatter={(v: number, n: string) => [`${v}점`, n]} />
+              <Tooltip contentStyle={{ fontSize: 14, borderRadius: 8, border: '1px solid #E2E8F0' }} formatter={(v, n) => [`${v}점`, String(n)]} />
               <Legend wrapperStyle={{ fontSize: 14, paddingTop: 12 }} />
               <Bar dataKey="볼뉴머" fill="#B4221B" radius={[0, 3, 3, 0]} maxBarSize={16} />
               <Bar dataKey="써마지" fill="#D1D5DB" radius={[0, 3, 3, 0]} maxBarSize={16} />
@@ -295,7 +299,7 @@ function OverviewTab() {
               <CartesianGrid horizontal={false} stroke="#F1F5F9" />
               <XAxis type="number" domain={[0, 50]} tick={{ fontSize: 13, fill: '#64748B' }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 15, fill: '#1E293B', fontWeight: 600 }} tickLine={false} axisLine={false} width={60} />
-              <Tooltip contentStyle={{ fontSize: 14, borderRadius: 8, border: '1px solid #E2E8F0' }} formatter={(v: number) => [`${v}%`, 'SoV']} />
+              <Tooltip contentStyle={{ fontSize: 14, borderRadius: 8, border: '1px solid #E2E8F0' }} formatter={(v) => [`${v}%`, 'SoV']} />
               <Bar dataKey="sov" radius={[0, 4, 4, 0]} maxBarSize={28}>
                 {sovChartData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
               </Bar>
@@ -556,7 +560,7 @@ function AiBenchmarkTab({ aeo }: { aeo: AeoBenchmark }) {
               <CartesianGrid vertical={false} stroke="#F1F5F9" />
               <XAxis dataKey="name" tick={{ fontSize: 15, fill: '#374151', fontWeight: 600 }} tickLine={false} axisLine={false} />
               <YAxis domain={[0, 10]} tick={{ fontSize: 13, fill: '#64748B' }} tickLine={false} axisLine={false} label={{ value: '/ 10 쿼리', angle: -90, position: 'insideLeft', offset: 14, style: { fontSize: 12, fill: '#94A3B8' } }} />
-              <Tooltip contentStyle={{ fontSize: 14, borderRadius: 8, border: '1px solid #E2E8F0' }} formatter={(v: number) => [`${v}회`, '노출 횟수']} />
+              <Tooltip contentStyle={{ fontSize: 14, borderRadius: 8, border: '1px solid #E2E8F0' }} formatter={(v) => [`${v}회`, '노출 횟수']} />
               <Bar dataKey="mentions" fill="#334155" radius={[4, 4, 0, 0]} maxBarSize={56} />
             </BarChart>
           </ResponsiveContainer>
@@ -678,9 +682,246 @@ function AiBenchmarkTab({ aeo }: { aeo: AeoBenchmark }) {
   )
 }
 
+// ─── Score Trend Chart ────────────────────────────────────────────────────────
+
+interface ScoreTrendSnapshot {
+  snapshot_date:   string
+  geo_score:       number
+  tech_score:      number
+  authority_score: number
+  aeo_score:       number
+  community_score: number
+  media_score:     number
+}
+
+function ScoreTrendChart({ brandId, brandColor }: { brandId: string; brandColor: string }) {
+  const [data, setData]       = useState<ScoreTrendSnapshot[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState<string | null>(null)
+
+  useEffect(() => {
+    setLoading(true); setError(null)
+    fetch(`/api/geo/trends?brandId=${brandId}`)
+      .then(r => r.ok ? r.json() : r.json().then((b: { error?: string }) => Promise.reject(b.error ?? 'API 오류')))
+      .then((d: { snapshots: ScoreTrendSnapshot[] }) => setData(d.snapshots))
+      .catch((e: unknown) => setError(String(e)))
+      .finally(() => setLoading(false))
+  }, [brandId])
+
+  if (loading) return (
+    <div className="bg-white rounded-lg border border-slate-200 p-5 flex items-center gap-3 text-slate-400">
+      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
+      <span className="text-sm">트렌드 데이터 로딩 중…</span>
+    </div>
+  )
+
+  if (error) return (
+    <div className="bg-white rounded-lg border border-slate-200 p-5 text-sm text-red-600">트렌드 로드 오류: {error}</div>
+  )
+
+  if (!data.length) return (
+    <div className="bg-white rounded-lg border border-slate-200 p-5">
+      <p className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-2">30일 GEO 점수 추이</p>
+      <div className="flex items-center gap-3 py-6 text-slate-400">
+        <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <p className="text-sm">아직 수집된 트렌드 데이터가 없습니다. Vercel Cron 첫 실행 후 차트가 표시됩니다.</p>
+      </div>
+    </div>
+  )
+
+  const chartData = data.map(d => ({
+    date:  d.snapshot_date.slice(5), // "MM-DD"
+    score: d.geo_score,
+    tech:  d.tech_score,
+    aeo:   d.aeo_score,
+  }))
+  const avg = Math.round(data.reduce((s, d) => s + d.geo_score, 0) / data.length)
+
+  return (
+    <div className="bg-white rounded-lg border border-slate-200 p-5">
+      <div className="flex items-baseline gap-4 pb-3 border-b border-slate-200 mb-5">
+        <h3 className="text-base font-bold text-slate-700 uppercase tracking-[0.12em]">30일 GEO 점수 추이</h3>
+        <span className="text-sm text-slate-400">평균 {avg}점</span>
+      </div>
+      <div className="h-48">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
+            <CartesianGrid stroke="#F1F5F9" />
+            <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#94A3B8' }} tickLine={false} axisLine={false} />
+            <YAxis domain={[0, 100]} tick={{ fontSize: 12, fill: '#94A3B8' }} tickLine={false} axisLine={false} width={28} />
+            <Tooltip contentStyle={{ fontSize: 13, borderRadius: 8, border: '1px solid #E2E8F0' }}
+              formatter={(v) => [`${v}점`, 'GEO 종합']} />
+            <ReferenceLine y={avg} stroke="#E2E8F0" strokeDasharray="4 4" />
+            <Line type="monotone" dataKey="score" stroke={brandColor} strokeWidth={2.5} dot={{ r: 3, fill: brandColor }} activeDot={{ r: 5 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  )
+}
+
+// ─── Naver Content Feed ───────────────────────────────────────────────────────
+
+interface NaverContentItem {
+  id:           string
+  source_type:  'naver_blog' | 'naver_news'
+  title:        string
+  url:          string
+  description:  string | null
+  author:       string | null
+  published_at: string | null
+  refreshed_at: string
+}
+
+function NaverContentFeed({ brandId, sourceType, label }: {
+  brandId:    string
+  sourceType: 'naver_blog' | 'naver_news'
+  label:      string
+}) {
+  const [items, setItems]     = useState<NaverContentItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState<string | null>(null)
+  const prevId                = useRef('')
+
+  useEffect(() => {
+    if (!brandId || prevId.current === `${brandId}:${sourceType}`) return
+    prevId.current = `${brandId}:${sourceType}`
+    setLoading(true); setError(null)
+    fetch(`/api/geo/community?brandId=${brandId}&sourceType=${sourceType}`)
+      .then(r => r.ok ? r.json() : r.json().then((b: { error?: string }) => Promise.reject(b.error ?? 'API 오류')))
+      .then((d: { items: NaverContentItem[] }) => setItems(d.items))
+      .catch((e: unknown) => setError(String(e)))
+      .finally(() => setLoading(false))
+  }, [brandId, sourceType])
+
+  const srcLabel: Record<string, string> = { naver_blog: '네이버 블로그', naver_news: '네이버 뉴스' }
+  const srcColor: Record<string, string> = { naver_blog: 'bg-green-50 text-green-700 border-green-300', naver_news: 'bg-blue-50 text-blue-700 border-blue-300' }
+
+  if (loading) return (
+    <div className="flex items-center gap-3 py-6 text-slate-400">
+      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
+      <span className="text-sm">{label} 로딩 중…</span>
+    </div>
+  )
+
+  if (error) return <div className="py-3 text-sm text-red-600 bg-red-50 rounded-lg px-4">오류: {error}</div>
+
+  if (!items.length) return (
+    <div className="flex items-center gap-3 py-6 text-slate-400 bg-slate-50 rounded-lg px-5">
+      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      <p className="text-sm">데이터 수집 중입니다. Vercel Cron 첫 실행(매일 03:00 KST) 후 콘텐츠가 표시됩니다.</p>
+    </div>
+  )
+
+  const refreshed = items[0]?.refreshed_at
+    ? new Date(items[0].refreshed_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', dateStyle: 'short', timeStyle: 'short' })
+    : null
+
+  return (
+    <div className="space-y-3">
+      {items.map((item) => (
+        <a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer"
+          className="group block bg-white rounded-lg border border-slate-200 p-4 hover:border-slate-400 transition-colors">
+          <div className="flex items-start gap-3">
+            <span className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded border ${srcColor[item.source_type]}`}>
+              {srcLabel[item.source_type]}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-base font-semibold text-blue-700 group-hover:underline leading-snug line-clamp-2">{item.title}</p>
+              {item.description && (
+                <p className="text-sm text-slate-500 mt-1 line-clamp-2 leading-relaxed">{item.description}</p>
+              )}
+              <div className="flex items-center gap-3 mt-2">
+                {item.author && <span className="text-xs text-slate-400">{item.author}</span>}
+                {item.published_at && <span className="text-xs text-slate-400">{item.published_at}</span>}
+              </div>
+            </div>
+          </div>
+        </a>
+      ))}
+      {refreshed && (
+        <p className="text-xs text-slate-300 text-right">최근 갱신: {refreshed}</p>
+      )}
+    </div>
+  )
+}
+
+// ─── YouTube Feed ─────────────────────────────────────────────────────────────
+
+function YouTubeFeed({ youtubeQuery }: { youtubeQuery: string }) {
+  const [videos, setVideos]   = useState<YouTubeVideo[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState<string | null>(null)
+  const prevQuery             = useRef('')
+
+  useEffect(() => {
+    if (!youtubeQuery || prevQuery.current === youtubeQuery) return
+    prevQuery.current = youtubeQuery
+    setLoading(true); setError(null)
+    fetch(`/api/geo/youtube?q=${encodeURIComponent(youtubeQuery)}`)
+      .then(r => r.ok ? r.json() : r.json().then((b: { error?: string }) => Promise.reject(b.error ?? 'API 오류')))
+      .then((d: { videos: YouTubeVideo[] }) => setVideos(d.videos))
+      .catch((e: unknown) => setError(String(e)))
+      .finally(() => setLoading(false))
+  }, [youtubeQuery])
+
+  if (loading) return (
+    <div className="flex items-center gap-3 py-8 text-slate-400">
+      <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+      </svg>
+      <span className="text-base">YouTube 최신 영상 로딩 중…</span>
+    </div>
+  )
+
+  if (error) return (
+    <div className="py-4 text-sm text-red-600 bg-red-50 rounded-lg px-4">YouTube API 오류: {error}</div>
+  )
+
+  if (!videos.length) return (
+    <div className="py-4 text-sm text-slate-400">관련 영상을 찾을 수 없습니다.</div>
+  )
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {videos.map((v) => {
+        const viewK = v.view_count ? `${Math.floor(Number(v.view_count) / 1000).toLocaleString()}K 회` : null
+        const date  = new Date(v.published_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })
+        return (
+          <a key={v.videoId} href={`https://www.youtube.com/watch?v=${v.videoId}`} target="_blank" rel="noopener noreferrer"
+            className="group bg-white rounded-lg border border-slate-200 overflow-hidden hover:border-slate-400 transition-colors">
+            <div className="relative aspect-video bg-slate-100 overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={v.thumbnail} alt={v.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div className="p-3">
+              <p className="text-sm font-semibold text-slate-800 line-clamp-2 leading-snug mb-2">{v.title}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-slate-400 truncate max-w-[60%]">{v.channel_title}</p>
+                <div className="flex items-center gap-2 shrink-0">
+                  {viewK && <span className="text-xs text-slate-400">{viewK}</span>}
+                  <span className="text-xs text-slate-300">{date}</span>
+                </div>
+              </div>
+            </div>
+          </a>
+        )
+      })}
+    </div>
+  )
+}
+
 // ─── Tab 4: 커뮤니티 ─────────────────────────────────────────────────────────
 
-function CommunityTab({ community }: { community: Community }) {
+function CommunityTab({ community, youtubeQuery, brandId }: { community: Community; youtubeQuery: string; brandId: string }) {
   const platformData = [
     { name: '바비톡',   count: community.babytalk_monthly },
     { name: '강남언니', count: community.gangnam_unni_monthly },
@@ -705,7 +946,7 @@ function CommunityTab({ community }: { community: Community }) {
                 <CartesianGrid vertical={false} stroke="#F1F5F9" />
                 <XAxis dataKey="name" tick={{ fontSize: 15, fill: '#374151', fontWeight: 600 }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 13, fill: '#64748B' }} tickLine={false} axisLine={false} tickFormatter={v => v.toLocaleString()} />
-                <Tooltip contentStyle={{ fontSize: 14, borderRadius: 8, border: '1px solid #E2E8F0' }} formatter={(v: number) => [`${v.toLocaleString()}건`, '월간 언급']} />
+                <Tooltip contentStyle={{ fontSize: 14, borderRadius: 8, border: '1px solid #E2E8F0' }} formatter={(v) => [`${Number(v).toLocaleString()}건`, '월간 언급']} />
                 <Bar dataKey="count" fill="#334155" radius={[4, 4, 0, 0]} maxBarSize={56} />
               </BarChart>
             </ResponsiveContainer>
@@ -758,13 +999,23 @@ function CommunityTab({ community }: { community: Community }) {
           ))}
         </div>
       </div>
+
+      <div>
+        <SectionTitle sub="네이버 블로그 — 최신 게시물">커뮤니티 블로그 콘텐츠</SectionTitle>
+        <NaverContentFeed brandId={brandId} sourceType="naver_blog" label="블로그 게시물" />
+      </div>
+
+      <div>
+        <SectionTitle sub={`"${youtubeQuery}" 최신 영상`}>YouTube 관련 콘텐츠</SectionTitle>
+        <YouTubeFeed youtubeQuery={youtubeQuery} />
+      </div>
     </div>
   )
 }
 
 // ─── Tab 5: 미디어 ────────────────────────────────────────────────────────────
 
-function EarnedMediaTab({ media }: { media: EarnedMedia }) {
+function EarnedMediaTab({ media, brandId }: { media: EarnedMedia; brandId: string }) {
   const pressData = [
     { name: '2025', press: media.press_releases_2025, papers: media.academic_papers_2025 },
     { name: '2026', press: media.press_releases_2026, papers: media.academic_papers_2026 },
@@ -808,6 +1059,11 @@ function EarnedMediaTab({ media }: { media: EarnedMedia }) {
         </div>
       </div>
 
+      <div>
+        <SectionTitle sub="네이버 뉴스 — 최신 보도">최신 보도자료 & 뉴스</SectionTitle>
+        <NaverContentFeed brandId={brandId} sourceType="naver_news" label="뉴스 기사" />
+      </div>
+
       {media.notable_citations.length > 0 && (
         <div>
           <SectionTitle sub={`${media.notable_citations.length}건`}>주요 학술 인용</SectionTitle>
@@ -816,7 +1072,11 @@ function EarnedMediaTab({ media }: { media: EarnedMedia }) {
               <div key={i} className="bg-white rounded-lg border border-slate-200 p-5 flex items-start gap-4">
                 <span className="text-base font-bold text-slate-400 w-6 shrink-0 mt-0.5">{i + 1}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-base font-semibold text-slate-800 leading-snug">{c.title}</p>
+                  {c.url
+                    ? <a href={c.url} target="_blank" rel="noopener noreferrer"
+                        className="text-base font-semibold text-blue-700 hover:underline leading-snug">{c.title}</a>
+                    : <p className="text-base font-semibold text-slate-800 leading-snug">{c.title}</p>
+                  }
                   <div className="flex items-center gap-3 mt-2">
                     <StatusBadge text={c.journal} variant="blue" />
                     <span className="text-sm text-slate-500">{c.year}</span>
@@ -915,16 +1175,31 @@ function GeoPlayground() {
 
       {result && (
         <div className="space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[result.model_a, result.model_b].map((model, i) => (
-              <div key={i} className="bg-white rounded-lg border border-slate-200 p-5">
-                <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-100">
-                  <span className="text-base font-bold text-slate-700">{model.name}</span>
-                  <span className="text-sm text-slate-400">{i === 0 ? '범용 AI' : '검색 통합 AI'}</span>
+          <div className="bg-slate-50 border border-slate-200 rounded-lg px-5 py-3 flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+            <p className="text-sm text-slate-600">
+              <span className="font-semibold">실제 API 응답</span> — ChatGPT(GPT-4o), Gemini(1.5 Pro), Claude(Sonnet) 3개 모델에 동일 질문을 입력한 실제 결과입니다.
+              브랜드 가시성 분석은 Claude가 3개 답변을 종합 처리합니다.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[result.model_chatgpt, result.model_gemini, result.model_claude].map((model, i) => {
+              const badges = [
+                { label: 'OpenAI', cls: 'bg-green-50 text-green-700 border-green-300' },
+                { label: 'Google', cls: 'bg-blue-50 text-blue-700 border-blue-300' },
+                { label: 'Anthropic', cls: 'bg-amber-50 text-amber-700 border-amber-300' },
+              ]
+              return (
+                <div key={i} className="bg-white rounded-lg border border-slate-200 p-5">
+                  <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-100">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded border ${badges[i].cls}`}>{badges[i].label}</span>
+                    <span className="text-base font-bold text-slate-700">{model.name}</span>
+                  </div>
+                  <p className="text-base text-slate-700 leading-relaxed whitespace-pre-wrap">{model.answer}</p>
                 </div>
-                <p className="text-base text-slate-700 leading-relaxed whitespace-pre-wrap">{model.answer}</p>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           <div className="bg-white rounded-lg border border-slate-200 p-5">
@@ -973,14 +1248,51 @@ const PAGE_VIEWS    = ['Overview', '브랜드 분석', 'GEO Playground'] as cons
 type PageView = typeof PAGE_VIEWS[number]
 
 export default function GeoClient() {
-  const [activeView, setActiveView] = useState<PageView>('Overview')
+  const [activeView, setActiveView]       = useState<PageView>('Overview')
   const [selectedBrandIdx, setSelectedBrandIdx] = useState(0)
-  const [activeTab, setActiveTab] = useState(0)
+  const [activeTab, setActiveTab]         = useState(0)
+  const [pdfLoading, setPdfLoading]       = useState(false)
 
   const brand = GEO_DATA[selectedBrandIdx]
 
+  async function exportPDF() {
+    const el = document.getElementById('geo-pdf-target')
+    if (!el) return
+    setPdfLoading(true)
+    try {
+      const dataUrl  = await toPng(el, { backgroundColor: '#ffffff', pixelRatio: 1.5 })
+      const pdf      = new jsPDF({ unit: 'mm', format: 'a4' })
+      const margin   = 10
+      const pageW    = pdf.internal.pageSize.getWidth()
+      const pageH    = pdf.internal.pageSize.getHeight()
+      const imgW     = pageW - margin * 2
+      const img      = new window.Image()
+      img.src        = dataUrl
+      await new Promise<void>(res => { img.onload = () => res() })
+      const imgH     = (img.naturalHeight / img.naturalWidth) * imgW
+      const contentH = pageH - margin * 2
+
+      const totalPages = Math.ceil(imgH / contentH)
+      for (let p = 0; p < totalPages; p++) {
+        if (p > 0) pdf.addPage()
+        pdf.addImage(dataUrl, 'PNG', margin, margin - p * contentH, imgW, imgH)
+        // 넘침 영역 흰색으로 덮기
+        pdf.setFillColor(255, 255, 255)
+        if (p > 0) pdf.rect(0, 0, pageW, margin, 'F')
+        if (p < totalPages - 1) pdf.rect(0, pageH - margin, pageW, margin * 2, 'F')
+      }
+
+      const dateStr = new Date().toISOString().split('T')[0]
+      pdf.save(`GEO_분석_${brand.name}_${dateStr}.pdf`)
+    } catch (err) {
+      console.error('[GEO] PDF export error:', err)
+    } finally {
+      setPdfLoading(false)
+    }
+  }
+
   return (
-    <div className="max-w-6xl mx-auto px-5 py-7 space-y-7">
+    <div id="geo-pdf-target" className="max-w-6xl mx-auto px-5 py-7 space-y-7">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap pb-5 border-b border-slate-200">
         <div>
@@ -988,12 +1300,12 @@ export default function GeoClient() {
           <p className="text-base text-slate-500 mt-1.5">볼뉴머 vs 경쟁 {GEO_DATA.length - 1}개 브랜드 · 2026 AI 검색 최적화 현황 분석</p>
         </div>
         {activeView === '브랜드 분석' && (
-          <button onClick={() => window.print()}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-lg transition-colors print:hidden">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            PDF 저장
+          <button onClick={exportPDF} disabled={pdfLoading}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-60 print:hidden">
+            {pdfLoading
+              ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>생성 중…</>
+              : <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>PDF 저장</>
+            }
           </button>
         )}
       </div>
@@ -1040,6 +1352,8 @@ export default function GeoClient() {
 
           <ScoreOverview brand={brand} />
 
+          <ScoreTrendChart brandId={brand.id} brandColor={brand.color} />
+
           {/* Analysis tabs */}
           <div>
             <div className="flex gap-0 border-b border-slate-200 mb-6 overflow-x-auto print:hidden">
@@ -1056,8 +1370,8 @@ export default function GeoClient() {
               {activeTab === 0 && <TechAeoTab tech={brand.tech} />}
               {activeTab === 1 && <AuthorityTab authority={brand.authority} />}
               {activeTab === 2 && <AiBenchmarkTab key={brand.id} aeo={brand.aeo} />}
-              {activeTab === 3 && <CommunityTab community={brand.community} />}
-              {activeTab === 4 && <EarnedMediaTab media={brand.earned_media} />}
+              {activeTab === 3 && <CommunityTab community={brand.community} youtubeQuery={brand.youtube_query} brandId={brand.id} />}
+              {activeTab === 4 && <EarnedMediaTab media={brand.earned_media} brandId={brand.id} />}
             </div>
           </div>
 

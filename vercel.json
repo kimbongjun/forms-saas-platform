@@ -3,6 +3,18 @@
     {
       "path": "/api/market/refresh",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/geo-scores",
+      "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/cron/geo-community",
+      "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/geo-alerts",
+      "schedule": "0 0 * * 1"
     }
   ]
 }

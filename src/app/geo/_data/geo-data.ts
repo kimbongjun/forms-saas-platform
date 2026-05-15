@@ -76,6 +76,7 @@ export interface BrandGeoData {
   color: string
   device_type: string
   geo_score: number
+  youtube_query: string
   tech: TechAeo
   authority: Authority
   aeo: AeoBenchmark
@@ -93,6 +94,7 @@ export const GEO_DATA: BrandGeoData[] = [
     color: '#B4221B',
     device_type: 'Monopolar RF',
     geo_score: 62,
+    youtube_query: '볼뉴머 리프팅 시술',
     tech: {
       schema_types: ['Product', 'FAQPage', 'Organization'],
       faq_schema: true,
@@ -170,6 +172,7 @@ export const GEO_DATA: BrandGeoData[] = [
     color: '#59004F',
     device_type: 'Monopolar RF',
     geo_score: 82,
+    youtube_query: '써마지 FLX 리프팅 효과',
     tech: {
       schema_types: ['MedicalProcedure', 'Product', 'FAQPage', 'Organization', 'BreadcrumbList'],
       faq_schema: true,
@@ -248,6 +251,7 @@ export const GEO_DATA: BrandGeoData[] = [
     color: '#0C3A47',
     device_type: 'Bipolar RF',
     geo_score: 58,
+    youtube_query: '덴서티 RF 피부 리프팅',
     tech: {
       schema_types: ['Product', 'WebPage'],
       faq_schema: false,
@@ -324,6 +328,7 @@ export const GEO_DATA: BrandGeoData[] = [
     color: '#7954C0',
     device_type: 'RF + HIFU Hybrid',
     geo_score: 65,
+    youtube_query: '올리지오 리프팅 시술 후기',
     tech: {
       schema_types: ['Product', 'FAQPage', 'MedicalProcedure'],
       faq_schema: true,
@@ -401,6 +406,7 @@ export const GEO_DATA: BrandGeoData[] = [
     color: '#33348D',
     device_type: 'Capacitive RF',
     geo_score: 48,
+    youtube_query: '텐써마 고주파 피부과',
     tech: {
       schema_types: ['Product'],
       faq_schema: false,
@@ -475,6 +481,7 @@ export const GEO_DATA: BrandGeoData[] = [
     color: '#F37964',
     device_type: 'Fractional RF',
     geo_score: 41,
+    youtube_query: 'XERF 분할 RF 리프팅',
     tech: {
       schema_types: [],
       faq_schema: false,
@@ -549,6 +556,7 @@ export const GEO_DATA: BrandGeoData[] = [
     color: '#E8B02F',
     device_type: 'MFU-V (HIFU)',
     geo_score: 74,
+    youtube_query: '울쎄라 HIFU 리프팅 시술',
     tech: {
       schema_types: ['MedicalProcedure', 'Product', 'FAQPage', 'Organization', 'BreadcrumbList'],
       faq_schema: true,
@@ -627,6 +635,7 @@ export const GEO_DATA: BrandGeoData[] = [
     color: '#182D60',
     device_type: 'HIFU',
     geo_score: 69,
+    youtube_query: '슈링크 유니버스 HIFU 리프팅',
     tech: {
       schema_types: ['Product', 'FAQPage', 'Organization', 'MedicalProcedure'],
       faq_schema: true,
