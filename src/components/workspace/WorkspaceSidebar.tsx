@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import {
   BarChart3,
   Bell,
+  Bot,
   FolderKanban,
   Globe,
   Grape,
@@ -33,6 +34,7 @@ const HUB_ICONS = {
   monitoring: Monitor,
   'some-content': TrendingUp,
   market: Globe,
+  geo: Bot,
 }
 
 const ADMIN_LINKS = [

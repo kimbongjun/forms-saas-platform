@@ -33,7 +33,8 @@
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(k,v\\) for k,v in {**d.get\\('dependencies',{}\\), **d.get\\('devDependencies',{}\\)}.items\\(\\)]\")",
       "Bash(git commit *)",
       "Bash(git restore *)",
-      "Skill(mkt-platform)"
+      "Skill(mkt-platform)",
+      "Skill(superpowers:brainstorming)"
     ]
   },
   "enabledPlugins": {

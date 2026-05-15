@@ -12,12 +12,21 @@ const NOW_MONTH = 5
 // ─── 이벤트 유형 메타 ─────────────────────────────────────────────────────────
 
 const EVENT_TYPE_META: Record<EventType, { label: string; cls: string; dot: string }> = {
-  Launch:      { label: '제품 출시', cls: 'bg-blue-100 text-blue-700',    dot: '#3B82F6' },
-  MA:          { label: 'M&A',      cls: 'bg-violet-100 text-violet-700', dot: '#8B5CF6' },
+  Launch:      { label: '제품 출시', cls: 'bg-blue-100 text-blue-700',      dot: '#3B82F6' },
+  MA:          { label: 'M&A',      cls: 'bg-violet-100 text-violet-700',   dot: '#8B5CF6' },
   Partnership: { label: '파트너십', cls: 'bg-emerald-100 text-emerald-700', dot: '#10B981' },
-  Clinical:    { label: '임상',     cls: 'bg-amber-100 text-amber-700',   dot: '#F59E0B' },
-  Award:       { label: '수상',     cls: 'bg-orange-100 text-orange-700', dot: '#F97316' },
-  Other:       { label: '기타',     cls: 'bg-gray-100 text-gray-600',     dot: '#9CA3AF' },
+  Clinical:    { label: '임상',     cls: 'bg-amber-100 text-amber-700',     dot: '#F59E0B' },
+  Award:       { label: '수상',     cls: 'bg-orange-100 text-orange-700',   dot: '#F97316' },
+  Other:       { label: '기타',     cls: 'bg-gray-100 text-gray-600',       dot: '#9CA3AF' },
+}
+
+const EVENT_TYPE_EMOJI: Record<EventType, string> = {
+  Launch:      '🚀',
+  MA:          '🏢',
+  Partnership: '🤝',
+  Clinical:    '🔬',
+  Award:       '🏆',
+  Other:       '📋',
 }
 
 const PRESS_TYPE_META: Record<PressItemType, { label: string; cls: string }> = {
@@ -46,7 +55,6 @@ const REGION_BORDER: Record<IndustryEvent['region'], string> = {
 }
 
 const MONTH_KO = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월']
-
 const ALL_TYPES: EventType[] = ['Launch', 'MA', 'Partnership', 'Clinical', 'Award', 'Other']
 
 // ─── 공통 헬퍼 ───────────────────────────────────────────────────────────────
@@ -183,6 +191,7 @@ interface AggEvent {
   date: string
   type: EventType
   description: string
+  source_url?: string
   company_id: string
   company_name: string
   company_flag: string
@@ -190,9 +199,87 @@ interface AggEvent {
   is_classys: boolean
 }
 
+function TimelineCard({ ev }: { ev: AggEvent }) {
+  const meta = EVENT_TYPE_META[ev.type]
+  const emoji = EVENT_TYPE_EMOJI[ev.type]
+  const [y, m] = ev.date.split('-')
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col">
+      {/* Thumbnail header */}
+      <div
+        className="relative h-28 flex items-center justify-center overflow-hidden"
+        style={{ background: `linear-gradient(135deg, ${ev.company_color}ee 0%, ${ev.company_color}88 100%)` }}
+      >
+        {/* Dot-grid texture overlay */}
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.22) 1.5px, transparent 1.5px)',
+            backgroundSize: '18px 18px',
+          }}
+        />
+        {/* Large emoji background */}
+        <span className="text-[56px] leading-none opacity-20 select-none pointer-events-none relative z-10">
+          {emoji}
+        </span>
+        {/* Company info at bottom */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent px-3 pt-6 pb-2.5">
+          <div className="flex items-center gap-1.5">
+            <span className="text-base leading-none">{ev.company_flag}</span>
+            <span className="text-white text-[11px] font-bold truncate drop-shadow">
+              {ev.company_name}
+            </span>
+            {ev.is_classys && (
+              <span className="text-[9px] font-bold text-white bg-white/30 px-1.5 py-0.5 rounded-full shrink-0">
+                MY
+              </span>
+            )}
+          </div>
+        </div>
+        {/* Date badge */}
+        <div className="absolute top-2.5 right-2.5">
+          <span className="text-[10px] font-mono text-white bg-black/30 px-2 py-0.5 rounded-full backdrop-blur-sm">
+            {y}.{m}
+          </span>
+        </div>
+      </div>
+
+      {/* Card body */}
+      <div className="p-4 flex flex-col flex-1">
+        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border ${meta.cls} self-start mb-2.5`}>
+          {emoji} {meta.label}
+        </span>
+        <p className="text-xs text-gray-800 leading-relaxed flex-1 line-clamp-4">
+          {ev.description}
+        </p>
+        <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
+          <span className="text-[10px] text-gray-400">{y}년 {MONTH_KO[Number(m) - 1]}</span>
+          {ev.source_url ? (
+            <a
+              href={ev.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-[10px] text-blue-500 hover:text-blue-700 transition-colors hover:underline"
+            >
+              원문
+              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          ) : (
+            <span className="text-[10px] text-gray-300">내부 데이터</span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function CompanyTimeline({ competitors }: { competitors: Competitor[] }) {
   const [selectedCompanies, setSelectedCompanies] = useState<Set<string>>(new Set())
   const [selectedTypes, setSelectedTypes] = useState<Set<EventType>>(new Set())
+  const [selectedYear, setSelectedYear] = useState<string>('2025')
 
   const allEvents: AggEvent[] = useMemo(() => {
     const items: AggEvent[] = []
@@ -202,6 +289,7 @@ function CompanyTimeline({ competitors }: { competitors: Competitor[] }) {
           date: ev.date,
           type: ev.type,
           description: ev.description,
+          source_url: ev.source_url,
           company_id: c.competitor_id,
           company_name: c.company_name,
           company_flag: c.hq_flag,
@@ -213,14 +301,20 @@ function CompanyTimeline({ competitors }: { competitors: Competitor[] }) {
     return items.sort((a, b) => b.date.localeCompare(a.date))
   }, [competitors])
 
+  const availableYears = useMemo(() => {
+    const years = new Set(allEvents.map((ev) => ev.date.slice(0, 4)))
+    return Array.from(years).sort((a, b) => b.localeCompare(a))
+  }, [allEvents])
+
   const filtered = useMemo(
     () =>
       allEvents.filter((ev) => {
         const compOk = selectedCompanies.size === 0 || selectedCompanies.has(ev.company_id)
         const typeOk = selectedTypes.size === 0 || selectedTypes.has(ev.type)
-        return compOk && typeOk
+        const yearOk = selectedYear === 'ALL' || ev.date.startsWith(selectedYear)
+        return compOk && typeOk && yearOk
       }),
-    [allEvents, selectedCompanies, selectedTypes],
+    [allEvents, selectedCompanies, selectedTypes, selectedYear],
   )
 
   const hasFilter = selectedCompanies.size > 0 || selectedTypes.size > 0
@@ -242,11 +336,41 @@ function CompanyTimeline({ competitors }: { competitors: Competitor[] }) {
 
   return (
     <section>
-      <SectionHeading title="경쟁사 활동 타임라인" sub={`${filtered.length}개 이벤트`} />
+      {/* Header + Year tabs */}
+      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+        <div className="flex items-baseline gap-3">
+          <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">경쟁사 활동 타임라인</h2>
+          <span className="text-xs text-gray-400">{filtered.length}개 이벤트</span>
+        </div>
+        <div className="flex gap-1 flex-wrap">
+          <button
+            onClick={() => setSelectedYear('ALL')}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+              selectedYear === 'ALL'
+                ? 'bg-gray-800 text-white'
+                : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            전체
+          </button>
+          {availableYears.map((year) => (
+            <button
+              key={year}
+              onClick={() => setSelectedYear(year)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                selectedYear === year
+                  ? 'bg-gray-800 text-white'
+                  : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              {year}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* 필터 카드 */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 space-y-3">
-        {/* 이벤트 유형 */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold text-gray-400 w-10 shrink-0">유형</span>
           <div className="flex flex-wrap gap-1.5">
@@ -261,14 +385,13 @@ function CompanyTimeline({ competitors }: { competitors: Competitor[] }) {
                     active ? `${meta.cls} border-current` : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  {meta.label}
+                  {EVENT_TYPE_EMOJI[type]} {meta.label}
                 </button>
               )
             })}
           </div>
         </div>
 
-        {/* 회사 */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold text-gray-400 w-10 shrink-0">회사</span>
           <div className="flex flex-wrap gap-1.5">
@@ -301,59 +424,40 @@ function CompanyTimeline({ competitors }: { competitors: Competitor[] }) {
         )}
       </div>
 
-      {/* 타임라인 */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        {filtered.length === 0 ? (
-          <div className="flex items-center justify-center py-12 text-sm text-gray-400">
-            선택한 조건에 해당하는 이벤트가 없습니다.
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-50">
-            {filtered.map((ev, i) => {
-              const meta = EVENT_TYPE_META[ev.type]
-              const [y, m] = ev.date.split('-')
+      {/* 카드 그리드 */}
+      {filtered.length === 0 ? (
+        <div className="flex items-center justify-center py-12 text-sm text-gray-400 bg-white rounded-xl border border-gray-200">
+          선택한 조건에 해당하는 이벤트가 없습니다.
+        </div>
+      ) : selectedYear === 'ALL' ? (
+        <div className="space-y-6">
+          {availableYears
+            .filter((year) => filtered.some((ev) => ev.date.startsWith(year)))
+            .map((year) => {
+              const yearEvents = filtered.filter((ev) => ev.date.startsWith(year))
               return (
-                <div
-                  key={i}
-                  className={`flex items-start gap-3 px-5 py-3.5 transition-colors ${
-                    ev.is_classys ? 'bg-blue-50/40' : 'hover:bg-gray-50/60'
-                  }`}
-                >
-                  {/* 날짜 */}
-                  <div className="shrink-0 w-14 pt-0.5">
-                    <p className="text-[11px] font-mono text-gray-800 leading-tight">{y}</p>
-                    <p className="text-[10px] text-gray-400">{MONTH_KO[Number(m) - 1]}</p>
+                <div key={year}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-sm font-bold text-gray-700">{year}</span>
+                    <div className="flex-1 h-px bg-gray-200" />
+                    <span className="text-xs text-gray-400">{yearEvents.length}건</span>
                   </div>
-
-                  {/* 타임라인 점 */}
-                  <div className="flex flex-col items-center shrink-0 pt-1.5">
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: meta.dot }} />
-                    {i < filtered.length - 1 && (
-                      <div className="w-px flex-1 bg-gray-100 mt-1" style={{ minHeight: 16 }} />
-                    )}
-                  </div>
-
-                  {/* 내용 */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${meta.cls}`}>
-                        {meta.label}
-                      </span>
-                      <span
-                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full text-white"
-                        style={{ backgroundColor: ev.company_color }}
-                      >
-                        {ev.company_flag} {ev.company_name}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-700 leading-relaxed">{ev.description}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {yearEvents.map((ev, i) => (
+                      <TimelineCard key={`${ev.company_id}-${ev.date}-${i}`} ev={ev} />
+                    ))}
                   </div>
                 </div>
               )
             })}
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((ev, i) => (
+            <TimelineCard key={`${ev.company_id}-${ev.date}-${i}`} ev={ev} />
+          ))}
+        </div>
+      )}
     </section>
   )
 }
@@ -362,13 +466,13 @@ function CompanyTimeline({ competitors }: { competitors: Competitor[] }) {
 
 function PressReleaseFeed({ competitors }: { competitors: Competitor[] }) {
   const [selectedId, setSelectedId] = useState<string>(competitors[0]?.competitor_id ?? '')
-  const [pressMap, setPressMap] = useState<Map<string, PressResult | 'loading' | 'error'>>(new Map())
+  const [pressMap, setPressMap] = useState<Map<string, PressResult | 'loading' | { error: string }>>(new Map())
 
   const selected = competitors.find((c) => c.competitor_id === selectedId)
   const status = pressMap.get(selectedId)
   const isLoading = status === 'loading'
-  const isError = status === 'error'
-  const result = status && status !== 'loading' && status !== 'error' ? status : null
+  const errorState = status && typeof status === 'object' && 'error' in status ? status : null
+  const result = status && status !== 'loading' && !errorState ? status as PressResult : null
 
   async function fetchPress() {
     if (!selected || isLoading) return
@@ -379,11 +483,20 @@ function PressReleaseFeed({ competitors }: { competitors: Competitor[] }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ competitor_id: selected.competitor_id, company_name: selected.company_name }),
       })
-      if (!res.ok) throw new Error(await res.text())
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`
+        try {
+          const body = await res.json() as { error?: string }
+          if (body.error) msg = body.error
+        } catch { /* ignore */ }
+        setPressMap((prev) => new Map(prev).set(selected.competitor_id, { error: msg }))
+        return
+      }
       const data = (await res.json()) as PressResult
       setPressMap((prev) => new Map(prev).set(selected.competitor_id, data))
-    } catch {
-      setPressMap((prev) => new Map(prev).set(selected.competitor_id, 'error'))
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '네트워크 오류'
+      setPressMap((prev) => new Map(prev).set(selected.competitor_id, { error: msg }))
     }
   }
 
@@ -400,7 +513,7 @@ function PressReleaseFeed({ competitors }: { competitors: Competitor[] }) {
               const fetched =
                 pressMap.has(c.competitor_id) &&
                 pressMap.get(c.competitor_id) !== 'loading' &&
-                pressMap.get(c.competitor_id) !== 'error'
+                !(pressMap.get(c.competitor_id) instanceof Object && 'error' in (pressMap.get(c.competitor_id) as object))
               return (
                 <button
                   key={c.competitor_id}
@@ -447,13 +560,16 @@ function PressReleaseFeed({ competitors }: { competitors: Competitor[] }) {
       </div>
 
       {/* 에러 */}
-      {isError && (
-        <div className="flex items-center gap-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
-          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      {errorState && (
+        <div className="flex items-start gap-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
+          <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span>검색 실패. API 키를 확인하거나 잠시 후 재시도해 주세요.</span>
-          <button onClick={fetchPress} className="ml-auto text-xs underline shrink-0">재시도</button>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium">검색 실패</p>
+            <p className="text-xs text-red-500 mt-0.5 break-all">{errorState.error}</p>
+          </div>
+          <button onClick={fetchPress} className="text-xs underline shrink-0 mt-0.5">재시도</button>
         </div>
       )}
 
@@ -508,7 +624,7 @@ function PressReleaseFeed({ competitors }: { competitors: Competitor[] }) {
       )}
 
       {/* 빈 상태 */}
-      {!result && !isLoading && !isError && selected && (
+      {!result && !isLoading && !errorState && selected && (
         <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl border border-dashed border-gray-200">
           <svg className="w-10 h-10 text-gray-200 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2.5 2.5 0 00-2.5-2.5H15" />

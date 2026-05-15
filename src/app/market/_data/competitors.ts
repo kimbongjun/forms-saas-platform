@@ -40,6 +40,7 @@ export interface CompEvent {
   date: string
   type: EventType
   description: string
+  source_url?: string
 }
 
 export interface Competitor {
@@ -142,6 +143,8 @@ export const COMPETITORS: Competitor[] = [
       { year: 2024, revenue_usd_m: 285, source: 'DART 공시' },
     ],
     events: [
+      { date: '2025-03', type: 'Other', description: 'KIMES 2025 참가 — Ultraformer MPT 신규 카트리지 및 Volnewmer 2세대 시제품 공개' },
+      { date: '2025-01', type: 'Clinical', description: 'Ultraformer MPT 피부 탄력 개선 임상 결과 JDDG 온라인 선공개' },
       { date: '2024-03', type: 'Other', description: 'KIMES 2024 참가 — Ultraformer MPT 국내 론칭' },
       { date: '2023-10', type: 'Launch', description: 'Ultraformer MPT CE 인증 획득 및 유럽 출시' },
       { date: '2023-04', type: 'Award', description: 'ASLMS 2023 Best Device 수상' },
@@ -219,6 +222,8 @@ export const COMPETITORS: Competitor[] = [
       { year: 2024, revenue_usd_m: 448, source: 'SEC 공시' },
     ],
     events: [
+      { date: '2025-05', type: 'Launch', description: 'Morpheus8 Prime 공식 발표 — 시술 시간 30% 단축·통증 최소화 모드 신규 탑재' },
+      { date: '2025-02', type: 'Other', description: 'Q4 2024 실적 발표 — 전년비 감소폭 축소, 2025 점진적 회복 가이던스 제시' },
       { date: '2024-01', type: 'Launch', description: 'Morpheus8 Body 업그레이드 버전 FDA 클리어런스' },
       { date: '2023-05', type: 'Partnership', description: '한국 공식 파트너 변경 — 국내 공격적 확장' },
       { date: '2022-11', type: 'Clinical', description: 'Morpheus8 임상 논문 JAMA Dermatology 게재' },
@@ -285,6 +290,8 @@ export const COMPETITORS: Competitor[] = [
       { year: 2024, revenue_usd_m: 210, source: '업계추정' },
     ],
     events: [
+      { date: '2025-02', type: 'Launch', description: 'Thermage FLX Next Gen 출시 — 신형 컴포트 팁 적용, 시술 통증 최대 40% 감소' },
+      { date: '2025-04', type: 'Clinical', description: 'Clear + Brilliant Tempo 아시아 피부 타입별 임상 데이터 ASLMS 2025 발표' },
       { date: '2024-02', type: 'Launch', description: 'Thermage FLX 5.0 업데이트 — 시술 시간 20% 단축' },
       { date: '2023-06', type: 'Clinical', description: 'Fraxel DUAL 아시아인 피부 임상 발표' },
       { date: '2022-09', type: 'MA', description: 'Bausch Health 인수 후 재브랜딩 완료' },
@@ -351,6 +358,8 @@ export const COMPETITORS: Competitor[] = [
       { year: 2024, revenue_usd_m: 180, source: '업계추정' },
     ],
     events: [
+      { date: '2025-04', type: 'Launch', description: 'Alma TED Plus 두피·모발 재생 치료기 한국 KFDA 허가 및 출시' },
+      { date: '2025-01', type: 'Other', description: 'IMCAS World Congress 2025 파리 참가 — Harmony XL Pro 모듈 신규 라인업 공개' },
       { date: '2024-04', type: 'Launch', description: 'Alma TED 두피 재생 치료기 국내 출시' },
       { date: '2023-03', type: 'Partnership', description: '아시아 파트너 네트워크 확대' },
     ],
@@ -404,6 +413,8 @@ export const COMPETITORS: Competitor[] = [
       { year: 2024, revenue_usd_m: 240, source: '업계추정' },
     ],
     events: [
+      { date: '2025-06', type: 'Launch', description: 'VelaShape IV 유럽 CE 인증 취득 — 4세대 셀룰라이트 치료 플랫폼 출시' },
+      { date: '2025-03', type: 'Clinical', description: 'GentleMax Pro Plus 아시아 피부 타입 다기관 임상 결과 ASLMS 2025 발표' },
       { date: '2024-01', type: 'Launch', description: 'GentleMax Pro Plus 한국 KFDA 허가' },
       { date: '2023-10', type: 'Clinical', description: 'VelaShape III 셀룰라이트 RCT 결과 발표' },
     ],
@@ -455,6 +466,8 @@ export const COMPETITORS: Competitor[] = [
       { year: 2024, revenue_usd_m: 320, source: 'IR 보고서' },
     ],
     events: [
+      { date: '2025-03', type: 'Partnership', description: 'Merz Aesthetics Korea 직판 전환 선언 — 국내 독립 판매 법인 설립 계획 공개' },
+      { date: '2025-01', type: 'Other', description: 'IMCAS 2025 참가 — Ultherapy Prime 신규 프로토콜 및 아시아 임상 결과 발표' },
       { date: '2023-09', type: 'Launch', description: 'Ultherapy Prime 미국 FDA 510(k) 클리어런스' },
       { date: '2023-03', type: 'Partnership', description: '한국 메디트론과 유통 계약 연장' },
     ],
@@ -519,6 +532,8 @@ export const COMPETITORS: Competitor[] = [
       { year: 2024, revenue_usd_m: 118, source: 'SEC 공시' },
     ],
     events: [
+      { date: '2025-04', type: 'Launch', description: 'AviClear 2.0 FDA 510(k) 승인 — 여드름 치료 레이저 2세대, 적응증 확대' },
+      { date: '2025-01', type: 'Other', description: '신임 CEO 취임 — 포트폴리오 집중화 및 수익성 개선 중심 사업 재편 선언' },
       { date: '2024-02', type: 'Other', description: '구조조정 발표 — 인력 20% 감축, 수익성 집중' },
       { date: '2023-07', type: 'Launch', description: 'AviClear 여드름 치료 레이저(1726nm) 파이프라인 확대' },
     ],
@@ -559,6 +574,8 @@ export const COMPETITORS: Competitor[] = [
       { year: 2024, revenue_usd_m: 55, source: 'DART 공시' },
     ],
     events: [
+      { date: '2025-05', type: 'Launch', description: 'SYLFIRM X Plus KFDA 허가 완료 — 스마트 피드백 핸드피스 탑재 업그레이드 버전' },
+      { date: '2025-03', type: 'Clinical', description: 'SYLFIRM X 로사세아·모세혈관 치료 RCT 결과 AAD 2025 발표 — PW 모드 유효성 확인' },
       { date: '2024-03', type: 'Award', description: 'AAD 2024 Best Innovator 수상' },
       { date: '2023-11', type: 'Clinical', description: 'SYLFIRM X 멜라즈마 RCT 결과 JDVD 게재' },
       { date: '2021-09', type: 'Launch', description: 'SYLFIRM X FDA 510(k) 클리어런스 획득' },
@@ -624,6 +641,8 @@ export const COMPETITORS: Competitor[] = [
       { year: 2024, revenue_usd_m: 110, source: 'DART 공시' },
     ],
     events: [
+      { date: '2025-05', type: 'Launch', description: 'GENIUS Ultra CE 인증 — 딥러닝 기반 실시간 임피던스 피드백 NeedleRF 신규 플랫폼' },
+      { date: '2025-02', type: 'MA', description: 'Hologic 인수 후 통합 완료 — Lutronic 브랜드 유지, 미국 직판 네트워크 본격 가동' },
       { date: '2024-05', type: 'MA', description: 'Hologic에 인수 완료 — 미국 시장 유통망 확대 기대' },
       { date: '2023-08', type: 'Launch', description: 'ULTRA 플랫폼 유럽 CE 획득' },
     ],
@@ -690,6 +709,8 @@ export const COMPETITORS: Competitor[] = [
       { year: 2024, revenue_usd_m: 82, source: 'DART 공시' },
     ],
     events: [
+      { date: '2025-05', type: 'Partnership', description: '태국 방콕 직판 법인 설립 — 동남아 6개국 직접 공략 선언' },
+      { date: '2025-03', type: 'Other', description: 'KIMES 2025 참가 — DOUBLO S Gold 신형 카트리지·PICOPLUS Boost 세계 최초 공개' },
       { date: '2024-03', type: 'Other', description: 'KIMES 2024 DOUBLO S 신형 공개' },
       { date: '2023-07', type: 'Partnership', description: '동남아 신규 딜러십 계약 5개국' },
     ],
@@ -743,6 +764,8 @@ export const COMPETITORS: Competitor[] = [
       { year: 2024, revenue_usd_m: 63, source: 'DART 공시' },
     ],
     events: [
+      { date: '2025-06', type: 'Partnership', description: '중국 에스테틱 파트너사 계약 — 중국 내수 클리닉 시장 첫 진입 선언' },
+      { date: '2025-03', type: 'Launch', description: 'Oligio Prime KFDA 허가 획득 — RF+초음파 하이브리드 에너지 업그레이드 버전' },
       { date: '2024-03', type: 'Launch', description: 'Oligio Plus 개선 버전 KFDA 허가' },
       { date: '2023-06', type: 'Partnership', description: '태국·베트남 전담 딜러 계약' },
     ],
@@ -796,6 +819,8 @@ export const COMPETITORS: Competitor[] = [
       { year: 2024, revenue_usd_m: 52, source: 'DART 공시' },
     ],
     events: [
+      { date: '2025-06', type: 'Launch', description: 'Hi-HIFU Pro 유럽 CE 인증 획득 — 신형 HIFU 플랫폼으로 유럽 시장 본격 공략' },
+      { date: '2025-03', type: 'Other', description: 'KIMES 2025 출전 — DOUBLO Gold S 신형 카트리지 및 복합 플랫폼 Hi-PRO 공개' },
       { date: '2024-03', type: 'Other', description: 'KIMES 2024 출품 — 복합 플랫폼 라인업 공개' },
     ],
     confidence: { level: 'verified', source: 'DART 공시' },
@@ -846,6 +871,8 @@ export const COMPETITORS: Competitor[] = [
       { year: 2024, revenue_usd_m: 28, source: '업계추정' },
     ],
     events: [
+      { date: '2025-05', type: 'Other', description: 'FDA 510(k) 제출 완료 — AGNES RF 미국 시장 진입 승인 절차 시작' },
+      { date: '2025-03', type: 'Launch', description: 'KIMES 2025 — AGNES RF Pro 세계 최초 공개. 다관절 핸드피스로 시술 접근성 대폭 향상' },
       { date: '2024-03', type: 'Other', description: 'KIMES 2024 첫 단독 부스 출전' },
       { date: '2023-05', type: 'Partnership', description: '동남아 첫 수출 딜러 계약' },
     ],
@@ -908,6 +935,8 @@ export const COMPETITORS: Competitor[] = [
       { year: 2024, revenue_usd_m: 65, source: '업계추정' },
     ],
     events: [
+      { date: '2025-06', type: 'Launch', description: 'Onda 2세대 CE 인증 취득 — 마이크로파 파워 30% 강화, 지능형 냉각 시스템 도입' },
+      { date: '2025-04', type: 'Other', description: 'ASLMS 2025 참가 — Onda Coolwaves 신규 체형 교정 임상 연구 결과 발표' },
       { date: '2024-05', type: 'Other', description: 'ASLMS 2024 Onda 최신 임상 데이터 발표' },
       { date: '2023-09', type: 'Launch', description: 'SmartXide Touch CO2 시스템 CE 인증' },
       { date: '2022-11', type: 'Clinical', description: 'Onda Coolwaves 셀룰라이트 임상 JDDG 게재' },

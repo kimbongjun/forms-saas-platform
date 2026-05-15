@@ -1,5 +1,5 @@
 export interface WorkspaceHub {
-  key: 'dashboard' | 'projects' | 'blueberry' | 'monitoring' | 'some-content' | 'market'
+  key: 'dashboard' | 'projects' | 'blueberry' | 'monitoring' | 'some-content' | 'market' | 'geo'
   href: string
   label: string
   description: string
@@ -53,6 +53,12 @@ export const WORKSPACE_HUBS: WorkspaceHub[] = [
     href: '/market',
     label: '시장조사',
     description: '경쟁사 인텔리전스 대시보드',
+  },
+  {
+    key: 'geo',
+    href: '/geo',
+    label: 'GEO/AEO',
+    description: 'AI 검색 최적화 인텔리전스',
   },
 ]
 

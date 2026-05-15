@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
 
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
+      max_tokens: 2048,
       system: SYSTEM_PROMPT,
       messages: [{
         role: 'user',
@@ -105,8 +105,13 @@ export async function POST(req: NextRequest) {
     })
 
     const raw = message.content[0].type === 'text' ? message.content[0].text : '[]'
-    const jsonStr = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    const items = JSON.parse(jsonStr) as PressItem[]
+    // Extract JSON array robustly — handles markdown fences and leading text
+    const jsonMatch = raw.match(/\[[\s\S]*\]/)
+    if (!jsonMatch) {
+      console.error('[press] Claude non-JSON response:', raw.slice(0, 200))
+      throw new Error('Claude가 유효한 JSON 배열을 반환하지 않았습니다')
+    }
+    const items = JSON.parse(jsonMatch[0]) as PressItem[]
 
     const result: PressResult = {
       competitor_id,
