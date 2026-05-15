@@ -1094,6 +1094,25 @@ function EarnedMediaTab({ media, brandId }: { media: EarnedMedia; brandId: strin
 
 // ─── GEO Playground ──────────────────────────────────────────────────────────
 
+const HISTORY_KEY  = 'geo_playground_history'
+const HISTORY_MAX  = 20
+
+type HistoryEntry = PlaygroundResult & { id: string }
+
+function loadHistory(): HistoryEntry[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY)
+    return raw ? (JSON.parse(raw) as HistoryEntry[]) : []
+  } catch {
+    return []
+  }
+}
+
+function saveHistory(entries: HistoryEntry[]): void {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(entries.slice(0, HISTORY_MAX)))
+}
+
 function GeoPlayground() {
   const [query, setQuery] = useState('')
   const [perspective, setPerspective] = useState('general')
